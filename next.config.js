@@ -14,8 +14,14 @@ const nextConfig = {
         port: '8080',
         pathname: '/api/**',
       },
+      // This is the new entry for Cloudinary
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/daju0j8vi/image/upload/**',
+      },
     ],
   },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
