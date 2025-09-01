@@ -84,7 +84,6 @@ const Sidebar = ({ employee, profilePhoto, onLogout }: SidebarProps) => {
       <nav className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
         {([
           { icon: <LayoutDashboard size={20} />, label: "Dashboard", href: "/employee" },
-          // --- THIS LINE IS UPDATED ---
           { icon: <User size={20} />, label: "My Profile", href: "/employee/profile" },
           { icon: <Clock size={20} />, label: "Attendance", href: "/employee/attendance" },
           { icon: <Calendar size={20} />, label: "Leaves", href: "/employee/leaves" },
@@ -265,10 +264,18 @@ export default function EmployeeLayout({
       const employeeData = employeeRes.data;
       if (!employeeData) throw new Error('Employee data not found.');
       setEmployee(employeeData);
-      if (employeeData.profilePhotoUrl) {
-        setProfilePhoto(`${APIURL}${employeeData.profilePhotoUrl}`);
-      }
 
+      // --- UPDATED LOGIC HERE ---
+      if (employeeData.profilePhotoUrl) {
+        if (employeeData.profilePhotoUrl.startsWith('http')) {
+          setProfilePhoto(employeeData.profilePhotoUrl);
+        } else {
+          setProfilePhoto(`${APIURL}${employeeData.profilePhotoUrl}`);
+        }
+      } else {
+        setProfilePhoto(''); // Ensure state is cleared if no URL exists
+      }
+      
       const today = new Date().toISOString().split('T')[0];
       const records = Array.isArray(attendanceRes.data) ? attendanceRes.data : [];
       const normalizeDate = (d: any) => {

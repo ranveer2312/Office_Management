@@ -1,15 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
+import Image from 'next/image';
+import {
   Download, FileText, Presentation, Users, Building, Database, Store, UserCheck, DollarSign,
   ArrowRight, Menu, X, Phone, Mail, MapPin, Award, Target, TrendingUp, Shield, CheckCircle, Star,
-  Globe, Zap, Play, BarChart3, Clock, Sparkles, Rocket, Heart, ChevronRight, Check, Briefcase,
-  Cpu, Layers, Activity, Eye, Lock, Smartphone, Cloud, Server, Wifi, BarChart, RefreshCw
+  Globe, Zap, Play, Clock, Sparkles, Rocket, Heart, ChevronRight, Check, Cpu, BarChart, RefreshCw
 } from 'lucide-react';
 import { APIURL } from '@/constants/api';
-import { authFetch } from './utils/authFetch';
 import toast, { Toaster } from 'react-hot-toast';
+
+interface Employee {
+  department: string;
+}
+
+interface Attendance {
+  date: string;
+  workHours: number;
+}
 
 export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,7 +43,7 @@ export default function HomePage() {
       if (!employeesResponse.ok) {
         throw new Error('Failed to fetch employees');
       }
-      const employees = await employeesResponse.json();
+      const employees: Employee[] = await employeesResponse.json();
       
       // Fetch today's attendance
       const today = new Date().toISOString().split('T')[0];
@@ -43,14 +51,14 @@ export default function HomePage() {
       if (!attendanceResponse.ok) {
         throw new Error('Failed to fetch attendance');
       }
-      const allAttendance = await attendanceResponse.json();
-      const todayAttendance = allAttendance.filter((att: any) => att.date === today);
+      const allAttendance: Attendance[] = await attendanceResponse.json();
+      const todayAttendance = allAttendance.filter((att) => att.date === today);
       
       // Calculate department stats
-      const departments = [...new Set(employees.map((emp: any) => emp.department))];
+      const departments = [...new Set(employees.map((emp) => emp.department))];
       
       // Calculate average work hours
-      const totalWorkHours = allAttendance.reduce((sum: number, att: any) => {
+      const totalWorkHours = allAttendance.reduce((sum: number, att) => {
         return sum + (att.workHours || 0);
       }, 0);
       const avgWorkHours = allAttendance.length > 0 ? (totalWorkHours / allAttendance.length).toFixed(1) : '0';
@@ -88,12 +96,36 @@ export default function HomePage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const testimonials = [
+    {
+      name: 'Sarah Johnson',
+      role: 'HR Director',
+      company: 'TechCorp India',
+      content: 'Tiranga IDMS transformed our HR operations completely. The automation features saved us 15+ hours weekly!',
+      rating: 5
+    },
+    {
+      name: 'Rajesh Kumar',
+      role: 'CEO',
+      company: 'InnovateHub',
+      content: 'Best investment we made for our growing team. The analytics insights are game-changing.',
+      rating: 5
+    },
+    {
+      name: 'Priya Sharma',
+      role: 'Operations Manager',
+      company: 'GrowthCo',
+      content: 'User-friendly interface and powerful features. Our employees adapted quickly and love using it.',
+      rating: 5
+    }
+  ];
+  
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [testimonials.length]);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -161,33 +193,7 @@ export default function HomePage() {
     }
   ];
 
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'HR Director',
-      company: 'TechCorp India',
-      content: 'Tiranga IDMS transformed our HR operations completely. The automation features saved us 15+ hours weekly!',
-      rating: 5
-    },
-    {
-      name: 'Rajesh Kumar',
-      role: 'CEO',
-      company: 'InnovateHub',
-      content: 'Best investment we made for our growing team. The analytics insights are game-changing.',
-      rating: 5
-    },
-    {
-      name: 'Priya Sharma',
-      role: 'Operations Manager',
-      company: 'GrowthCo',
-      content: 'User-friendly interface and powerful features. Our employees adapted quickly and love using it.',
-      rating: 5
-    }
-  ];
-
-
-
-  return (     
+  return (
     <div className="min-h-screen font-sans text-gray-900 bg-gradient-to-br from-slate-50 via-white to-slate-50 transition-all duration-300 overflow-x-hidden">
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrollY > 50 ? 'bg-white/95 backdrop-blur-lg shadow-xl border-b border-slate-200' : 'bg-white/90 backdrop-blur-sm'}`}>
@@ -195,16 +201,13 @@ export default function HomePage() {
           {/* Logo */}
           <div className="flex items-center cursor-pointer group">
             <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                <Building className="w-6 h-6 text-white" />
-              </div>
-              <div className="absolute -inset-1 bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
-            </div>
-            <div className="ml-3">
-              <div className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-900 bg-clip-text text-transparent">
-                Tiranga IDMS
-              </div>
-              <div className="text-xs text-slate-500 -mt-1">Enterprise Platform</div>
+              <Image
+                src="https://www.tirangaaerospace.com/assets/images/logo/logo.png"
+                alt="Tiranga Aerospace Logo"
+                width={120}
+                height={120}
+                className="transition-transform duration-300 group-hover:scale-105"
+              />
             </div>
           </div>
           
@@ -215,8 +218,8 @@ export default function HomePage() {
                 key={section}
                 onClick={() => scrollToSection(section)}
                 className={`relative text-base font-medium transition-all duration-200 px-3 py-2 rounded-lg ${
-                  activeSection === section 
-                    ? 'text-slate-800 bg-slate-100' 
+                  activeSection === section
+                    ? 'text-slate-800 bg-slate-100'
                     : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
                 }`}
               >
@@ -292,12 +295,12 @@ export default function HomePage() {
             {/* Badge */}
             <div className="flex items-center gap-4 mb-8">
               <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-200 text-blue-700 rounded-full font-medium text-sm shadow-lg animate-fade-in hover:scale-105 transition-transform duration-300">
-                <Star className="w-4 h-4 mr-2 text-amber-500" /> 
+                <Star className="w-4 h-4 mr-2 text-amber-500" />
                 <span>Trusted by 15,000+ Enterprise Organizations</span>
               </div>
               <div className={`inline-flex items-center px-4 py-2 rounded-full font-medium text-sm shadow-lg transition-all duration-300 ${
-                backendConnected 
-                  ? 'bg-green-50 border border-green-200 text-green-700' 
+                backendConnected
+                  ? 'bg-green-50 border border-green-200 text-green-700'
                   : 'bg-red-50 border border-red-200 text-red-700'
               }`}>
                 <div className={`w-2 h-2 rounded-full mr-2 ${backendConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
@@ -320,9 +323,9 @@ export default function HomePage() {
             
             {/* Subtext */}
             <p className="max-w-xl mb-10 text-xl md:text-2xl text-slate-600 leading-relaxed animate-slide-up delay-600">
-              Next-generation HRMS platform with 
-              <span className="font-semibold text-slate-800"> AI-powered automation</span>, 
-              <span className="font-semibold text-slate-800"> real-time analytics</span>, and 
+              Next-generation HRMS platform with
+              <span className="font-semibold text-slate-800"> AI-powered automation</span>,
+              <span className="font-semibold text-slate-800"> real-time analytics</span>, and
               <span className="font-semibold text-slate-800"> enterprise-grade security</span> for modern organizations.
             </p>
             
@@ -402,9 +405,9 @@ export default function HomePage() {
                 
                 <div className="space-y-3">
                   {[
-                    { label: 'Employee Onboarding', progress: loading ? 0 : Math.min(100, Math.round((stats[0].number as any) * 10)), color: 'bg-blue-600' },
-                    { label: 'Attendance Rate', progress: loading ? 0 : stats[0].number !== '0' ? Math.round((parseInt(stats[1].number) / parseInt(stats[0].number)) * 100) : 0, color: 'bg-emerald-600' },
-                    { label: 'System Utilization', progress: loading ? 0 : Math.min(100, Math.round((stats[3].number as any) * 10)), color: 'bg-violet-600' }
+                    { label: 'Employee Onboarding', progress: loading ? 0 : Math.min(100, (Number(stats[0].number) * 10)) , color: 'bg-blue-600' },
+                    { label: 'Attendance Rate', progress: loading ? 0 : Number(stats[0].number) !== 0 ? Math.round((Number(stats[1].number) / Number(stats[0].number)) * 100) : 0, color: 'bg-emerald-600' },
+                    { label: 'System Utilization', progress: loading ? 0 : Math.min(100, (Number(stats[3].number) * 10)) , color: 'bg-violet-600' }
                   ].map((item, index) => (
                     <div key={index} className="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-colors duration-300">
                       <div className="flex justify-between text-sm text-slate-300 mb-2">
@@ -447,7 +450,7 @@ export default function HomePage() {
               Built for the Future of Work
             </h2>
             <p className="text-xl max-w-4xl mx-auto text-gray-600 leading-relaxed">
-              We're not just another HR platform. We're your strategic partner in digital transformation, 
+              We&apos;re not just another HR platform. We&apos;re your strategic partner in digital transformation,
               building the future of work with cutting-edge technology and human-centric design.
             </p>
           </div>
@@ -531,7 +534,7 @@ export default function HomePage() {
               Internal Data Management System
             </p>
             <p className="text-xl max-w-4xl mx-auto text-gray-600 leading-relaxed">
-              Complete ecosystem of integrated solutions designed to streamline your operations, 
+              Complete ecosystem of integrated solutions designed to streamline your operations,
               boost productivity, and drive growth through intelligent automation.
             </p>
           </div>
@@ -539,44 +542,44 @@ export default function HomePage() {
           {/* Enhanced Solution Cards */}
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { 
-                icon: Users, 
-                title: 'Employee Lifecycle Management', 
+              {
+                icon: Users,
+                title: 'Employee Lifecycle Management',
                 desc: 'End-to-end employee journey from onboarding to offboarding with AI-powered insights and automation.',
                 gradient: 'from-blue-500 to-indigo-600',
                 features: ['Smart Onboarding', 'Performance Tracking', 'Career Development']
               },
-              { 
-                icon: Database, 
-                title: 'Advanced Data Analytics', 
+              {
+                icon: Database,
+                title: 'Advanced Data Analytics',
                 desc: 'Transform raw data into actionable insights with real-time dashboards and predictive analytics.',
                 gradient: 'from-green-500 to-teal-600',
                 features: ['Real-time Dashboards', 'Predictive Analytics', 'Custom Reports']
               },
-              { 
-                icon: Store, 
-                title: 'Operations Excellence Hub', 
+              {
+                icon: Store,
+                title: 'Operations Excellence Hub',
                 desc: 'Streamline inventory management, performance monitoring, and operational workflows seamlessly.',
                 gradient: 'from-purple-500 to-pink-600',
                 features: ['Inventory Control', 'Workflow Automation', 'Quality Management']
               },
-              { 
-                icon: UserCheck, 
-                title: 'Next-Gen HR Suite', 
+              {
+                icon: UserCheck,
+                title: 'Next-Gen HR Suite',
                 desc: 'Revolutionary HR tools covering recruitment, engagement, learning, and talent development.',
                 gradient: 'from-orange-500 to-red-600',
                 features: ['Smart Recruitment', 'Employee Engagement', 'Learning Management']
               },
-              { 
-                icon: DollarSign, 
-                title: 'Financial Command Center', 
+              {
+                icon: DollarSign,
+                title: 'Financial Command Center',
                 desc: 'Comprehensive budgeting, expense tracking, payroll management with automated compliance.',
                 gradient: 'from-yellow-500 to-orange-600',
                 features: ['Automated Payroll', 'Expense Management', 'Budget Planning']
               },
-              { 
-                icon: Shield, 
-                title: 'Security & Compliance Shield', 
+              {
+                icon: Shield,
+                title: 'Security & Compliance Shield',
                 desc: 'Enterprise-grade security framework with automated compliance monitoring and reporting.',
                 gradient: 'from-indigo-500 to-purple-600',
                 features: ['Data Protection', 'Compliance Monitoring', 'Audit Trails']
@@ -634,7 +637,7 @@ export default function HomePage() {
               </div>
               
               <blockquote className="text-2xl font-medium text-gray-900 mb-8 italic">
-                "{testimonials[currentTestimonial].content}"
+                &quot;{testimonials[currentTestimonial].content}&quot;
               </blockquote>
               
               <div className="flex items-center justify-center">
@@ -657,8 +660,8 @@ export default function HomePage() {
                   key={index}
                   onClick={() => setCurrentTestimonial(index)}
                   className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    index === currentTestimonial 
-                      ? 'bg-indigo-600 w-8' 
+                    index === currentTestimonial
+                      ? 'bg-indigo-600 w-8'
                       : 'bg-gray-300 hover:bg-gray-400'
                   }`}
                 />
@@ -726,7 +729,7 @@ export default function HomePage() {
                 }}
                 className="relative w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl group-hover:scale-105 flex items-center justify-center"
               >
-                <Download className="w-6 h-6 mr-3" /> 
+                <Download className="w-6 h-6 mr-3" />
                 Download PDF
                 <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -773,7 +776,7 @@ export default function HomePage() {
                 }}
                 className="relative w-full px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-2xl font-bold text-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl group-hover:scale-105 flex items-center justify-center"
               >
-                <Download className="w-6 h-6 mr-3" /> 
+                <Download className="w-6 h-6 mr-3" />
                 Download PPT
                 <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -795,7 +798,7 @@ export default function HomePage() {
               Access Your Dashboard
             </h2>
             <p className="text-xl max-w-4xl mx-auto text-gray-600 leading-relaxed">
-              Experience role-specific tools, insights, and workflows designed precisely for your responsibilities 
+              Experience role-specific tools, insights, and workflows designed precisely for your responsibilities
               and organizational needs.
             </p>
           </div>
@@ -803,49 +806,49 @@ export default function HomePage() {
           {/* Enhanced Role Cards */}
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { 
-                icon: Users, 
-                role: 'System Admin', 
+              {
+                icon: Users,
+                role: 'System Admin',
                 desc: 'Complete system control with advanced configuration options',
                 gradient: 'from-red-500 to-pink-600',
                 features: ['User Management', 'System Config', 'Security Settings'],
                 popular: false
               },
-              { 
-                icon: UserCheck, 
-                role: 'Employee', 
+              {
+                icon: UserCheck,
+                role: 'Employee',
                 desc: 'Self-service portal with personal dashboard and tools',
                 gradient: 'from-blue-500 to-indigo-600',
                 features: ['Personal Dashboard', 'Leave Management', 'Performance Tracking'],
                 popular: true
               },
-              { 
-                icon: Database, 
-                role: 'Data Manager', 
+              {
+                icon: Database,
+                role: 'Data Manager',
                 desc: 'Advanced analytics, reporting, and business intelligence',
                 gradient: 'from-green-500 to-teal-600',
                 features: ['Analytics Dashboard', 'Custom Reports', 'Data Insights'],
                 popular: false
               },
-              { 
-                icon: Store, 
-                role: 'Store Manager', 
+              {
+                icon: Store,
+                role: 'Store Manager',
                 desc: 'Inventory control and operational excellence tools',
                 gradient: 'from-orange-500 to-red-600',
                 features: ['Inventory Control', 'Order Management', 'Stock Analytics'],
                 popular: false
               },
-              { 
-                icon: UserCheck, 
-                role: 'HR Manager', 
+              {
+                icon: UserCheck,
+                role: 'HR Manager',
                 desc: 'Comprehensive HR suite for talent management',
                 gradient: 'from-purple-500 to-pink-600',
                 features: ['Recruitment Tools', 'Employee Engagement', 'Performance Reviews'],
                 popular: false
               },
-              { 
-                icon: DollarSign, 
-                role: 'Finance Manager', 
+              {
+                icon: DollarSign,
+                role: 'Finance Manager',
                 desc: 'Financial oversight with automated compliance tracking',
                 gradient: 'from-yellow-500 to-orange-600',
                 features: ['Budget Management', 'Expense Tracking', 'Financial Reports'],
@@ -855,8 +858,8 @@ export default function HomePage() {
               <div
                 key={index}
                 className={`group relative bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 border-2 h-full flex flex-col ${
-                  role.popular 
-                    ? 'border-indigo-200 ring-2 ring-indigo-100' 
+                  role.popular
+                    ? 'border-indigo-200 ring-2 ring-indigo-100'
                     : 'border-gray-100 hover:border-gray-200'
                 }`}
               >
@@ -923,7 +926,7 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="text-xl max-w-3xl mx-auto text-slate-300 leading-relaxed">
-              Ready to revolutionize your HR operations? Our expert team is here to guide you through 
+              Ready to revolutionize your HR operations? Our expert team is here to guide you through
               every step of your digital transformation journey.
             </p>
           </div>
@@ -1003,7 +1006,7 @@ export default function HomePage() {
                   <span className="font-bold text-blue-400 text-lg">Free 30-Day Trial</span>
                 </div>
                 <p className="text-slate-200 leading-relaxed mb-6">
-                  Start your transformation journey with zero risk. Full access to all features 
+                  Start your transformation journey with zero risk. Full access to all features
                   with dedicated onboarding support.
                 </p>
                 
@@ -1013,7 +1016,7 @@ export default function HomePage() {
                 >
                   <Rocket className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform duration-300" />
                   Start Free Trial Now
-                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
+                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </div>
@@ -1043,7 +1046,7 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-gray-400 mb-6 leading-relaxed">
-                Empowering organizations worldwide with cutting-edge HR technology and innovative 
+                Empowering organizations worldwide with cutting-edge HR technology and innovative
                 workplace management solutions for sustainable growth and success.
               </p>
               <div className="flex space-x-4">

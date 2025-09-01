@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import Next.js Image component
 import axios from 'axios';
 import {
-  Clock, User, Activity, BellOff, TrendingUp, Award,
-  Shield, Zap, Star, Mail, Phone, MapPin, Briefcase,
-  Calendar, Users, Target, BarChart3
+  Clock, User, Activity, TrendingUp,
+  Shield, Mail, Phone, MapPin, Briefcase,
 } from 'lucide-react';
 
 // Interfaces for data type
@@ -38,17 +38,6 @@ interface TodayAttendance {
   workHours: number;
   overtimeHours?: number;
   breakTime?: number;
-}
-
-interface ActivityItem {
-  id: string;
-  name: string;
-  priority: string;
-  description: string;
-  activityDate: string;
-  assignedTo: string | string[];
-  status?: string;
-  completionPercentage?: number;
 }
 
 // API Configuration
@@ -169,12 +158,15 @@ const ProfilePhoto = ({ employee }: { employee: Employee }) => {
   }
 
   return (
-    <img
+    <Image
       src={photoUrl}
-      alt={employee?.employeeName || "User"}
+      alt={employee?.employeeName || 'User'}
+      width={96}
+      height={96}
       className="w-24 h-24 mx-auto mb-4 rounded-full object-cover border-4 border-white shadow-lg"
       onError={handleImageError}
       onLoad={handleImageLoad}
+      unoptimized={!photoUrl.startsWith('http')} // Use unoptimized for local paths
     />
   );
 };
@@ -183,15 +175,13 @@ const ProfilePhoto = ({ employee }: { employee: Employee }) => {
 export default function MainDashboardPage() {
   const router = useRouter();
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState<boolean>(false);
   const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = React.useState(0);
+  const [tick, setTick] = useState(0);
 
   // Timer for real-time work hours calculation
-  React.useEffect(() => {
+  useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60000);
     return () => clearInterval(id);
   }, []);
@@ -209,7 +199,7 @@ export default function MainDashboardPage() {
 
     try {
       // Fetch employee data
-      const employeeResponse = await axios.get(
+      const employeeResponse = await axios.get<Employee>(
         `${APIURL}/api/employees/byEmployeeId/${employeeId}`,
         {
           headers: {
@@ -229,7 +219,7 @@ export default function MainDashboardPage() {
       // Fetch attendance data
       let attendanceData: TodayAttendance | null = null;
       try {
-        const attendanceResponse = await axios.get(
+        const attendanceResponse = await axios.get<TodayAttendance[]>(
           `${APIURL}/api/attendance/employee/${employeeId}`,
           {
             headers: {
@@ -240,10 +230,10 @@ export default function MainDashboardPage() {
         );
 
         const today = new Date().toISOString().split('T')[0];
-        const records = Array.isArray(attendanceResponse.data) ? attendanceResponse.data : [];
+        const records = attendanceResponse.data || [];
         
         // Helper function to normalize date format
-        const normalizeDate = (dateValue: any): string => {
+        const normalizeDate = (dateValue: number[] | string): string => {
           if (Array.isArray(dateValue) && dateValue.length >= 3) {
             return `${dateValue[0]}-${String(dateValue[1]).padStart(2, '0')}-${String(dateValue[2]).padStart(2, '0')}`;
           }
@@ -253,7 +243,7 @@ export default function MainDashboardPage() {
           return '';
         };
 
-        const todayRecord = records.find((record: any) => normalizeDate(record.date) === today);
+        const todayRecord = records.find((record) => normalizeDate(record.date) === today);
         attendanceData = todayRecord || {
           employeeId: employeeId,
           date: today,
@@ -276,62 +266,32 @@ export default function MainDashboardPage() {
       
       setTodayAttendance(attendanceData);
 
-      // Fetch activities separately
-      await fetchActivities();
-
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to fetch dashboard data:", err);
       
-      if (err.response?.status === 404) {
-        setError("Employee not found. Please check your credentials.");
-      } else if (err.response?.status === 401) {
-        setError("Unauthorized access. Please login again.");
-        localStorage.removeItem("employeeId");
-        router.replace('/login');
-        return;
-      } else if (err.code === 'ECONNABORTED') {
-        setError("Request timeout. Please check your internet connection.");
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 404) {
+          setError("Employee not found. Please check your credentials.");
+        } else if (err.response?.status === 401) {
+          setError("Unauthorized access. Please login again.");
+          localStorage.removeItem("employeeId");
+          router.replace('/login');
+          return;
+        } else if (err.code === 'ECONNABORTED') {
+          setError("Request timeout. Please check your internet connection.");
+        } else {
+          setError("Failed to load dashboard data. Please check your network and try again.");
+        }
       } else {
-        setError("Failed to load dashboard data. Please check your network and try again.");
+        setError("Failed to load dashboard data. An unexpected error occurred.");
       }
     } finally {
       setLoading(false);
     }
   }, [router]);
 
-  // Fetch activities with defensive error handling
-  const fetchActivities = async () => {
-    setActivitiesLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set('status', 'ACTIVE');
-      
-      const activitiesResponse = await axios.get(
-        `${APIURL}/api/activities`,
-        {
-          params,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 8000,
-        }
-      );
-      
-      const activitiesList = Array.isArray(activitiesResponse.data) 
-        ? activitiesResponse.data 
-        : [];
-      
-      setActivities(activitiesList as ActivityItem[]);
-    } catch (error) {
-      console.warn('Failed to fetch activities:', error);
-      setActivities([]);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  };
-
   // Calculate effective work hours
-  const effectiveWorkHours = React.useMemo(() => {
+  const effectiveWorkHours = useMemo(() => {
     if (!todayAttendance) return 0;
     
     // If already checked out, use stored work hours
@@ -344,7 +304,7 @@ export default function MainDashboardPage() {
       try {
         const [hours, minutes, seconds] = (todayAttendance.checkInTime || '00:00:00')
           .split(':')
-          .map((v: string) => parseInt(v || '0', 10));
+          .map((v) => parseInt(v || '0', 10));
         
         const startTime = new Date();
         startTime.setHours(hours, minutes, seconds || 0, 0);
@@ -361,7 +321,7 @@ export default function MainDashboardPage() {
     }
     
     return 0;
-  }, [todayAttendance, tick]);
+  }, [todayAttendance, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize data on component mount
   useEffect(() => {
@@ -413,7 +373,7 @@ export default function MainDashboardPage() {
             Employee Dashboard
           </h1>
           <p className="text-slate-600 font-medium">
-            Welcome back, {employee?.employeeName || "User"}! Here's your daily overview.
+            Welcome back, {employee?.employeeName || 'User'}! Here&apos;s your daily overview.
           </p>
         </div>
 
@@ -428,33 +388,33 @@ export default function MainDashboardPage() {
                 </div>
               </div>
               <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                {employee?.employeeName || "User"}
+                {employee?.employeeName || 'User'}
               </h3>
-              <p className="text-lg text-blue-600 font-semibold">{employee?.position || "Position"}</p>
-              <p className="text-sm text-slate-500 font-medium mt-1">{employee?.department || "Department"}</p>
+              <p className="text-lg text-blue-600 font-semibold">{employee?.position || 'Position'}</p>
+              <p className="text-sm text-slate-500 font-medium mt-1">{employee?.department || 'Department'}</p>
               <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-semibold">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                {employee?.status || "Active"}
+                {employee?.status || 'Active'}
               </div>
             </div>
             
             <div className="space-y-4">
               <div className="flex items-center text-sm bg-slate-50/50 p-4 rounded-xl hover:bg-slate-100/50 transition-colors">
                 <Mail size={18} className="text-blue-500 mr-3 flex-shrink-0" />
-                <span className="text-slate-700 font-medium truncate">{employee?.email || "N/A"}</span>
+                <span className="text-slate-700 font-medium truncate">{employee?.email || 'N/A'}</span>
               </div>
               <div className="flex items-center text-sm bg-slate-50/50 p-4 rounded-xl hover:bg-slate-100/50 transition-colors">
                 <Phone size={18} className="text-green-500 mr-3 flex-shrink-0" />
-                <span className="text-slate-700 font-medium">{employee?.phoneNumber || "N/A"}</span>
+                <span className="text-slate-700 font-medium">{employee?.phoneNumber || 'N/A'}</span>
               </div>
               <div className="flex items-center text-sm bg-slate-50/50 p-4 rounded-xl hover:bg-slate-100/50 transition-colors">
                 <MapPin size={18} className="text-red-500 mr-3 flex-shrink-0" />
-                <span className="text-slate-700 font-medium truncate">{employee?.currentAddress || "N/A"}</span>
+                <span className="text-slate-700 font-medium truncate">{employee?.currentAddress || 'N/A'}</span>
               </div>
               <div className="flex items-center text-sm bg-slate-50/50 p-4 rounded-xl hover:bg-slate-100/50 transition-colors">
                 <Briefcase size={18} className="text-purple-500 mr-3 flex-shrink-0" />
                 <span className="text-slate-700 font-medium">
-                  Joined {employee?.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : "N/A"}
+                  Joined {employee?.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A'}
                 </span>
               </div>
               {employee?.bloodGroup && (
@@ -470,7 +430,7 @@ export default function MainDashboardPage() {
           <div className="bg-white/80 backdrop-blur-lg p-8 rounded-3xl border border-slate-200/60 shadow-xl hover:shadow-2xl transition-all duration-500 flex flex-col items-center justify-center">
             <div className="text-center mb-8">
               <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3">
-                Today's Progress
+                Today&apos;s Progress
               </h3>
               <p className="text-sm text-slate-500 font-medium">Your daily productivity tracker</p>
             </div>
@@ -531,134 +491,6 @@ export default function MainDashboardPage() {
           </div>
         </div>
 
-        {/* Activities Section */}
-        <div className="bg-white/80 backdrop-blur-lg rounded-3xl border border-slate-200/60 shadow-xl hover:shadow-2xl transition-all duration-500">
-          <div className="p-8 border-b border-slate-200/60">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Activity size={28} className="text-white" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                    Recent Activities
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-1 font-medium">Your latest work updates and milestones</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-slate-500">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  <span>{new Date().toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BarChart3 size={16} />
-                  <span>{activities.length} Active</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-8">
-            {activitiesLoading ? (
-              <div className="text-center text-slate-500 py-16">
-                <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-6"></div>
-                <h3 className="text-xl font-bold text-slate-700 mb-2">Loading Activities</h3>
-                <p className="font-medium">Fetching your latest work updates...</p>
-              </div>
-            ) : activities && activities.length > 0 ? (
-              <div className="space-y-6">
-                {activities.slice(0, 5).map((activity: ActivityItem, index: number) => (
-                  <div key={activity.id} className={`flex items-center space-x-6 p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
-                    activity.priority === 'High' 
-                      ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200 hover:border-red-300' 
-                      : activity.priority === 'Medium' 
-                      ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 hover:border-yellow-300' 
-                      : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-300'
-                  }`}>
-                    <div className={`w-14 h-14 flex items-center justify-center rounded-2xl shadow-md flex-shrink-0 ${
-                      activity.priority === 'High' 
-                        ? 'bg-gradient-to-br from-red-500 to-pink-600 text-white' 
-                        : activity.priority === 'Medium' 
-                        ? 'bg-gradient-to-br from-yellow-500 to-amber-600 text-white' 
-                        : 'bg-gradient-to-br from-green-500 to-emerald-600 text-white'
-                    }`}>
-                      {activity.priority === 'High' ? <Zap size={24} /> : 
-                       activity.priority === 'Medium' ? <Star size={24} /> : 
-                       <Award size={24} />}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-slate-900 text-lg mb-1 truncate">{activity.name}</h4>
-                      <p className="text-slate-600 font-medium text-sm mb-2 line-clamp-2">{activity.description}</p>
-                      {activity.assignedTo && (
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <Users size={14} />
-                          <span>Assigned to: {Array.isArray(activity.assignedTo) ? activity.assignedTo.join(', ') : activity.assignedTo}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-xs text-slate-400 font-medium mb-3">
-                        {new Date(activity.activityDate).toLocaleDateString()}
-                      </p>
-                      <span className={`inline-block text-xs font-bold px-4 py-2 rounded-full shadow-sm ${
-                        activity.priority === 'High' 
-                          ? 'bg-red-100 text-red-800' 
-                          : activity.priority === 'Medium' 
-                          ? 'bg-yellow-100 text-yellow-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {activity.priority} Priority
-                      </span>
-                      {activity.completionPercentage !== undefined && (
-                        <div className="mt-2">
-                          <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all duration-300 ${
-                                activity.priority === 'High' ? 'bg-red-500' :
-                                activity.priority === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'
-                              }`}
-                              style={{ width: `${activity.completionPercentage}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-slate-500 mt-1">{activity.completionPercentage}%</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                
-                {activities.length > 5 && (
-                  <div className="text-center pt-4">
-                    <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300">
-                      View All {activities.length} Activities
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-20">
-                <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-8">
-                  <BellOff size={40} className="text-slate-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-700 mb-3">No Recent Activities</h3>
-                <p className="text-slate-500 font-medium mb-6 max-w-md mx-auto">
-                  Your work activities and updates will appear here once they are assigned or created.
-                </p>
-                <button 
-                  onClick={fetchActivities}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center gap-2 mx-auto"
-                >
-                  <Activity size={18} />
-                  Refresh Activities
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Quick Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white/80 backdrop-blur-lg p-6 rounded-2xl border border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -677,12 +509,16 @@ export default function MainDashboardPage() {
           <div className="bg-white/80 backdrop-blur-lg p-6 rounded-2xl border border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 font-semibold mb-1">Active Tasks</p>
-                <p className="text-2xl font-bold text-slate-800">{activities.length}</p>
-                <p className="text-xs text-purple-600 font-medium">Currently assigned</p>
+                <p className="text-sm text-slate-500 font-semibold mb-1">Days Active</p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {employee?.joiningDate ?
+                    Math.floor((new Date().getTime() - new Date(employee.joiningDate).getTime()) / (1000 * 3600 * 24))
+                    : 0}
+                </p>
+                <p className="text-xs text-purple-600 font-medium">Since joining</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                <Target size={24} className="text-white" />
+                <Activity size={24} className="text-white" />
               </div>
             </div>
           </div>
@@ -692,7 +528,7 @@ export default function MainDashboardPage() {
               <div>
                 <p className="text-sm text-slate-500 font-semibold mb-1">Productivity</p>
                 <p className="text-2xl font-bold text-slate-800">{Math.min(Math.round((effectiveWorkHours / 8) * 100), 100)}%</p>
-                <p className="text-xs text-emerald-600 font-medium">Today's efficiency</p>
+                <p className="text-xs text-emerald-600 font-medium">Today&apos;s efficiency</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
                 <TrendingUp size={24} className="text-white" />

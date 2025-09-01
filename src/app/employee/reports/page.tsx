@@ -11,16 +11,15 @@ import {
   Calendar,
   Download,
   ArrowLeft,
-  Trash2, // Added for delete functionality (optional, but good to have)
+  Trash2,
   Upload,
   X,
-
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
- 
+
 interface Report {
   id: number;
   type: 'employee' | 'visit' | 'oem' | 'customer' | 'blueprint' | 'projection' | 'achievement';
@@ -74,13 +73,13 @@ interface Report {
     remarks?: string;
   }[];
 }
- 
+
 // Define your backend API base URL
 const BASE_URL = APIURL + '/api/reports'; // Your Spring Boot backend URL
- 
+
 export default function ReportsPage() {
   const router = useRouter();
-  const [reports, setReports] = useState<Report[]>([]); // No default report
+  const [reports, setReports] = useState<Report[]>([]);
   const [selectedType, setSelectedType] = useState<string>('employee');
   const [selectedSubtype, setSelectedSubtype] = useState<string>('all');
   const [showNewReportForm, setShowNewReportForm] = useState(false);
@@ -89,7 +88,7 @@ export default function ReportsPage() {
     subtype: 'daily',
     title: '',
     content: '',
-    status: 'draft' // Default status for new reports
+    status: 'draft'
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +115,6 @@ export default function ReportsPage() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
- 
   const reportTypes = [
     { id: 'employee', label: 'Employee Report', icon: <FileText className="w-5 h-5" /> },
     { id: 'visit', label: 'Visit Report', icon: <Map className="w-5 h-5" /> },
@@ -126,14 +124,14 @@ export default function ReportsPage() {
     { id: 'projection', label: 'Projection Report', icon: <Target className="w-5 h-5" /> },
     { id: 'achievement', label: 'Achievement Report', icon: <Award className="w-5 h-5" /> }
   ];
- 
+
   const employeeSubtypes = [
     { id: 'daily', label: 'Daily Report', icon: <Calendar className="w-5 h-5" /> },
     { id: 'weekly', label: 'Weekly Report', icon: <Calendar className="w-5 h-5" /> },
     { id: 'monthly', label: 'Monthly Report', icon: <Calendar className="w-5 h-5" /> },
     { id: 'yearly', label: 'Yearly Report', icon: <Calendar className="w-5 h-5" /> }
   ];
- 
+
   const oemSubtypes = [
     { id: 'orders', label: 'Orders' },
     { id: 'competitor_analysis', label: 'Competitor Analysis' },
@@ -142,20 +140,16 @@ export default function ReportsPage() {
     { id: 'lost_tenders', label: 'Lost Tenders' },
     { id: 'holding_projects', label: 'Holding Projects' },
   ];
- 
+
   const getReportIcon = (type: string) => {
     const reportType = reportTypes.find(t => t.id === type);
     return reportType?.icon || <FileText className="w-5 h-5" />;
   };
- 
- 
- 
-  // Get employee ID from sessionStorage on component mount
+
   useEffect(() => {
     const id = sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId');
     if (!id) {
       setError('Employee ID not found. Please login again.');
-      // Redirect to login after a short delay
       setTimeout(() => {
         router.replace('/login');
       }, 2000);
@@ -163,9 +157,8 @@ export default function ReportsPage() {
     }
     setEmployeeId(id);
   }, [router]);
- 
+
   useEffect(() => {
-    // Fetch division options from API
     fetch(APIURL + '/api/reports/customer-divisions')
       .then(res => res.json())
       .then(data => {
@@ -173,7 +166,6 @@ export default function ReportsPage() {
         else if (data && Array.isArray(data.divisions)) setDivisionOptions(data.divisions);
       })
       .catch(() => console.log('Failed to fetch divisions'));
-    // Fetch company options from API
     fetch(APIURL + '/api/reports/customer-companies')
       .then(res => res.json())
       .then(data => {
@@ -182,69 +174,59 @@ export default function ReportsPage() {
       })
       .catch(() => console.log('Failed to fetch companies'));
   }, []);
- 
-  // Function to fetch reports from the backend - now employee-specific
+
   const fetchReports = useCallback(async () => {
-    if (!employeeId) return; // Don't fetch if employeeId is not available
-    
+    if (!employeeId) return;
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      // First, try to fetch all reports for the employee
       const url = `${BASE_URL}/employee/${employeeId}`;
-      
       console.log('Fetching reports with URL:', url);
       console.log('Selected type:', selectedType);
       console.log('Selected subtype:', selectedSubtype);
- 
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const allReports: Report[] = await response.json();
       console.log('Received all reports:', allReports);
- 
-      // Apply client-side filtering
       let filteredReports = allReports;
-      
-      // Filter by type
+
       if (selectedType !== 'all') {
         filteredReports = filteredReports.filter(report => report.type === selectedType);
       }
-      
-      // Filter by subtype (only for employee reports)
+
       if (selectedType === 'employee' && selectedSubtype !== 'all') {
         filteredReports = filteredReports.filter(report => report.subtype === selectedSubtype);
       }
-      
+
       console.log('Filtered reports:', filteredReports);
       setReports(filteredReports);
-      
+
     } catch {
       setError('Failed to fetch reports');
       console.error('Error fetching reports');
     } finally {
       setLoading(false);
     }
-  }, [selectedType, selectedSubtype, employeeId]); // Added employeeId as dependency
- 
-  // useEffect to call fetchReports when component mounts or filters change
+  }, [selectedType, selectedSubtype, employeeId]);
+
   useEffect(() => {
     if (employeeId) {
       fetchReports();
     }
-  }, [fetchReports, employeeId]); // Added employeeId as dependency
- 
+  }, [fetchReports, employeeId]);
+
   const uploadFiles = async (files: File[]) => {
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
-    
-    const response = await fetch(`${APIURL}/api/upload`, {
+    const response = await fetch(`${APIURL}/api/reports/upload`, {
       method: 'POST',
       body: formData
     });
-    
     if (!response.ok) throw new Error('File upload failed');
     return await response.json();
   };
@@ -254,24 +236,26 @@ export default function ReportsPage() {
       setError('Employee ID not found. Please login again.');
       return;
     }
-    
-    let uploadedFileNames: string[] = [];
+
+    let uploadedFileUrls: string[] = [];
     if (uploadedFiles.length > 0) {
       try {
         const uploadResult = await uploadFiles(uploadedFiles);
-        uploadedFileNames = uploadResult.fileNames || [];
+        uploadedFileUrls = uploadResult;
       } catch {
         setError('Failed to upload files');
         return;
       }
     }
-    // OEM
+
+    let reportData: Partial<Report>;
+
     if (newReport.type === 'oem') {
-      let reportData: Partial<Report> = {
+      reportData = {
         type: 'oem',
         subtype: newReport.subtype,
         submittedBy: employeeId,
-        attachments: uploadedFileNames,
+        attachments: uploadedFileUrls,
       };
       if (newReport.subtype === 'orders') {
         reportData = {
@@ -314,44 +298,21 @@ export default function ReportsPage() {
           quantity: newReport.quantity,
           xmwValue: newReport.xmwValue,
           remarks: newReport.remarks,
-          attachments: uploadedFileNames,
+          attachments: uploadedFileUrls,
         };
       }
-      try {
-        const response = await fetch(BASE_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reportData),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `Failed to create report: ${response.status}`);
-        }
-        const createdReport: Report = await response.json();
-        setReports([createdReport, ...reports]);
-        setShowNewReportForm(false);
-        setNewReport({ type: 'employee', subtype: 'daily', title: '', content: '', status: 'draft' });
-        setError(null);
-        toast.success('OEM Report submitted successfully!');
-      } catch (err: unknown) {
-        setError(`Error submitting OEM report: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        toast.error('Failed to submit OEM report. Please try again later.');
-      }
-      return;
     }
-    if (newReport.type === 'customer') {
-      // Validate required fields for customer report
-      if (!customerReport.title || !customerReport.date || !customerReport.customerName || !customerReport.designation || !customerReport.landlineOrMobile || !customerReport.emailId || !customerReport.productOrRequirements || !customerReport.division || !customerReport.company) {
+    else if (newReport.type === 'customer') {
+      if (!customerReport.date || !customerReport.customerName || !customerReport.designation || !customerReport.landlineOrMobile || !customerReport.emailId || !customerReport.productOrRequirements || !customerReport.division || !customerReport.company) {
         setError('Please fill all required fields for Customer Report.');
         return;
       }
-      const dateArr = customerReport.date ? customerReport.date.split('-').map(Number) : null;
-      const reportData = {
+      reportData = {
         type: 'customer',
-        title: customerReport.title,
+        title: `Customer Report for ${customerReport.customerName || 'N/A'} - ${customerReport.date}`,
         content: customerReport.content || 'Customer report data',
-        date: dateArr,
-        status: customerReport.status,
+        date: customerReport.date,
+        status: customerReport.status as 'draft' | 'submitted' | 'approved' | null,
         submittedBy: employeeId,
         customerName: customerReport.customerName,
         designation: customerReport.designation,
@@ -361,48 +322,26 @@ export default function ReportsPage() {
         productOrRequirements: customerReport.productOrRequirements,
         division: customerReport.division,
         company: customerReport.company,
-        attachments: uploadedFileNames,
+        attachments: uploadedFileUrls,
       };
-      try {
-        const response = await fetch(BASE_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reportData),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `Failed to create report: ${response.status}`);
-        }
-        const createdReport: Report = await response.json();
-        setReports([createdReport, ...reports]);
-        setShowNewReportForm(false);
-        setCustomerReport({
-          title: '', content: '', date: '', status: 'submitted', submittedBy: '', customerName: '', designation: '', landlineOrMobile: '', emailId: '', remarks: '', productOrRequirements: '', division: '', company: '', attachments: []
-        });
-        setNewReport({ type: 'employee', subtype: 'daily', title: '', content: '', status: 'draft' });
-        setError(null);
-        toast.success('Customer Report submitted successfully!');
-      } catch (err: unknown) {
-        setError(`Error submitting customer report: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        toast.error('Failed to submit customer report. Please try again later.');
+    }
+    else {
+      if (!newReport.content) {
+        setError('Content is required.');
+        return;
       }
-      return;
+
+      const selectedSubtypeLabel = employeeSubtypes.find(s => s.id === newReport.subtype)?.label || newReport.subtype;
+      reportData = {
+        ...newReport,
+        title: `${selectedSubtypeLabel} - ${new Date().toLocaleDateString()}`,
+        date: new Date().toISOString().split('T')[0],
+        status: newReport.status || 'submitted',
+        submittedBy: employeeId,
+        attachments: uploadedFileUrls,
+      };
     }
-    // Ensure required fields are present
-    if (!newReport.title || !newReport.content) {
-      setError('Title and Content are required.');
-      return;
-    }
- 
-    // Set default values for new report that backend might expect if not explicitly sent
-    const reportData = {
-      ...newReport,
-      date: new Date().toISOString().split('T')[0], // Backend expects YYYY-MM-DD
-      status: newReport.status || 'submitted', // Or 'draft' based on your default creation logic
-      submittedBy: employeeId, // Use the actual employee ID
-      attachments: uploadedFileNames
-    };
- 
+
     try {
       const response = await fetch(BASE_URL, {
         method: 'POST',
@@ -411,23 +350,27 @@ export default function ReportsPage() {
         },
         body: JSON.stringify(reportData),
       });
- 
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Failed to create report: ${response.status}`);
       }
- 
+
       const createdReport: Report = await response.json();
-      setReports([createdReport, ...reports]); // Add new report to the top of the list
+      setReports([createdReport, ...reports]);
       setShowNewReportForm(false);
-      setNewReport({ // Reset form
+      setNewReport({
         type: 'employee',
         subtype: 'daily',
         title: '',
         content: '',
         status: 'draft'
       });
-      setError(null); // Clear any previous errors
+      setCustomerReport({
+        title: '', content: '', date: '', status: 'submitted', submittedBy: '', customerName: '', designation: '', landlineOrMobile: '', emailId: '', remarks: '', productOrRequirements: '', division: '', company: '', attachments: []
+      });
+      setUploadedFiles([]);
+      setError(null);
       toast.success('Report submitted successfully!');
     } catch (err: unknown) {
       setError(`Error submitting report: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -435,21 +378,21 @@ export default function ReportsPage() {
       toast.error('Failed to submit report. Please try again later.');
     }
   };
- 
+
   const handleDeleteReport = async (id: number) => {
     if (!confirm('Are you sure you want to delete this report?')) {
       return;
     }
- 
+
     try {
       const response = await fetch(`${BASE_URL}/${id}`, {
         method: 'DELETE',
       });
- 
+
       if (!response.ok) {
         throw new Error(`Failed to delete report: ${response.status}`);
       }
- 
+
       setReports(reports.filter(report => report.id !== id));
       setError(null);
       toast.success('Report deleted successfully!');
@@ -459,11 +402,9 @@ export default function ReportsPage() {
       toast.error('Failed to delete report. Please try again later.');
     }
   };
- 
- 
+
   const renderNewReportForm = () => {
     if (!showNewReportForm) return null;
-    // OEM FORM
     if (newReport.type === 'oem') {
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -492,9 +433,7 @@ export default function ReportsPage() {
                 </svg>
               </button>
             </div>
-            {/* Add scrollable wrapper for all OEM form fields */}
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-              {/* OEM Subtype Selection */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">OEM Report Subtype</label>
                 <div className="flex gap-2">
@@ -517,7 +456,6 @@ export default function ReportsPage() {
                   />
                 </div>
               </div>
-              {/* Dynamic Fields by Subtype */}
               {newReport.subtype === 'orders' && (
                 <div className="max-w-2xl mx-auto">
                   <div className="max-h-[400px] overflow-y-auto pr-2">
@@ -586,7 +524,6 @@ export default function ReportsPage() {
                   </div>
                 </div>
               )}
-              {/* For all OEM subtypes that use the same form as holding_projects */}
               {newReport.type === 'oem' && ['holding_projects', 'open_tenders', 'bugetary_submits', 'lost_tenders'].includes(newReport.subtype || '') && (
                 <div className="max-w-2xl mx-auto max-h-[500px] overflow-y-auto pr-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -647,32 +584,6 @@ export default function ReportsPage() {
                   </div>
                 </div>
               )}
-              {(newReport.subtype === 'open_tenders' || newReport.subtype === 'bugetary_submits' || newReport.subtype === 'lost_tenders') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">Title</label>
-                    <input
-                      type="text"
-                      value={newReport.title || ''}
-                      onChange={e => setNewReport({ ...newReport, title: e.target.value })}
-                      className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
-                      placeholder="Enter report title"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">Content</label>
-                    <textarea
-                      value={newReport.content || ''}
-                      onChange={e => setNewReport({ ...newReport, content: e.target.value })}
-                      rows={4}
-                      className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
-                      placeholder="Enter report content"
-                    />
-                  </div>
-                 
-                </div>
-              )}
-              {/* File Upload Section */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Attachments</label>
                 <div className="flex items-center space-x-4">
@@ -722,9 +633,7 @@ export default function ReportsPage() {
                   </div>
                 )}
               </div>
-              {/* Error Message */}
               {error && <div className="text-red-600 text-sm">{error}</div>}
-              {/* Action Buttons */}
               <div className="flex justify-end space-x-4 pt-6 border-t">
                 <button
                   onClick={() => {
@@ -749,7 +658,6 @@ export default function ReportsPage() {
         </div>
       );
     }
-    // CUSTOMER REPORT FORM
     if (newReport.type === 'customer') {
       const maxWords = 1000;
       const wordCount = customerReport.content?.trim().split(/\s+/).filter(word => word.length > 0).length || 0;
@@ -757,7 +665,6 @@ export default function ReportsPage() {
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
-            {/* Header */}
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center space-x-4">
                 <div className="p-3 bg-blue-50 rounded-xl">
@@ -786,16 +693,6 @@ export default function ReportsPage() {
             </div>
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
-                  <input
-                    type="text"
-                    value={customerReport.title}
-                    onChange={e => setCustomerReport({ ...customerReport, title: e.target.value })}
-                    placeholder="Enter report title"
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
-                  />
-                </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Date</label>
                   <input
@@ -922,7 +819,6 @@ export default function ReportsPage() {
                   className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors resize-none py-2.5"
                 />
               </div>
-              {/* File Upload Section */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Attachments</label>
                 <div className="flex items-center space-x-4">
@@ -972,9 +868,7 @@ export default function ReportsPage() {
                   </div>
                 )}
               </div>
-              {/* Error Message */}
               {error && <div className="text-red-600 text-sm">{error}</div>}
-              {/* Action Buttons */}
               <div className="flex justify-end space-x-4 pt-6 border-t">
                 <button
                   onClick={() => {
@@ -991,7 +885,6 @@ export default function ReportsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    // On submit, just use the value in the text input for division and company
                     handleSubmitReport();
                   }}
                   className="px-6 py-2.5 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -1004,15 +897,13 @@ export default function ReportsPage() {
         </div>
       );
     }
-    // ... existing code for default (employee) report form ...
     const maxWords = 1000;
     const wordCount = newReport.content?.trim().split(/\s+/).filter(word => word.length > 0).length || 0;
     const remainingWords = maxWords - wordCount;
- 
+
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
         <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
-          {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-blue-50 rounded-xl">
@@ -1034,7 +925,7 @@ export default function ReportsPage() {
                   status: 'draft'
                 });
                 setUploadedFiles([]);
-                setError(null); // Clear error on close
+                setError(null);
               }}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
@@ -1043,9 +934,8 @@ export default function ReportsPage() {
               </svg>
             </button>
           </div>
- 
-  <div className="space-y-6">
-            {/* Report Type Selection */}
+
+          <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Report Type</label>
@@ -1073,9 +963,8 @@ export default function ReportsPage() {
                   </div>
                 </div>
               </div>
- 
- 
- {newReport.type === 'employee' && (
+
+              {newReport.type === 'employee' && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Report Subtype</label>
                   <div className="relative">
@@ -1097,20 +986,7 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
- 
-            {/* Title Input */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Title</label>
-              <input
-                type="text"
-                value={newReport.title}
-                onChange={(e) => setNewReport({ ...newReport, title: e.target.value })}
-                placeholder="Enter a descriptive title for your report"
-                className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
-              />
-            </div>
- 
-            {/* Content Textarea */}
+
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="block text-sm font-medium text-gray-700">Content</label>
@@ -1138,7 +1014,6 @@ export default function ReportsPage() {
               />
             </div>
 
-            {/* File Upload Section */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Attachments</label>
               <div className="flex items-center space-x-4">
@@ -1188,11 +1063,7 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
- 
-            {/* Error Message */}
             {error && <div className="text-red-600 text-sm">{error}</div>}
- 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
               <button
                 onClick={() => {
@@ -1205,7 +1076,7 @@ export default function ReportsPage() {
                     status: null
                   });
                   setUploadedFiles([]);
-                  setError(null); // Clear error on cancel
+                  setError(null);
                 }}
                 className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
               >
@@ -1213,7 +1084,7 @@ export default function ReportsPage() {
               </button>
               <button
                 onClick={handleSubmitReport}
-                disabled={!newReport.title || !newReport.content || wordCount === 0}
+                disabled={!newReport.content || wordCount === 0}
                 className="px-6 py-2.5 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 Submit Report
@@ -1224,7 +1095,7 @@ export default function ReportsPage() {
       </div>
     );
   };
- 
+
   const styles = `
     @keyframes fadeIn {
       from { opacity: 0; }
@@ -1241,14 +1112,13 @@ export default function ReportsPage() {
       animation: slideIn 0.3s ease-out;
     }
   `;
- 
+
   return (
     <>
       <style>{styles}</style>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Toaster position="top-right" />
-          {/* Back Button */}
           <div className="mb-6">
             <Link
               href="/employee"
@@ -1258,9 +1128,8 @@ export default function ReportsPage() {
               Back to Dashboard
             </Link>
           </div>
- 
+
           <div className="space-y-6">
-            {/* Header */}
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
               <button
@@ -1271,11 +1140,9 @@ export default function ReportsPage() {
                 <span>New Report</span>
               </button>
             </div>
- 
-            {/* Report Type Filter */}
+
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex flex-wrap gap-2">
-                {/* Remove 'All Reports' button */}
                 {reportTypes.map(type => (
                   <button
                     key={type.id}
@@ -1294,8 +1161,7 @@ export default function ReportsPage() {
                 ))}
               </div>
             </div>
- 
-            {/* Employee Report Subtype Filter */}
+
             {selectedType === 'employee' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div className="flex flex-wrap gap-2">
@@ -1328,8 +1194,7 @@ export default function ReportsPage() {
                 </div>
               </div>
             )}
- 
-            {/* Modern unified search bar for customer reports */}
+
             {selectedType === 'customer' && (
               <div className="mb-6 max-w-xs">
                 <div className="relative group">
@@ -1406,12 +1271,9 @@ export default function ReportsPage() {
                 </div>
               </div>
             )}
- 
-            {/* Loading and Error Indicators */}
             {loading && <div className="text-center py-4 text-gray-500">Loading reports...</div>}
             {error && <div className="text-center py-4 text-red-600">{error}</div>}
- 
-            {/* Reports List */}
+
             {!loading && !error && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="space-y-4">
@@ -1484,15 +1346,27 @@ export default function ReportsPage() {
                             <div className="text-xs text-gray-500 mb-1">Content</div>
                             <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
                           </div>
-                        
+
                           <div className="flex justify-end gap-2 mt-4">
-                            <button
-                              onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                              title="Download Report"
-                            >
-                              <Download className="w-5 h-5" />
-                            </button>
+                            {report.attachments && report.attachments.length > 0 && (
+                                <>
+                                  <button
+                                    onClick={() => window.open(report.attachments![0], '_blank')}
+                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                    title="View Report"
+                                  >
+                                    <FileText className="w-5 h-5" />
+                                  </button>
+                                  <a
+                                    href={report.attachments[0]}
+                                    download
+                                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
+                                    title="Download Report"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                  </a>
+                                </>
+                            )}
                             <button
                               onClick={() => handleDeleteReport(report.id)}
                               className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
@@ -1527,13 +1401,25 @@ export default function ReportsPage() {
                             <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
                           </div>
                           <div className="flex justify-end gap-2 mt-4">
-                            <button
-                              onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                              title="Download Report"
-                            >
-                              <Download className="w-5 h-5" />
-                            </button>
+                            {report.attachments && report.attachments.length > 0 && (
+                                <>
+                                  <button
+                                    onClick={() => window.open(report.attachments![0], '_blank')}
+                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                    title="View Report"
+                                  >
+                                    <FileText className="w-5 h-5" />
+                                  </button>
+                                  <a
+                                    href={report.attachments[0]}
+                                    download
+                                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
+                                    title="Download Report"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                  </a>
+                                </>
+                            )}
                             <button
                               onClick={() => handleDeleteReport(report.id)}
                               className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
@@ -1566,13 +1452,25 @@ export default function ReportsPage() {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                                className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                                title="Download Report"
-                              >
-                                <Download className="w-5 h-5" />
-                              </button>
+                               {report.attachments && report.attachments.length > 0 && (
+                                  <>
+                                     <button
+                                       onClick={() => window.open(report.attachments![0], '_blank')}
+                                       className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                       title="View Report"
+                                     >
+                                       <FileText className="w-5 h-5" />
+                                     </button>
+                                     <a
+                                        href={report.attachments[0]}
+                                        download
+                                        className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
+                                        title="Download Report"
+                                     >
+                                       <Download className="w-5 h-5" />
+                                     </a>
+                                  </>
+                              )}
                               <button
                                 onClick={() => handleDeleteReport(report.id)}
                                 className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
@@ -1586,7 +1484,6 @@ export default function ReportsPage() {
                             <div className="text-xs text-gray-500 mb-1">Content</div>
                             <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
                           </div>
-                       
                         </div>
                       )
                     ))
@@ -1594,191 +1491,64 @@ export default function ReportsPage() {
                 </div>
               </div>
             )}
-            {selectedType === 'employee' && (
-              <div className="space-y-4">
-                {reports.filter(report => report.type === 'employee' && (selectedSubtype === 'all' || report.subtype === selectedSubtype)).length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">No employee reports found for the selected filters.</div>
-                ) : (
-                  reports.filter(report => report.type === 'employee' && (selectedSubtype === 'all' || report.subtype === selectedSubtype)).map(report => (
-                    <div key={report.id} className="border rounded-2xl p-6 bg-gradient-to-br from-green-50 to-white shadow-md animate-fadeIn">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-green-100 rounded-lg">
-                            {getReportIcon(report.type)}
-                          </div>
-                          <h3 className="font-semibold text-xl text-gray-900">{report.title}</h3>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Subtype</div>
-                          <div className="font-medium text-gray-800">{employeeSubtypes.find(s => s.id === report.subtype)?.label || report.subtype || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Date</div>
-                          <div className="font-medium text-gray-800">{Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date}</div>
-                        </div>
-                      
-                      
-                      </div>
-                     
-                      <div className="mb-2">
-                        <div className="text-xs text-gray-500 mb-1">Content</div>
-                        <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
-                      </div>
-                      {/* Add more fields as needed */}
-                      <div className="flex justify-end gap-2 mt-4">
-                        <button
-                          onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                          title="Download Report"
-                        >
-                          <Download className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteReport(report.id)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
-                          title="Delete Report"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+            {selectedType === 'oem' && selectedSubtype === 'competitor_analysis' && (
+              <div className="overflow-x-auto rounded-2xl shadow border border-gray-200 bg-white mt-6">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Sl. No.</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Item Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Competitor</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Model Number</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Unit Price</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Submitted By</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Employee Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Attachments</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {reports.filter(r => r.type === 'oem' && r.subtype === 'competitor_analysis').length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-6 py-4 text-center text-gray-400">No competitor analysis reports found.</td>
+                      </tr>
+                    ) : (
+                      reports.filter(r => r.type === 'oem' && r.subtype === 'competitor_analysis').map((report) => (
+                        <tr key={report.id} className="hover:bg-blue-50 transition">
+                          <td className="px-6 py-4">{report.slNo ?? '-'}</td>
+                          <td className="px-6 py-4">{report.customerName || '-'}</td>
+                          <td className="px-6 py-4">{report.itemDescription || '-'}</td>
+                          <td className="px-6 py-4">{report.competitor || '-'}</td>
+                          <td className="px-6 py-4">{report.modelNumber || '-'}</td>
+                          <td className="px-6 py-4">{report.unitPrice || '-'}</td>
+                          <td className="px-6 py-4">{Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date || '-'}</td>
+                          <td className="px-6 py-4">{report.submittedBy || '-'}</td>
+                          <td className="px-6 py-4">{report.employeeName || '-'}</td>
+                          <td className="px-6 py-4">
+                            {report.attachments && report.attachments.length > 0 ? (
+                              <ul className="list-disc ml-4">
+                                {report.attachments.map((att, idx) => (
+                                  <li key={idx}>
+                                    <a href={att} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                      {att}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : '-'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             )}
-            {selectedType === 'oem' && selectedSubtype !== 'competitor_analysis' && (
-  <div className="space-y-4">
-    {reports.filter(report => report.type === 'oem').length === 0 ? (
-      <div className="text-center text-gray-500 py-8">No OEM reports found for the selected filters.</div>
-    ) : (
-      reports.filter(report => report.type === 'oem').map(report => (
-        <div key={report.id} className="border rounded-2xl p-6 bg-gradient-to-br from-purple-50 to-white shadow-md animate-fadeIn">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                {getReportIcon(report.type)}
-              </div>
-              <h3 className="font-semibold text-xl text-gray-900">{report.subtype ? oemSubtypes.find(s => s.id === report.subtype)?.label : 'OEM Report'}</h3>
-            </div>
-          </div>
-          {/* Subtype-specific fields */}
-          {report.subtype === 'orders' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-              <div><div className="text-xs text-gray-500 mb-1">PO Number</div><div className="font-medium text-gray-800">{report.poNumber || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Order Date</div><div className="font-medium text-gray-800">{report.orderDate || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Item</div><div className="font-medium text-gray-800">{report.item || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Quantity</div><div className="font-medium text-gray-800">{report.quantity || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Part Number</div><div className="font-medium text-gray-800">{report.partNumber || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">XMW Price</div><div className="font-medium text-gray-800">{report.xmwPrice || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Unit Total Order Value</div><div className="font-medium text-gray-800">{report.unitTotalOrderValue || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Total PO Value</div><div className="font-medium text-gray-800">{report.totalPoValue || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Customer Name</div><div className="font-medium text-gray-800">{report.customerName || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">XMW Invoice Ref</div><div className="font-medium text-gray-800">{report.xmwInvoiceRef || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">XMW Invoice Date</div><div className="font-medium text-gray-800">{report.xmwInvoiceDate || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Status</div><div className="font-medium text-gray-800">{report.status || '-'}</div></div>
-            </div>
-          )}
-          {report.subtype === 'competitor_analysis' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-              <div><div className="text-xs text-gray-500 mb-1">Sl. No.</div><div className="font-medium text-gray-800">{report.slNo || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Customer Name</div><div className="font-medium text-gray-800">{report.customerName || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Item Description</div><div className="font-medium text-gray-800">{report.itemDescription || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Competitor</div><div className="font-medium text-gray-800">{report.competitor || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Model Number</div><div className="font-medium text-gray-800">{report.modelNumber || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Unit Price</div><div className="font-medium text-gray-800">{report.unitPrice || '-'}</div></div>
-            </div>
-          )}
-          {report.subtype !== 'orders' && report.subtype !== 'competitor_analysis' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-              <div><div className="text-xs text-gray-500 mb-1">Customer Name</div><div className="font-medium text-gray-800">{report.customerName || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Quotation Number</div><div className="font-medium text-gray-800">{report.quotationNumber || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Product Description</div><div className="font-medium text-gray-800">{report.productDescription || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Quantity</div><div className="font-medium text-gray-800">{report.quantity || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">XMW Value</div><div className="font-medium text-gray-800">{report.xmwValue || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Remarks</div><div className="font-medium text-gray-800">{report.remarks || '-'}</div></div>
-              <div><div className="text-xs text-gray-500 mb-1">Attachments</div><div className="font-medium text-gray-800">{report.attachments?.join(', ') || '-'}</div></div>
-            </div>
-          )}
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-              className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-              title="Download Report"
-            >
-              <Download className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => handleDeleteReport(report.id)}
-              className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
-              title="Delete Report"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      ))
-    )}
-  </div>
-)}
-            {selectedType === 'oem' && selectedSubtype === 'competitor_analysis' && (
-  <div className="overflow-x-auto rounded-2xl shadow border border-gray-200 bg-white mt-6">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Sl. No.</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Item Description</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Competitor</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Model Number</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Unit Price</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Submitted By</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Employee Name</th>
-          <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Attachments</th>
-        </tr>
-      </thead>
-      <tbody className="bg-white divide-y divide-gray-100">
-        {reports.filter(r => r.type === 'oem' && r.subtype === 'competitor_analysis').length === 0 ? (
-          <tr>
-            <td colSpan={10} className="px-6 py-4 text-center text-gray-400">No competitor analysis reports found.</td>
-          </tr>
-        ) : (
-          reports.filter(r => r.type === 'oem' && r.subtype === 'competitor_analysis').map((report) => (
-            <tr key={report.id} className="hover:bg-blue-50 transition">
-              <td className="px-6 py-4">{report.slNo ?? '-'}</td>
-              <td className="px-6 py-4">{report.customerName || '-'}</td>
-              <td className="px-6 py-4">{report.itemDescription || '-'}</td>
-              <td className="px-6 py-4">{report.competitor || '-'}</td>
-              <td className="px-6 py-4">{report.modelNumber || '-'}</td>
-              <td className="px-6 py-4">{report.unitPrice || '-'}</td>
-              <td className="px-6 py-4">{Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date || '-'}</td>
-              <td className="px-6 py-4">{report.submittedBy || '-'}</td>
-              <td className="px-6 py-4">{report.employeeName || '-'}</td>
-              <td className="px-6 py-4">
-                {report.attachments && report.attachments.length > 0 ? (
-                  <ul className="list-disc ml-4">
-                    {report.attachments.map((att, idx) => (
-                      <li key={idx}><a href={att} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{att}</a></li>
-                    ))}
-                  </ul>
-                ) : '-'}
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-)}
           </div>
         </div>
       </div>
       {renderNewReportForm()}
-
     </>
   );
 }
- 
- 

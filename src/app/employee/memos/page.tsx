@@ -1,7 +1,6 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  FileText, 
+import React, { useState, useEffect } from 'react';
+import {
   Calendar,
   Clock,
   User,
@@ -10,28 +9,18 @@ import {
   ChevronRight,
   Search,
   Filter,
-  Star,
   Archive,
   MoreVertical,
-  Download,
   Eye,
   MessageSquare,
   Users,
   Settings,
   Home,
-  TrendingUp,
-  Coffee,
-  Plane,
-  Package,
-  BarChart3,
-  GraduationCap,
   Menu,
   X,
-  LayoutDashboard
 } from 'lucide-react';
 import axios from 'axios';
 import { APIURL } from '@/constants/api';
-import { useRouter } from 'next/navigation';
 
 interface Memo {
   id: string;
@@ -47,23 +36,31 @@ interface Memo {
   tags: string[];
 }
 
-// const sidebarItems = [
-//   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', href: '/employee' },
-//   { icon: User, label: 'My Profile', id: 'profile', href: '/employee/profile' },
-//   { icon: Calendar, label: 'Attendance', id: 'attendance', href: '/employee/attendance' },
-//   { icon: Coffee, label: 'Breaks', id: 'breaks', href: '/employee/breaks' },
-//   { icon: Plane, label: 'Leave Management', id: 'leave', href: '/employee/leaves' },
-//   { icon: TrendingUp, label: 'Performance', id: 'performance', href: '/employee/performance' },
-//   { icon: FileText, label: 'Documents', id: 'documents', href: '/employee/documents' },
-//   { icon: MessageSquare, label: 'Memos', id: 'memos', href: '/employee/memos' },
-//   { icon: Package, label: 'Assets', id: 'assets', href: '/employee/assets' },
-//   { icon: BarChart3, label: 'Reports', id: 'reports', href: '/employee/reports' },
-//   { icon: GraduationCap, label: 'Training & Development', id: 'training', href: '/employee/training' },
-// ];
+interface MemoApiResponse {
+  id?: string;
+  memoId?: string;
+  title?: string;
+  subject?: string;
+  meetingType?: string;
+  type?: string;
+  priority?: string;
+  sentByName?: string;
+  sentBy?: string;
+  adminName?: string;
+  recipientDepartments?: string[];
+  department?: string;
+  meetingDate?: number[];
+  date?: string;
+  createdAt?: string;
+  time?: string;
+  content?: string;
+  message?: string;
+  description?: string;
+  status?: string;
+  tags?: string[];
+}
 
 export default function MemosAnnouncementsPage() {
-  const router = useRouter();
-  const [activeItem, setActiveItem] = useState('memos');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState<'all' | 'High Priority' | 'Medium Priority' | 'Low Priority'>('all');
@@ -75,7 +72,7 @@ export default function MemosAnnouncementsPage() {
 
   const employeeId = typeof window !== 'undefined' ? (sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId')) : null;
 
-  const normalizeDate = (d: any): string => {
+  const normalizeDate = (d: number[] | string | undefined): string => {
     if (!d) return '';
     if (Array.isArray(d) && d.length >= 3) {
       const [y, m, day] = d; return `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -92,21 +89,21 @@ export default function MemosAnnouncementsPage() {
       try {
         const res = await axios.get(`${APIURL}/api/memos/employee/${employeeId}`);
         const list = Array.isArray(res.data) ? res.data : [];
-                 const mapped: Memo[] = list.map((m: any) => ({
-           id: String(m.id ?? m.memoId ?? Math.random()),
-           title: m.title || m.subject || 'Memo',
-           type: (m.meetingType || m.type || 'announcement') as Memo['type'],
-           priority: (m.priority || 'Medium Priority') as Memo['priority'],
-           sender: m.sentByName || m.sentBy || m.adminName || 'Admin',
-           department: m.recipientDepartments?.[0] || m.department || 'All',
-           date: normalizeDate(m.meetingDate || m.date || m.createdAt) || new Date().toISOString().split('T')[0],
-           time: m.time || undefined,
-           description: m.content || m.message || m.description || '',
-           status: (m.status?.toLowerCase?.() === 'read' ? 'read' : 'unread') as Memo['status'],
-           tags: Array.isArray(m.tags) ? m.tags : [],
-         }));
+        const mapped: Memo[] = list.map((m: MemoApiResponse) => ({
+          id: String(m.id ?? m.memoId ?? Math.random()),
+          title: m.title || m.subject || 'Memo',
+          type: (m.meetingType || m.type || 'announcement') as Memo['type'],
+          priority: (m.priority || 'Medium Priority') as Memo['priority'],
+          sender: m.sentByName || m.sentBy || m.adminName || 'Admin',
+          department: m.recipientDepartments?.[0] || m.department || 'All',
+          date: normalizeDate(m.meetingDate || m.date || m.createdAt) || new Date().toISOString().split('T')[0],
+          time: m.time || undefined,
+          description: m.content || m.message || m.description || '',
+          status: (m.status?.toLowerCase?.() === 'read' ? 'read' : 'unread') as Memo['status'],
+          tags: Array.isArray(m.tags) ? m.tags : [],
+        }));
         setMemos(mapped);
-      } catch (e: any) {
+      } catch {
         setError('Failed to fetch memos');
       } finally {
         setLoading(false);
@@ -178,60 +175,13 @@ export default function MemosAnnouncementsPage() {
 
   const filteredMemos = memos.filter(memo => {
     const matchesSearch = memo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         memo.description.toLowerCase().includes(searchTerm.toLowerCase());
+                          memo.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = filterPriority === 'all' || memo.priority === filterPriority;
     return matchesSearch && matchesPriority;
   });
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Sidebar */}
-      {/* <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-white" />
-            </div>
-            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              InfoStream
-            </h2>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-slate-500 hover:text-slate-700"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <nav className="p-4 space-y-2">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveItem(item.id);
-                  router.push(item.href);
-                }}
-                className={`w-full flex items-center px-4 py-3 text-left rounded-xl transition-all duration-200 ${
-                  activeItem === item.id
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <Icon className={`w-5 h-5 mr-3 ${activeItem === item.id ? 'text-white' : 'text-slate-500'}`} />
-                <span className="font-medium">{item.label}</span>
-                {item.id === 'memos' && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1">
-                    {memos.filter(m => m.status === 'unread').length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div> */}
-
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
@@ -298,7 +248,7 @@ export default function MemosAnnouncementsPage() {
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <select
                     value={filterPriority}
-                    onChange={(e) => setFilterPriority(e.target.value as any)}
+                    onChange={(e) => setFilterPriority(e.target.value as typeof filterPriority)}
                     className="pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white min-w-[180px]"
                   >
                     <option value="all">All Priorities</option>
@@ -351,7 +301,8 @@ export default function MemosAnnouncementsPage() {
             ) : (
               <div className="divide-y divide-slate-100">
                 {filteredMemos.map((memo) => (
-                  <div key={memo.id} className={`p-6 hover:bg-slate-50 transition-all duration-200 cursor-pointer ${memo.status === 'unread' ? 'bg-blue-50/30 border-l-4 border-l-blue-500' : ''}`}>
+                  <div key={memo.id} className={`p-6 hover:bg-slate-50 transition-all duration-200 cursor-pointer ${memo.status === 'unread' ? 'bg-blue-50/30 border-l-4 border-l-blue-500' : ''}`}
+                    onClick={() => handleViewMemo(memo)}>
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
                         <div className={`w-12 h-12 ${getTypeGradient(memo.type)} rounded-xl flex items-center justify-center shadow-lg`}>
