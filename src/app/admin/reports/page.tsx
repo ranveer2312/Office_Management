@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
-  
   Building,
   Users,
   Map,
   Target,
   Award,
   Calendar,
-  Download
+  Eye, // Added Eye icon for View button
+  X // Added X icon for clear button
 } from 'lucide-react';
 import axios from 'axios';
 import { APIURL } from '@/constants/api';
@@ -18,8 +18,8 @@ import autoTable from 'jspdf-autotable';
 
 interface Report {
   id: number;
-  type: 'employee' | 'visit' | 'oem' | 'customer' | 'blueprint' | 'projection' | 'achievement';
-  subtype?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'competitor_analysis';
+  type: 'employee' | 'visit' | 'oem' | 'customer' | 'blueprint' | 'projection' | 'achievement' | 'Visit Inquiries' | 'BQ quotations';
+  subtype?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'competitor_analysis' | 'orders' | 'open_tenders' | 'bugetary_submits' | 'lost_tenders' | 'holding_projects' | 'Quaterly' | 'half';
   title: string;
   date: string;
   status: 'draft' | 'submitted' | 'approved';
@@ -38,25 +38,25 @@ interface Report {
   remarks?: string;
   productOrRequirements?: string;
   division?: string;
-  company?: string; // Added company field
-  slNo?: string; // Added for competitor_analysis
-  itemDescription?: string; // Added for competitor_analysis
-  competitor?: string; // Added for competitor_analysis
-  modelNumber?: string; // Added for competitor_analysis
-  unitPrice?: string; // Added for competitor_analysis
-  quotationNumber?: string; // Added for other subtypes
-  productDescription?: string; // Added for other subtypes
-  quantity?: string; // Added for other subtypes
-  xmwValue?: string; // Added for other subtypes
-  poNumber?: string; // Added for orders
-  orderDate?: string; // Added for orders
-  item?: string; // Added for orders
-  partNumber?: string; // Added for orders
-  xmwPrice?: string; // Added for orders
-  unitTotalOrderValue?: string; // Added for orders
-  totalPoValue?: string; // Added for orders
-  xmwInvoiceRef?: string; // Added for orders
-  xmwInvoiceDate?: string; // Added for orders
+  company?: string;
+  slNo?: string;
+  itemDescription?: string;
+  competitor?: string;
+  modelNumber?: string;
+  unitPrice?: string;
+  quotationNumber?: string;
+  productDescription?: string;
+  quantity?: string;
+  xmwValue?: string;
+  poNumber?: string;
+  orderDate?: string;
+  item?: string;
+  partNumber?: string;
+  xmwPrice?: string;
+  unitTotalOrderValue?: string;
+  totalPoValue?: string;
+  xmwInvoiceRef?: string;
+  xmwInvoiceDate?: string;
 }
 
 export default function ReportsPage() {
@@ -74,7 +74,7 @@ export default function ReportsPage() {
 
   const [divisionOptions, setDivisionOptions] = useState<string[]>([]);
   const [companyOptions, setCompanyOptions] = useState<string[]>([]);
- 
+  
   const [searchOption, setSearchOption] = useState("");
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
@@ -161,25 +161,25 @@ export default function ReportsPage() {
           remarks: r.remarks,
           productOrRequirements: r.productOrRequirements,
           division: r.division,
-          company: r.company, // Map company field
-          slNo: r.slNo, // Map slNo field
-          itemDescription: r.itemDescription, // Map itemDescription field
-          competitor: r.competitor, // Map competitor field
-          modelNumber: r.modelNumber, // Map modelNumber field
-          unitPrice: r.unitPrice, // Map unitPrice field
-          quotationNumber: r.quotationNumber, // Map quotationNumber field
-          productDescription: r.productDescription, // Map productDescription field
-          quantity: r.quantity, // Map quantity field
-          xmwValue: r.xmwValue, // Map xmwValue field
-          poNumber: r.poNumber, // Map poNumber field
-          orderDate: r.orderDate, // Map orderDate field
-          item: r.item, // Map item field
-          partNumber: r.partNumber, // Map partNumber field
-          xmwPrice: r.xmwPrice, // Map xmwPrice field
-          unitTotalOrderValue: r.unitTotalOrderValue, // Map unitTotalOrderValue field
-          totalPoValue: r.totalPoValue, // Map totalPoValue field
-          xmwInvoiceRef: r.xmwInvoiceRef, // Map xmwInvoiceRef field
-          xmwInvoiceDate: r.xmwInvoiceDate // Map xmwInvoiceDate field
+          company: r.company,
+          slNo: r.slNo,
+          itemDescription: r.itemDescription,
+          competitor: r.competitor,
+          modelNumber: r.modelNumber,
+          unitPrice: r.unitPrice,
+          quotationNumber: r.quotationNumber,
+          productDescription: r.productDescription,
+          quantity: r.quantity,
+          xmwValue: r.xmwValue,
+          poNumber: r.poNumber,
+          orderDate: r.orderDate,
+          item: r.item,
+          partNumber: r.partNumber,
+          xmwPrice: r.xmwPrice,
+          unitTotalOrderValue: r.unitTotalOrderValue,
+          totalPoValue: r.totalPoValue,
+          xmwInvoiceRef: r.xmwInvoiceRef,
+          xmwInvoiceDate: r.xmwInvoiceDate
         }));
         setReports(mappedReports);
       } catch (err: Error | unknown) {
@@ -223,7 +223,6 @@ export default function ReportsPage() {
     return matchesType && matchesSubtype && matchesSearch && matchesDepartment && matchesStatus && matchesDateRange;
   });
 
-  // Add this helper for CSV export
   function exportOEMToCSV(oemReports: Report[], subtype: string) {
     if (!oemReports.length) return;
     const headers = oemHeaders[subtype as keyof typeof oemHeaders];
@@ -239,7 +238,6 @@ export default function ReportsPage() {
     document.body.removeChild(link);
   }
 
-  // Add this handler for PDF export
   function exportOEMToPDF(oemReports: Report[], subtype: string) {
     const doc = new jsPDF();
     const headers = oemHeaders[subtype as keyof typeof oemHeaders];
@@ -248,7 +246,6 @@ export default function ReportsPage() {
     doc.save(`oem_${subtype}_reports.pdf`);
   }
 
-  // Helper to format date fields
   function formatDate(date: string | string[] | undefined) {
     if (Array.isArray(date) && date.length === 3) {
       return `${date[0]}-${String(date[1]).padStart(2, '0')}-${String(date[2]).padStart(2, '0')}`;
@@ -256,25 +253,24 @@ export default function ReportsPage() {
     return date ?? '-';
   }
 
-  // OEM table headers by subtype
   const oemHeaders: Record<string, string[]> = {
     competitor_analysis: [
-      'Sl. No.', 'Customer Name', 'Item Description', 'Competitor', 'Model Number', 'Unit Price', 'Date', 'Submitted By', 'Employee Name', 'Download'
+      'Sl. No.', 'Customer Name', 'Item Description', 'Competitor', 'Model Number', 'Unit Price', 'Date', 'Submitted By', 'Employee Name', 'View'
     ],
     orders: [
-      'PO Number', 'Order Date', 'Item', 'Quantity', 'Part Number', 'XMW Price', 'Unit Total Order Value', 'Total PO Value', 'Customer Name', 'XMW Invoice Ref', 'XMW Invoice Date', 'Submitted By', 'Employee Name', 'Download'
+      'PO Number', 'Order Date', 'Item', 'Quantity', 'Part Number', 'XMW Price', 'Unit Total Order Value', 'Total PO Value', 'Customer Name', 'XMW Invoice Ref', 'XMW Invoice Date', 'Submitted By', 'Employee Name', 'View'
     ],
     open_tenders: [
-      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'Download'
+      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'View'
     ],
     bugetary_submits: [
-      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'Download'
+      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'View'
     ],
     lost_tenders: [
-      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'Download'
+      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'View'
     ],
     holding_projects: [
-      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'Download'
+      'Customer Name', 'Quotation Number', 'Product Description', 'Quantity', 'XMW Value', 'Remarks', 'Date', 'Submitted By', 'Employee Name', 'View'
     ]
   };
 
@@ -334,14 +330,11 @@ export default function ReportsPage() {
         )}
 
         <div className="space-y-6">
-          {/* Header */}
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
           </div>
 
-          {/* Search and Filters */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-4">
-            {/* Search Bar */}
             <div className="relative">
               <input
                 type="text"
@@ -352,9 +345,7 @@ export default function ReportsPage() {
               />
             </div>
 
-            {/* Advanced Filters */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Department Filter */}
               <select
                 className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedDepartment}
@@ -366,7 +357,6 @@ export default function ReportsPage() {
                 ))}
               </select>
 
-              {/* Status Filter */}
               <select
                 className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedStatus}
@@ -377,7 +367,6 @@ export default function ReportsPage() {
                 ))}
               </select>
 
-              {/* Date Range */}
               <input
                 type="date"
                 className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -395,7 +384,6 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Report Type Filter */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex flex-wrap gap-2">
               <button
@@ -427,7 +415,6 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Employee Report Subtype Filter */}
           {selectedType === 'employee' && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex flex-wrap gap-2">
@@ -455,7 +442,6 @@ export default function ReportsPage() {
             </div>
           )}
 
-          {/* OEM Report Subtype Filter */}
           {selectedType === 'oem' && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex flex-wrap gap-2">
@@ -467,14 +453,11 @@ export default function ReportsPage() {
                 >
                   All OEM Reports
                 </button>
-              
               </div>
             </div>
           )}
 
-          {/* Reports List */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            {/* Division Filter Dropdown (only if customer reports exist) */}
             {filteredReports.some(r => r.type === 'customer') && (
               <div className="mb-6 max-w-xs">
                 <div className="relative group">
@@ -502,7 +485,7 @@ export default function ReportsPage() {
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none bg-white rounded-full p-1 shadow-sm"
                       tabIndex={-1}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <X className="w-4 h-4" />
                     </button>
                   )}
                   {showSearchDropdown && (
@@ -551,14 +534,11 @@ export default function ReportsPage() {
                 </div>
               </div>
             )}
-            {/* Customer Reports Table */}
             {filteredReports.some(r => r.type === 'customer') && (
               <div className="overflow-x-auto mb-8">
-                {/* Export/Download Buttons */}
                 <div className="flex justify-end mb-2 gap-2">
                   <button
                     onClick={() => {
-                      // Export to CSV
                       const customerReports = filteredReports.filter(r => r.type === 'customer' && (!searchOption || r.division === searchOption || r.company === searchOption));
                       const headers = [
                         'Visited Engineer', 'DATE', 'CUSTOMER NAME', 'DESIGNATION', 'LANDLINE / MOBILE', 'EMAIL ID', 'REMARKS', 'Product or Requirements', 'Division', 'Company'
@@ -573,7 +553,7 @@ export default function ReportsPage() {
                         report.remarks || '-',
                         report.productOrRequirements || '-',
                         report.division || '-',
-                        
+                        report.company || '-',
                       ]);
                       const csvContent = [headers, ...rows].map(e => e.map(x => `"${x}"`).join(",")).join("\n");
                       const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -592,7 +572,6 @@ export default function ReportsPage() {
                   </button>
                   <button
                     onClick={() => {
-                      // Export to PDF
                       const customerReports = filteredReports.filter(r => r.type === 'customer' && (!searchOption || r.division === searchOption || r.company === searchOption));
                       const headers = [
                         'Visited Engineer', 'DATE', 'CUSTOMER NAME', 'DESIGNATION', 'LANDLINE / MOBILE', 'EMAIL ID', 'REMARKS', 'Product or Requirements', 'Division', 'Company'
@@ -607,7 +586,7 @@ export default function ReportsPage() {
                         report.remarks || '-',
                         report.productOrRequirements || '-',
                         report.division || '-',
-                       
+                        report.company || '-',
                       ]);
                       const doc = new jsPDF();
                       doc.text('Customer Reports', 14, 16);
@@ -638,7 +617,7 @@ export default function ReportsPage() {
                       <th className="px-4 py-2 font-bold border">REMARKS</th>
                       <th className="px-4 py-2 font-bold border">Product or Requirements</th>
                       <th className="px-4 py-2 font-bold border">Department</th>
-                      <th className="px-4 py-2 font-bold border">Download</th>
+                      <th className="px-4 py-2 font-bold border">View</th> {/* Changed header */}
                     </tr>
                   </thead>
                   <tbody>
@@ -654,13 +633,15 @@ export default function ReportsPage() {
                         <td className="px-4 py-2 border">{report.productOrRequirements || '-'}</td>
                         <td className="px-4 py-2 border">{report.division || '-'}</td>
                         <td className="px-4 py-2 border">
-                          <button 
-                            onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                            className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                            title="Download Report"
-                          >
-                            <Download className="w-5 h-5" />
-                          </button>
+                          {report.attachments && report.attachments.length > 0 && (
+                            <button 
+                              onClick={() => window.open(`${APIURL}/api/reports/${report.id}/view`, '_blank')} // Changed endpoint to /view if available
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                              title="View Report"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -710,13 +691,15 @@ export default function ReportsPage() {
                                   <td key={i} className={`px-4 py-2 min-w-[120px] align-middle border-r border-gray-200 ${typeof cell === 'number' || (typeof cell === 'string' && /\d{4}-\d{2}-\d{2}/.test(cell)) ? 'text-center' : 'text-left'}`}>{cell}</td>
                                 ))}
                                 <td className="px-4 py-2 min-w-[120px] align-middle text-center">
-                                  <button 
-                                    onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                                    title="Download Report"
-                                  >
-                                    <Download className="w-5 h-5" />
-                                  </button>
+                                  {report.attachments && report.attachments.length > 0 && (
+                                    <button 
+                                      onClick={() => window.open(`${APIURL}/api/reports/${report.id}/view`, '_blank')} // Changed endpoint to /view if available
+                                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                      title="View Report"
+                                    >
+                                      <Eye className="w-5 h-5" />
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             ))
@@ -763,19 +746,20 @@ export default function ReportsPage() {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
                           {report.status}
                         </span>
-                        <button 
-                          onClick={() => window.open(`${APIURL}/api/reports/${report.id}/download`, '_blank')}
-                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                          title="Download Report"
-                        >
-                          <Download className="w-5 h-5" />
-                        </button>
+                        {report.attachments && report.attachments.length > 0 && (
+                          <button 
+                            onClick={() => window.open(`${APIURL}/api/reports/${report.id}/view`, '_blank')} // Changed endpoint to /view if available
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                            title="View Report"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="mt-4 text-sm text-gray-600">
                       <p>{report.content}</p>
                     </div>
-                  
                   </div>
                 ))
               )}
@@ -785,4 +769,4 @@ export default function ReportsPage() {
       </div>
     </div>
   );
-} 
+}

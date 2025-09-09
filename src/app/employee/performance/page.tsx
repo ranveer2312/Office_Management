@@ -1,524 +1,482 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Star, TrendingUp, Award, Calendar, Briefcase, ArrowLeft, Target, Plus, Send } from 'lucide-react';
-import Link from 'next/link';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { APIURL } from '@/constants/api';
-import toast, { Toaster } from 'react-hot-toast';
+import Image from 'next/image';
+import axios from 'axios';
+import {
+    Clock, User, Activity, TrendingUp,
+    Shield, Mail, Phone, Briefcase, Calendar,
+} from 'lucide-react';
 
+// Interfaces for data type
 interface Employee {
-  id: number;
-  employeeId: string;
-  employeeName: string;
-  email: string;
-  phoneNumber: string;
-  bloodGroup: string;
-  profilePhotoUrl: string | null;
-  currentAddress: string;
-  permanentAddress: string;
-  password: string;
-  position: string;
-  department: string;
-  joiningDate: number[];
-  relievingDate: number[] | null;
-  status: string;
+    id: number;
+    employeeName: string;
+    employeeId: string;
+    position: string;
+    department: string;
+    email: string;
+    phoneNumber: string;
+    bloodGroup: string;
+    profilePhotoUrl: string;
+    currentAddress: string;
+    permanentAddress: string;
+    joiningDate: string;
+    relievingDate: string;
+    status: string;
+    password?: string;
 }
 
-interface PerformanceReview {
-  id: number;
-  employee: Employee;
-  reviewStatus: string;
-  rating: number;
-  lastReviewDate: number[];
-  nextReviewDate: number[];
-  goals: string;
-  feedback: string;
-  achievements: string;
-  reviewer: string;
-  goalSetting: string;
+interface TodayAttendance {
+    id?: number;
+    employeeId: string;
+    date: string;
+    checkInTime: string | null;
+    checkOutTime: string | null;
+    status: string;
+    workHours: number;
+    overtimeHours?: number;
+    breakTime?: number;
 }
 
-interface PIP {
-  id: number;
-  employeeId: string;
-  planStatus: string;
-  startDate: number[];
-  endDate: number[];
-  objectives: string;
-  actions: string;
-  support: string;
-  reviewDate: number[];
-  reviewer: string;
-  comments: string;
-  goalSetting: string;
-}
+// API Configuration
+const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-export default function PerformancePage() {
-  const router = useRouter();
-  const [reviews, setReviews] = useState<PerformanceReview[]>([]);
-  const [pips, setPips] = useState<PIP[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [employeeId, setEmployeeId] = useState<string | null>(null);
-  const [normalId, setNormalId] = useState<number | null>(null);
-  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-  const [showOkrModal, setShowOkrModal] = useState(false);
-  const [okrFormData, setOkrFormData] = useState({
-    targetEmployeeId: '',
-    objectives: '',
-    keyResults: '',
-    feedback: ''
-  });
-  
-  // Check if current employee can give OKR feedback
-  const canGiveOkrFeedback = employeeId && ['EMPTA001', 'EMPTA002', 'EMPTA003', 'EMPTA004'].includes(employeeId);
+// Work Hours Progress Ring Component - Compact Version
+const WorkHoursRing = ({ hours = 0, targetHours = 8 }: { hours?: number; targetHours?: number }) => {
+    const percentage = Math.min((hours / targetHours) * 100, 100);
+    const circumference = 2 * Math.PI * 50;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  // Get normal id from employeeProfile in sessionStorage/localStorage on component mount
-  useEffect(() => {
-    const profile = sessionStorage.getItem('employeeProfile') || localStorage.getItem('employeeProfile');
-    let id: string | null = null;
-    let normalId: number | null = null;
-    if (profile) {
-      try {
-        const parsed = JSON.parse(profile);
-        if (parsed && parsed.id) {
-          normalId = parsed.id;
-        }
-        if (parsed && parsed.employeeId) {
-          id = parsed.employeeId;
-        }
-      } catch {}
-    } else {
-      id = sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId');
-    }
-    if (!normalId && !id) {
-      setError('Employee ID not found. Please login again.');
-      setTimeout(() => {
-        router.replace('/login');
-      }, 2000);
-      return;
-    }
-    setNormalId(normalId);
-    setEmployeeId(id);
-  }, [router]);
+    return (
+        <div className="relative w-32 h-32 flex items-center justify-center">
+            <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#3B82F6" />
+                        <stop offset="30%" stopColor="#8B5CF6" />
+                        <stop offset="60%" stopColor="#EC4899" />
+                        <stop offset="100%" stopColor="#F59E0B" />
+                    </linearGradient>
+                </defs>
+                <circle
+                    cx="60" cy="60" r="50"
+                    strokeWidth="8"
+                    className="stroke-slate-100"
+                    fill="none"
+                />
+                <circle
+                    cx="60" cy="60" r="50"
+                    strokeWidth="8"
+                    stroke="url(#progressGradient)"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className="transition-all duration-2000 ease-out"
+                />
+            </svg>
+            <div className="text-center z-10">
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
+                    {hours.toFixed(1)}
+                </span>
+                <span className="text-xs text-slate-500 font-medium">/ {targetHours}h</span>
+            </div>
+        </div>
+    );
+};
 
-  // Fetch performance data when normalId is available
-  useEffect(() => {
-    const idToUse = normalId ?? employeeId;
-    if (!idToUse) return;
-    setLoading(true);
-    setError(null);
-    const fetchData = async () => {
-      try {
-        const [reviewsRes, pipsRes, employeesRes] = await Promise.all([
-          fetch(APIURL + `/api/performance-reviews/employee/byId/${idToUse}`),
-          fetch(APIURL + '/api/pips'),
-          fetch(APIURL + '/api/employees')
-        ]);
-        
-        if (reviewsRes.ok) {
-          const reviewsData = await reviewsRes.json();
-          setReviews(reviewsData);
-        }
-        
-        if (pipsRes.ok) {
-          const pipsData = await pipsRes.json();
-          const employeePips = pipsData.filter((pip: PIP) => pip.employeeId === employeeId);
-          setPips(employeePips);
-        }
-        
-        if (employeesRes.ok) {
-          const employeesData = await employeesRes.json();
-          setAllEmployees(employeesData);
-        }
-      } catch {
-        setReviews([]);
-        setPips([]);
-        setAllEmployees([]);
-      } finally {
-        setLoading(false);
-      }
+// Compact Profile Photo Component
+const ProfilePhoto = ({ employee, className = 'rounded-full' }: { employee: Employee, className?: string }) => {
+    const [photoUrl, setPhotoUrl] = useState<string>('');
+    const [photoError, setPhotoError] = useState<boolean>(false);
+    const [photoLoading, setPhotoLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        const loadProfilePhoto = async () => {
+            if (!employee?.profilePhotoUrl) {
+                setPhotoLoading(false);
+                return;
+            }
+
+            try {
+                setPhotoLoading(true);
+                setPhotoError(false);
+                if (employee.profilePhotoUrl.startsWith('http')) {
+                    setPhotoUrl(employee.profilePhotoUrl);
+                } else {
+                    setPhotoUrl(`${APIURL}${employee.profilePhotoUrl}`);
+                }
+            } catch (error) {
+                console.error('Error loading profile photo:', error);
+                setPhotoError(true);
+            } finally {
+                setPhotoLoading(false);
+            }
+        };
+
+        loadProfilePhoto();
+    }, [employee?.profilePhotoUrl]);
+
+    const handleImageError = () => {
+        setPhotoError(true);
+        setPhotoLoading(false);
     };
-    fetchData();
-  }, [normalId, employeeId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-gray-500 py-8">Loading performance data...</div>
-        </div>
-      </div>
-    );
-  }
+    const handleImageLoad = () => {
+        setPhotoLoading(false);
+        setPhotoError(false);
+    };
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-red-500 py-8">Error: {error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!reviews || reviews.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back Button */}
-          <div className="mb-6">
-            <Link
-              href="/employee"
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Dashboard
-            </Link>
-          </div>
-          <div className="text-center text-gray-500 py-8">No performance data found.</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Use the first review for employee info with null check
-  const employee = reviews[0]?.employee;
-  
-  if (!employee) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <Link
-              href="/employee"
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Dashboard
-            </Link>
-          </div>
-          <div className="text-center text-gray-500 py-8">Employee data not found.</div>
-        </div>
-      </div>
-    );
-  }
-  
-  // Handle OKR feedback submission
-  const handleOkrSubmit = async () => {
-    if (!okrFormData.targetEmployeeId || !okrFormData.objectives || !okrFormData.keyResults) {
-      toast.error('Please fill in all required fields');
-      return;
+    if (photoLoading) {
+        return (
+            <div className={`w-36 h-36 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center shadow-md animate-pulse ${className}`}>
+                <User size={40} className="text-slate-400" />
+            </div>
+        );
     }
-    
-    try {
-      const response = await fetch(APIURL + '/api/okr-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromEmployeeId: employeeId,
-          toEmployeeId: okrFormData.targetEmployeeId,
-          objectives: okrFormData.objectives,
-          keyResults: okrFormData.keyResults,
-          feedback: okrFormData.feedback,
-          createdDate: new Date().toISOString().split('T')[0]
-        })
-      });
-      
-      if (response.ok) {
-        toast.success('OKR feedback submitted successfully');
-        setShowOkrModal(false);
-        setOkrFormData({ targetEmployeeId: '', objectives: '', keyResults: '', feedback: '' });
-      } else {
-        toast.error('Failed to submit OKR feedback');
-      }
-    } catch {
-      toast.error('Error submitting OKR feedback');
+
+    if (photoError || !photoUrl) {
+        return (
+            <div className={`w-36 h-36 bg-gradient-to-br from-blue-500 via-purple-500 to-blue-600 flex items-center justify-center shadow-md ${className}`}>
+                <User size={40} className="text-white" />
+            </div>
+        );
     }
-  };
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Link
-            href="/employee"
-            className="inline-flex items-center text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Dashboard
-          </Link>
+    return (
+        <Image
+            src={photoUrl}
+            alt={employee?.employeeName || 'User'}
+            width={144}
+            height={144}
+            className={`w-36 h-36 object-cover border-2 border-white shadow-lg ${className}`}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+            unoptimized={!photoUrl.startsWith('http')}
+        />
+    );
+};
+
+// Main Dashboard Component
+export default function MainDashboardPage() {
+    const router = useRouter();
+    const [employee, setEmployee] = useState<Employee | null>(null);
+    const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [tick, setTick] = useState(0);
+
+    // Timer for real-time work hours calculation
+    useEffect(() => {
+        const id = setInterval(() => setTick((t) => t + 1), 60000);
+        return () => clearInterval(id);
+    }, []);
+
+    // Fetch all dashboard data
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        const employeeId = localStorage.getItem("employeeId");
+        if (!employeeId) {
+            router.replace('/login');
+            return;
+        }
+
+        try {
+            const employeeResponse = await axios.get<Employee>(
+                `${APIURL}/api/employees/byEmployeeId/${employeeId}`,
+                { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
+            );
+            const employeeData = employeeResponse.data;
+            if (!employeeData) {
+                throw new Error('Employee data not found.');
+            }
+            setEmployee(employeeData);
+
+            let attendanceData: TodayAttendance | null = null;
+            try {
+                const attendanceResponse = await axios.get<TodayAttendance[]>(
+                    `${APIURL}/api/attendance/employee/${employeeId}`,
+                    { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
+                );
+                const today = new Date().toISOString().split('T')[0];
+                const records = attendanceResponse.data || [];
+                const normalizeDate = (dateValue: number[] | string): string => {
+                    if (Array.isArray(dateValue) && dateValue.length >= 3) {
+                        return `${dateValue[0]}-${String(dateValue[1]).padStart(2, '0')}-${String(dateValue[2]).padStart(2, '0')}`;
+                    }
+                    if (typeof dateValue === 'string') {
+                        return dateValue.split('T')[0];
+                    }
+                    return '';
+                };
+
+                const todayRecord = records.find((record) => normalizeDate(record.date) === today);
+                attendanceData = todayRecord || {
+                    employeeId: employeeId,
+                    date: today,
+                    checkInTime: null,
+                    checkOutTime: null,
+                    status: 'absent',
+                    workHours: 0
+                };
+            } catch (attendanceError) {
+                console.warn('Failed to fetch attendance data:', attendanceError);
+                attendanceData = {
+                    employeeId: employeeId,
+                    date: new Date().toISOString().split('T')[0],
+                    checkInTime: null,
+                    checkOutTime: null,
+                    status: 'absent',
+                    workHours: 0
+                };
+            }
+            setTodayAttendance(attendanceData);
+        } catch (err) {
+            console.error("Failed to fetch dashboard data:", err);
+            if (axios.isAxiosError(err)) {
+                if (err.response?.status === 404) {
+                    setError("Employee not found. Please check your credentials.");
+                } else if (err.response?.status === 401) {
+                    setError("Unauthorized access. Please login again.");
+                    localStorage.removeItem("employeeId");
+                    router.replace('/login');
+                    return;
+                } else if (err.code === 'ECONNABORTED') {
+                    setError("Request timeout. Please check your internet connection.");
+                } else {
+                    setError("Failed to load dashboard data. Please check your network and try again.");
+                }
+            } else {
+                setError("Failed to load dashboard data. An unexpected error occurred.");
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [router]);
+
+    // Calculate effective work hours
+    const effectiveWorkHours = useMemo(() => {
+        if (!todayAttendance) return 0;
+        if (todayAttendance.checkOutTime && todayAttendance.workHours) {
+            return todayAttendance.workHours;
+        }
+        if (todayAttendance.checkInTime) {
+            try {
+                const [hours, minutes, seconds] = (todayAttendance.checkInTime || '00:00:00').split(':').map((v) => parseInt(v || '0', 10));
+                const startTime = new Date();
+                startTime.setHours(hours, minutes, seconds || 0, 0);
+                const currentTime = new Date();
+                const timeDifferenceMs = Math.max(0, currentTime.getTime() - startTime.getTime());
+                const workMinutes = Math.round(timeDifferenceMs / 60000);
+                return workMinutes / 60;
+            } catch (error) {
+                console.error('Error calculating work hours:', error);
+                return 0;
+            }
+        }
+        return 0;
+    }, [todayAttendance, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-transparent flex items-center justify-center">
+                <div className="text-center py-8">
+                    <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                    <h2 className="text-xl font-bold text-slate-700 mb-2">Loading Dashboard</h2>
+                    <p className="text-slate-600 text-sm">Fetching your latest data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error || !employee) {
+        return (
+            <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl p-6 shadow-xl text-center max-w-md w-full">
+                    <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Activity size={24} className="text-white" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-red-800 mb-3">Dashboard Error</h2>
+                    <p className="text-red-600 text-sm mb-6">
+                        {error || 'Employee data not found. Please check your credentials.'}
+                    </p>
+                    <button
+                        onClick={fetchData}
+                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 mx-auto text-sm font-semibold"
+                    >
+                        <Activity size={16} /> Retry Loading
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-transparent p-4 lg:p-6 max-w-7xl mx-auto">
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                {/* Employee Profile Card (Left) */}
+                <div className="bg-white/90 p-4 lg:p-6 rounded-3xl border border-slate-200/50 shadow-lg flex flex-col items-center text-center">
+                    <div className="relative mb-4">
+                        <ProfilePhoto employee={employee} className="rounded-2xl" />
+                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
+                            <Shield size={14} className="text-white" />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-1">{employee?.employeeName || 'User'}</h3>
+                    <p className="text-base text-blue-600 font-semibold">{employee?.position || 'Position'}</p>
+                    <p className="text-sm text-slate-500 mb-4">{employee?.department || 'Department'}</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                        <div className="flex items-center text-sm bg-slate-50 p-3 rounded-xl gap-2">
+                            <Mail size={16} className="text-blue-500 flex-shrink-0" />
+                            <span className="text-slate-700 truncate">{employee?.email || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center text-sm bg-slate-50 p-3 rounded-xl gap-2">
+                            <Phone size={16} className="text-green-500 flex-shrink-0" />
+                            <span className="text-slate-700">{employee?.phoneNumber || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center text-sm bg-slate-50 p-3 rounded-xl gap-2">
+                            <Calendar size={16} className="text-purple-500 flex-shrink-0" />
+                            <span className="text-slate-700">
+                                {employee?.joiningDate ? new Date(employee.joiningDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                            </span>
+                        </div>
+                        {employee?.bloodGroup && (
+                            <div className="flex items-center text-sm bg-slate-50 p-3 rounded-xl gap-2">
+                                <Activity size={16} className="text-red-500 flex-shrink-0" />
+                                <span className="text-slate-700">{employee.bloodGroup}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Today's Progress Card (Right) */}
+                <div className="bg-white/90 p-4 lg:p-6 rounded-3xl border border-slate-200/50 shadow-lg flex flex-col justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Today&apos;s Progress</h3>
+                        <p className="text-sm text-slate-500">Your daily productivity tracker</p>
+                    </div>
+                    <div className="flex flex-col items-center justify-center py-4">
+                        <WorkHoursRing hours={effectiveWorkHours} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl text-center">
+                            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-1">
+                                <Activity size={16} className="text-white" />
+                            </div>
+                            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Status</p>
+                            <p className="text-sm font-bold text-blue-800 capitalize">
+                                {todayAttendance?.status || 'Absent'}
+                            </p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl text-center">
+                            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center mx-auto mb-1">
+                                <Clock size={16} className="text-white" />
+                            </div>
+                            <p className="text-xs text-purple-600 font-semibold uppercase tracking-wide">Hours</p>
+                            <p className="text-sm font-bold text-purple-800">
+                                {effectiveWorkHours.toFixed(1)}h
+                            </p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl text-center">
+                            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center mx-auto mb-1">
+                                <TrendingUp size={16} className="text-white" />
+                            </div>
+                            <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wide">Efficiency</p>
+                            <p className="text-sm font-bold text-emerald-800">
+                                {Math.min(Math.round((effectiveWorkHours / 8) * 100), 100)}%
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Check In/Out & Info Card */}
+                <div className="bg-white/90 p-4 lg:p-6 rounded-3xl border border-slate-200/50 shadow-lg flex flex-col gap-6">
+                    <div className="bg-white/90 p-4 rounded-3xl border border-slate-200/50 shadow-lg text-center">
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">Attendance Details</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-green-50 rounded-xl">
+                                <p className="text-xs text-green-600 font-semibold mb-1">Check In</p>
+                                <p className="text-xl font-bold text-green-800">
+                                    {todayAttendance?.checkInTime || '--:--'}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-red-50 rounded-xl">
+                                <p className="text-xs text-red-600 font-semibold mb-1">Check Out</p>
+                                <p className="text-xl font-bold text-red-800">
+                                    {todayAttendance?.checkOutTime || '--:--'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white/90 p-4 rounded-3xl border border-slate-200/50 shadow-lg text-center">
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">Quick Actions</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors">
+                                <Briefcase size={20} className="mb-1" />
+                                Leaves
+                            </button>
+                            <button className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors">
+                                <TrendingUp size={20} className="mb-1" />
+                                Performance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ---
+
+            {/* Professional Statistics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-white/90 p-4 lg:p-6 rounded-3xl border border-slate-200/50 shadow-lg flex items-center justify-between transition-all duration-300 hover:scale-105">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Clock size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1 text-right ml-4">
+                        <p className="text-base text-slate-600 font-bold uppercase tracking-wide mb-1">This Week</p>
+                        <p className="text-3xl font-black text-slate-900">{(effectiveWorkHours * 5).toFixed(1)}h</p>
+                        <p className="text-xs text-slate-500 font-semibold">Estimated weekly hours</p>
+                    </div>
+                </div>
+
+                <div className="bg-white/90 p-4 lg:p-6 rounded-3xl border border-slate-200/50 shadow-lg flex items-center justify-between transition-all duration-300 hover:scale-105">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-600 via-violet-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Activity size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1 text-right ml-4">
+                        <p className="text-base text-slate-600 font-bold uppercase tracking-wide mb-1">Days Active</p>
+                        <p className="text-3xl font-black text-slate-900">
+                            {employee?.joiningDate ?
+                                Math.floor((new Date().getTime() - new Date(employee.joiningDate).getTime()) / (1000 * 3600 * 24))
+                                : 0}
+                        </p>
+                        <p className="text-xs text-slate-500 font-semibold">Since joining</p>
+                    </div>
+                </div>
+
+                <div className="bg-white/90 p-4 lg:p-6 rounded-3xl border border-slate-200/50 shadow-lg flex items-center justify-between transition-all duration-300 hover:scale-105">
+                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <TrendingUp size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1 text-right ml-4">
+                        <p className="text-base text-slate-600 font-bold uppercase tracking-wide mb-1">Productivity</p>
+                        <p className="text-3xl font-black text-slate-900">{Math.min(Math.round((effectiveWorkHours / 8) * 100), 100)}%</p>
+                        <p className="text-xs text-slate-500 font-semibold">Today&apos;s efficiency</p>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <div className="space-y-6">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Performance Overview</h1>
-            <p className="mt-2 text-gray-600">Track your career growth and achievements</p>
-          </div>
-
-          {/* Employee Info and Current Rating */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Current Position</h2>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{employee.position}</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Department: {employee.department}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Joined on {Array.isArray(employee.joiningDate) ? new Date(employee.joiningDate.join('-')).toLocaleDateString() : new Date(employee.joiningDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Status: {employee.status}
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Briefcase className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Current Rating</h2>
-                  <div className="flex items-center mt-2">
-                    <Star className="w-6 h-6 text-yellow-400" />
-                    <p className="text-2xl font-bold text-gray-900 ml-2">{reviews[0].rating}/5</p>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">Review Status: {reviews[0].reviewStatus}</p>
-                </div>
-                <div className="p-3 bg-yellow-100 rounded-full">
-                  <TrendingUp className="w-6 h-6 text-yellow-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Achievements */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Achievements</h2>
-            <div className="flex flex-wrap gap-2">
-              {reviews.map((review, idx) => (
-                review.achievements && (
-                  <div key={idx} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <Award className="w-5 h-5 text-yellow-500" />
-                    <span className="text-gray-700">{review.achievements}</span>
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-
-          {/* Goals */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Goals</h2>
-            <div className="flex flex-wrap gap-2">
-              {reviews.map((review, idx) => (
-                review.goals && (
-                  <div key={idx} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700">{review.goals}</span>
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-
-          {/* Goal Setting */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Goal Setting</h2>
-            <div className="flex flex-wrap gap-2">
-              {reviews.map((review, idx) => (
-                review.goalSetting && (
-                  <div key={idx} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700">{review.goalSetting}</span>
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-
-          {/* Performance Improvement Plans */}
-          {pips.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Improvement Plans</h2>
-              <div className="space-y-4">
-                {pips.map((pip) => (
-                  <div key={pip.id} className="p-4 border rounded-lg bg-orange-50">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-medium text-gray-900">PIP #{pip.id}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        pip.planStatus === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {pip.planStatus}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-600">Start Date:</span>
-                        <span className="ml-2">{Array.isArray(pip.startDate) ? new Date(pip.startDate.join('-')).toLocaleDateString() : new Date(pip.startDate).toLocaleDateString()}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-600">End Date:</span>
-                        <span className="ml-2">{Array.isArray(pip.endDate) ? new Date(pip.endDate.join('-')).toLocaleDateString() : new Date(pip.endDate).toLocaleDateString()}</span>
-                      </div>
-                      <div className="md:col-span-2">
-                        <span className="font-medium text-gray-600">Objectives:</span>
-                        <p className="mt-1 text-gray-700">{pip.objectives}</p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <span className="font-medium text-gray-600">Goal Setting:</span>
-                        <p className="mt-1 text-gray-700">{pip.goalSetting}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* OKR Feedback Section - Only for specific employees */}
-          {canGiveOkrFeedback && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">OKR Feedback</h2>
-                <button
-                  onClick={() => setShowOkrModal(true)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Give OKR Feedback</span>
-                </button>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Target className="w-4 h-4" />
-                <span>You can provide OKR feedback to help colleagues achieve their objectives</span>
-              </div>
-            </div>
-          )}
-
-          {/* Performance Reviews */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Reviews</h2>
-            <div className="space-y-4">
-              {reviews.map((review, index) => (
-                <div key={index} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        Last Review: {Array.isArray(review.lastReviewDate) ? new Date(review.lastReviewDate.join('-')).toLocaleDateString() : new Date(review.lastReviewDate).toLocaleDateString()}
-                      </span>
-                      <span className="text-sm text-gray-600 ml-4">
-                        Next Review: {Array.isArray(review.nextReviewDate) ? new Date(review.nextReviewDate.join('-')).toLocaleDateString() : new Date(review.nextReviewDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-4 h-4 text-yellow-400" />
-                      <span className="text-sm font-medium">{review.rating}/5</span>
-                    </div>
-                  </div>
-                  <p className="text-gray-700 mb-2">{review.feedback}</p>
-                  <p className="text-sm text-gray-600">Reviewer: {review.reviewer}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        {/* OKR Feedback Modal */}
-        {showOkrModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">Give OKR Feedback</h2>
-                  <button
-                    onClick={() => setShowOkrModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
-                  <select
-                    value={okrFormData.targetEmployeeId}
-                    onChange={(e) => setOkrFormData(prev => ({ ...prev, targetEmployeeId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="">Choose an employee...</option>
-                    {allEmployees.filter(emp => emp.employeeId !== employeeId).map(emp => (
-                      <option key={emp.id} value={emp.employeeId}>
-                        {emp.employeeName} ({emp.employeeId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Objectives *</label>
-                  <textarea
-                    required
-                    maxLength={250}
-                    rows={3}
-                    value={okrFormData.objectives}
-                    onChange={(e) => setOkrFormData(prev => ({ ...prev, objectives: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Define clear objectives for the employee..."
-                  />
-                  <div className="text-xs text-gray-500 mt-1">{okrFormData.objectives.length} / 250</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Key Results *</label>
-                  <textarea
-                    required
-                    maxLength={250}
-                    rows={3}
-                    value={okrFormData.keyResults}
-                    onChange={(e) => setOkrFormData(prev => ({ ...prev, keyResults: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="List measurable key results..."
-                  />
-                  <div className="text-xs text-gray-500 mt-1">{okrFormData.keyResults.length} / 250</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Additional Feedback</label>
-                  <textarea
-                    maxLength={250}
-                    rows={2}
-                    value={okrFormData.feedback}
-                    onChange={(e) => setOkrFormData(prev => ({ ...prev, feedback: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Any additional feedback or suggestions..."
-                  />
-                  <div className="text-xs text-gray-500 mt-1">{okrFormData.feedback.length} / 250</div>
-                </div>
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    onClick={handleOkrSubmit}
-                    className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Submit Feedback</span>
-                  </button>
-                  <button
-                    onClick={() => setShowOkrModal(false)}
-                    className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <Toaster position="top-right" />
-      </div>
-    </div>
-  );
-} 
+    );
+}

@@ -11,14 +11,13 @@ import {
   TrendingUp,
   Award,
   Target,
-  ArrowLeft,
   ChevronDown,
 } from 'lucide-react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { APIURL } from '@/constants/api';
 
+// Define the interface for an attendance record
 interface Attendance {
   id?: number;
   date: string;
@@ -30,6 +29,7 @@ interface Attendance {
   workLocation?: string;
 }
 
+// Define the API response interface
 interface AttendanceRecord {
   id?: number;
   date: string;
@@ -41,8 +41,8 @@ interface AttendanceRecord {
   workLocation?: string;
 }
 
+// Constants for work hours and locations
 const WORK_TARGET_HOURS = 8;
-
 const WORK_LOCATIONS = [
   { value: 'head_office', label: 'Head Office' },
   { value: 'branch_office', label: 'Branch Office' },
@@ -61,6 +61,7 @@ export default function AttendancePage() {
 
   const API_BASE_URL = `${APIURL}/api/attendance`;
 
+  // Fetch employee ID from session/local storage on component mount
   useEffect(() => {
     const id = sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId');
     if (!id) {
@@ -70,6 +71,7 @@ export default function AttendancePage() {
     setEmployeeId(id);
   }, [router]);
 
+  // Fetch attendance data from the API
   const fetchAttendance = useCallback(async () => {
     if (!employeeId) return;
     setLoading(true);
@@ -77,9 +79,11 @@ export default function AttendancePage() {
       const response = await axios.get(`${API_BASE_URL}/employee/${employeeId}`);
       const fetchedAttendance: Attendance[] = response.data.map((record: AttendanceRecord) => ({
         ...record,
+        // Ensure checkInTime and checkOutTime are strings or null
         checkInTime: record.checkInTime || null,
         checkOutTime: record.checkOutTime || null,
         workHours: record.workHours || 0,
+        date: Array.isArray(record.date) ? `${record.date[0]}-${String(record.date[1]).padStart(2, '0')}-${String(record.date[2]).padStart(2, '0')}` : record.date,
       }));
 
       setAttendance(fetchedAttendance);
@@ -101,7 +105,7 @@ export default function AttendancePage() {
         setTodayAttendance(newAttendance);
         setAttendance((prev) => [newAttendance, ...prev]);
       }
-    } catch (err: unknown) { // Changed to 'unknown' for better type safety
+    } catch (err: unknown) {
       if (err instanceof Error) {
         console.error('Error fetching attendance:', err.message);
         setError('Failed to fetch attendance data. Please try again.');
@@ -114,12 +118,14 @@ export default function AttendancePage() {
     }
   }, [employeeId, API_BASE_URL]);
 
+  // Call fetchAttendance when employeeId is available
   useEffect(() => {
     if (employeeId) {
       fetchAttendance();
     }
   }, [fetchAttendance, employeeId]);
 
+  // Handle the sign-in process
   const handleSignIn = async (location: string) => {
     if (!employeeId) {
       setError('Employee ID and work location are required');
@@ -149,7 +155,7 @@ export default function AttendancePage() {
         headers: { 'Content-Type': 'application/json' },
       });
       
-      const updatedRecord = response.data;
+      const updatedRecord = response.data as Attendance;
       const formattedRecord = {
         ...updatedRecord,
         date: Array.isArray(updatedRecord.date)
@@ -170,7 +176,7 @@ export default function AttendancePage() {
       });
       setError(null);
       setShowLocationDropdown(false);
-    } catch (err: unknown) { // Changed to 'unknown'
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Sign in failed. Please try again.';
       setError(errorMessage);
       setShowLocationDropdown(false);
@@ -179,6 +185,7 @@ export default function AttendancePage() {
     }
   };
 
+  // Handle the sign-out process
   const handleSignOut = async () => {
     if (!todayAttendance?.checkInTime || !employeeId) {
       return;
@@ -220,7 +227,7 @@ export default function AttendancePage() {
         return prev;
       });
       setError(null);
-    } catch (err: unknown) { // Changed to 'unknown'
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Sign out failed. Please try again.';
       setError(errorMessage);
     } finally {
@@ -229,7 +236,6 @@ export default function AttendancePage() {
   };
 
   const handleLocationSelect = (location: string) => {
-    // No need to set selectedLocation state if you call handleSignIn immediately
     handleSignIn(location);
   };
 
@@ -237,21 +243,23 @@ export default function AttendancePage() {
     setShowLocationDropdown(false);
   };
 
+  // Determine status card color
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'present':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        return 'bg-emerald-50/90 text-emerald-700 border-emerald-200';
       case 'half-day':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
+        return 'bg-amber-50/90 text-amber-700 border-amber-200';
       case 'absent':
-        return 'bg-rose-50 text-rose-700 border-rose-200';
+        return 'bg-rose-50/90 text-rose-700 border-rose-200';
       case 'late':
-        return 'bg-orange-50 text-orange-700 border-orange-200';
+        return 'bg-orange-50/90 text-orange-700 border-orange-200';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200';
+        return 'bg-slate-50/90 text-slate-700 border-slate-200';
     }
   };
 
+  // Format work hours into a readable string
   const formatWorkHours = (hours: number): string => {
     if (hours === 0) return '0 mins';
     const totalMinutes = Math.round(hours * 60);
@@ -266,71 +274,7 @@ export default function AttendancePage() {
     }
   };
 
-  const renderAttendanceStats = () => {
-    const stats = attendance.reduce((acc, curr) => {
-      acc[curr.status] = (acc[curr.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    const totalWorkHours = attendance.reduce((acc, curr) => acc + curr.workHours, 0);
-    const avgWorkHours = attendance.length > 0 ? totalWorkHours / attendance.length : 0;
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-emerald-600 mb-1">Present Days</p>
-              <p className="text-3xl font-bold text-emerald-700">{stats.present || 0}</p>
-              <p className="text-xs text-emerald-600 mt-1">This period</p>
-            </div>
-            <div className="p-3 bg-emerald-200 rounded-xl">
-              <CheckCircle className="w-8 h-8 text-emerald-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-6 rounded-2xl border border-amber-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-amber-600 mb-1">Half Days</p>
-              <p className="text-3xl font-bold text-amber-700">{stats['half-day'] || 0}</p>
-              <p className="text-xs text-amber-600 mt-1">This period</p>
-            </div>
-            <div className="p-3 bg-amber-200 rounded-xl">
-              <AlertCircle className="w-8 h-8 text-amber-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-6 rounded-2xl border border-rose-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-rose-600 mb-1">Absent Days</p>
-              <p className="text-3xl font-bold text-rose-700">{stats.absent || 0}</p>
-              <p className="text-xs text-rose-600 mt-1">This period</p>
-            </div>
-            <div className="p-3 bg-rose-200 rounded-xl">
-              <XCircle className="w-8 h-8 text-rose-600" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-2xl border border-indigo-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-indigo-600 mb-1">Avg Hours</p>
-              <p className="text-3xl font-bold text-indigo-700">{avgWorkHours.toFixed(1)}</p>
-              <p className="text-xs text-indigo-600 mt-1">Per day</p>
-            </div>
-            <div className="p-3 bg-indigo-200 rounded-xl">
-              <TrendingUp className="w-8 h-8 text-indigo-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
+  // Calculate effective work hours for the day in real-time
   const effectiveWorkHours = useMemo(() => {
     if (!todayAttendance) return 0;
     if (todayAttendance.checkOutTime) return todayAttendance.workHours || 0;
@@ -343,8 +287,75 @@ export default function AttendancePage() {
       return minutes / 60;
     }
     return 0;
-  }, [todayAttendance]); // Removed 'tick' dependency
+  }, [todayAttendance]);
 
+  // Render statistical summary of attendance
+  const renderAttendanceStats = () => {
+    const stats = attendance.reduce((acc, curr) => {
+      acc[curr.status] = (acc[curr.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const totalWorkHours = attendance.reduce((acc, curr) => acc + curr.workHours, 0);
+    const avgWorkHours = attendance.length > 0 ? totalWorkHours / attendance.length : 0;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="bg-gradient-to-br from-emerald-50/90 to-emerald-100/90 p-6 rounded-2xl border border-emerald-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-600 mb-1">Present Days</p>
+              <p className="text-3xl font-bold text-emerald-700">{stats.present || 0}</p>
+              <p className="text-xs text-emerald-600 mt-1">This period</p>
+            </div>
+            <div className="p-3 bg-emerald-200/90 rounded-xl">
+              <CheckCircle className="w-8 h-8 text-emerald-600" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-amber-50/90 to-amber-100/90 p-6 rounded-2xl border border-amber-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-amber-600 mb-1">Half Days</p>
+              <p className="text-3xl font-bold text-amber-700">{stats['half-day'] || 0}</p>
+              <p className="text-xs text-amber-600 mt-1">This period</p>
+            </div>
+            <div className="p-3 bg-amber-200/90 rounded-xl">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-rose-50/90 to-rose-100/90 p-6 rounded-2xl border border-rose-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-rose-600 mb-1">Absent Days</p>
+              <p className="text-3xl font-bold text-rose-700">{stats.absent || 0}</p>
+              <p className="text-xs text-rose-600 mt-1">This period</p>
+            </div>
+            <div className="p-3 bg-rose-200/90 rounded-xl">
+              <XCircle className="w-8 h-8 text-rose-600" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-indigo-50/90 to-indigo-100/90 p-6 rounded-2xl border border-indigo-200 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-indigo-600 mb-1">Avg Hours</p>
+              <p className="text-3xl font-bold text-indigo-700">{avgWorkHours.toFixed(1)}</p>
+              <p className="text-xs text-indigo-600 mt-1">Per day</p>
+            </div>
+            <div className="p-3 bg-indigo-200/90 rounded-xl">
+              <TrendingUp className="w-8 h-8 text-indigo-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Component to render the work hours progress ring
   const WorkHoursRing = ({ hours = 0, targetHours = WORK_TARGET_HOURS }: { hours: number; targetHours: number }) => {
     const percentage = Math.min((hours / targetHours) * 100, 100);
     const radius = 70;
@@ -382,7 +393,7 @@ export default function AttendancePage() {
             filter="url(#glow)"
           />
         </svg>
-        <div className="text-center z-10 bg-white rounded-full p-6 shadow-lg border border-slate-200">
+        <div className="text-center z-10 bg-white/90 rounded-full p-6 shadow-lg border border-slate-200">
           <div className="flex items-center justify-center mb-2">
             <Target className="w-5 h-5 text-indigo-600 mr-2" />
             <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Progress</span>
@@ -395,6 +406,7 @@ export default function AttendancePage() {
     );
   };
 
+  // Render the list of attendance history
   const renderAttendanceHistory = () => {
     const now = new Date();
     let filteredAttendance = attendance;
@@ -415,13 +427,13 @@ export default function AttendancePage() {
     }
 
     return (
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="bg-white/90 rounded-2xl shadow-xl border border-slate-200 p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
           <div>
             <h3 className="text-2xl font-bold text-slate-800 mb-2">Attendance History</h3>
             <p className="text-slate-600">Track your daily attendance and work patterns</p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
             <button
               onClick={fetchAttendance}
               disabled={loading}
@@ -430,15 +442,15 @@ export default function AttendancePage() {
             >
               <RefreshCcw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <div className="flex space-x-1 bg-slate-100 rounded-xl p-1">
+            <div className="flex space-x-1 bg-slate-100/90 rounded-xl p-1">
               {(['week', 'month', 'year'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 capitalize
                     ${viewMode === mode 
-                      ? 'bg-white text-slate-800 shadow-md' 
-                      : 'text-slate-600 hover:bg-slate-200'
+                      ? 'bg-white/90 text-slate-800 shadow-md' 
+                      : 'text-slate-600 hover:bg-slate-200/90'
                     }`}
                 >
                   {mode}
@@ -452,9 +464,9 @@ export default function AttendancePage() {
           {filteredAttendance.length > 0 ? (
             filteredAttendance.map((record, index) => (
               <div key={record.id || index} 
-                  className="group flex items-center justify-between p-6 border border-slate-200 rounded-xl 
-                             transition-all duration-300 hover:shadow-lg hover:border-indigo-200 hover:-translate-y-1">
-                <div className="flex items-center space-x-6">
+                  className="group flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 border border-slate-200 rounded-xl 
+                    transition-all duration-300 hover:shadow-lg hover:border-indigo-200 hover:-translate-y-1">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-4 sm:mb-0">
                   <div className="text-center">
                     <p className="text-sm font-medium text-slate-600">
                       {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
@@ -467,20 +479,20 @@ export default function AttendancePage() {
                     </p>
                   </div>
                   
-                  <div className="grid grid-cols-4 gap-8 text-sm">
-                    <div>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-8 text-sm w-full">
+                    <div className="p-2 border rounded-lg bg-slate-50/90">
                       <p className="font-semibold text-slate-600 mb-1">Sign In</p>
                       <p className="text-slate-800 font-medium">{record.checkInTime || '—'}</p>
                     </div>
-                    <div>
+                    <div className="p-2 border rounded-lg bg-slate-50/90">
                       <p className="font-semibold text-slate-600 mb-1">Sign Out</p>
                       <p className="text-slate-800 font-medium">{record.checkOutTime || '—'}</p>
                     </div>
-                    <div>
+                    <div className="p-2 border rounded-lg bg-slate-50/90">
                       <p className="font-semibold text-slate-600 mb-1">Hours</p>
                       <p className="text-slate-800 font-medium">{formatWorkHours(record.workHours || 0)}</p>
                     </div>
-                    <div>
+                    <div className="p-2 border rounded-lg bg-slate-50/90">
                       <p className="font-semibold text-slate-600 mb-1">Location</p>
                       <p className="text-slate-800 font-medium">
                         {record.workLocation ? 
@@ -492,21 +504,21 @@ export default function AttendancePage() {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 mt-4 sm:mt-0 ml-auto sm:ml-0">
                   {record.workHours >= 8 && (
-                    <div className="p-2 bg-emerald-100 rounded-lg">
+                    <div className="p-2 bg-emerald-100/90 rounded-lg">
                       <Award className="w-4 h-4 text-emerald-600" />
                     </div>
                   )}
                   <span className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors
-                                 ${getStatusColor(record.status)}`}>
+                                  ${getStatusColor(record.status)}`}>
                     {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                   </span>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-16">
+            <div className="text-center py-16 bg-white/90 rounded-xl">
               <Clock className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 text-lg">No attendance records found for this period</p>
               <p className="text-slate-400 text-sm">Records will appear here once you start tracking attendance</p>
@@ -516,172 +528,168 @@ export default function AttendancePage() {
       </div>
     );
   };
- 
+  
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="space-y-6">
-            <div className="mb-6">
-              <Link
-                href="/employee"
-                className="inline-flex items-center text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back to Dashboard
-              </Link>
+    <div className="w-full max-w-7xl mx-auto">
+      <div className="space-y-6">
+        <div className="mb-6">
+          {/* <Link
+            href="/employee"
+            className="inline-flex items-center text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </Link> */}
+        </div>
+
+        <div className="space-y-10">
+          <section className="bg-white/90 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-5 bg-slate-50/90 border-b border-slate-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Today&apos;s Attendance</h3>
+                  <p className="text-sm text-slate-500 mb-2">
+                    {new Date().toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  <div className="inline-flex items-center space-x-2 text-slate-600">
+                    <MapPin className="w-4 h-4 text-slate-500" />
+                    <span className="text-xs font-medium px-2 py-1 rounded-md border border-slate-300 bg-white/90">
+                      {todayAttendance?.workLocation ? 
+                        WORK_LOCATIONS.find(loc => loc.value === todayAttendance.workLocation)?.label || todayAttendance.workLocation
+                        : 'Work location will be set on sign in'
+                      }
+                    </span>
+                  </div>
+                  {error && (
+                    <div className="mt-3 p-3 bg-red-50/90 rounded-lg border border-red-200">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="text-left sm:text-right mt-4 sm:mt-0">
+                  <p className="text-xs text-slate-500">Employee ID</p>
+                  <p className="text-base font-semibold text-slate-800">{employeeId || 'Loading...'}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-10">
-              <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-5 bg-slate-50 border-b border-slate-200">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900">Today&apos;s Attendance</h3>
-                      <p className="text-sm text-slate-500 mb-2">
-                        {new Date().toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
-                      <div className="inline-flex items-center space-x-2 text-slate-600">
-                        <MapPin className="w-4 h-4 text-slate-500" />
-                        <span className="text-xs font-medium px-2 py-1 rounded-md border border-slate-300 bg-white">
-                          {todayAttendance?.workLocation ? 
-                            WORK_LOCATIONS.find(loc => loc.value === todayAttendance.workLocation)?.label || todayAttendance.workLocation
-                            : 'Work location will be set on sign in'
-                          }
-                        </span>
-                      </div>
-                      {error && (
-                        <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                          <p className="text-sm text-red-700">{error}</p>
+            <div className="p-8">
+              <div className="flex flex-col sm:flex-row gap-3 mb-8">
+                <div className="relative w-full sm:w-auto">
+                  <button
+                    onClick={() => setShowLocationDropdown(true)}
+                    disabled={loading || todayAttendance?.checkInTime !== null}
+                    className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center sm:justify-start space-x-3 w-full
+                      ${todayAttendance?.checkInTime !== null
+                        ? 'bg-slate-200/90 text-slate-500 cursor-not-allowed'
+                        : loading
+                        ? 'bg-emerald-400/90 text-white cursor-not-allowed'
+                        : 'bg-emerald-600/90 text-white hover:bg-emerald-700/90'
+                      }`}
+                  >
+                    <CheckCircle className="w-6 h-6" />
+                    <span>{loading ? 'Processing...' : 'Sign In'}</span>
+                    {!todayAttendance?.checkInTime && !loading && (
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    )}
+                  </button>
+                  
+                  {showLocationDropdown && (
+                    <div className="absolute top-full left-0 mt-2 w-full sm:w-64 bg-white/90 border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div className="p-4">
+                        <p className="text-sm font-semibold text-slate-700 mb-3">Select Work Location</p>
+                        <div className="space-y-2">
+                          {WORK_LOCATIONS.map((location) => (
+                            <button
+                              key={location.value}
+                              onClick={() => handleLocationSelect(location.value)}
+                              disabled={loading}
+                              className="w-full text-left px-3 py-2 rounded-md hover:bg-slate-100/90 text-sm text-slate-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                            >
+                              <MapPin className="w-4 h-4 text-slate-400" />
+                              <span>{location.label}</span>
+                            </button>
+                          ))}
                         </div>
-                      )}
+                        <div className="mt-3 pt-3 border-t border-slate-200">
+                          <button
+                            onClick={cancelSignIn}
+                            className="text-sm text-slate-500 hover:text-slate-700/90 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">Employee ID</p>
-                      <p className="text-base font-semibold text-slate-800">{employeeId || 'Loading...'}</p>
-                    </div>
+                  )}
+                </div>
+                
+                <button
+                  onClick={handleSignOut}
+                  disabled={loading || !todayAttendance?.checkInTime || todayAttendance?.checkOutTime !== null}
+                  className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center sm:justify-start space-x-3 w-full sm:w-auto
+                    ${!todayAttendance?.checkInTime || todayAttendance?.checkOutTime !== null
+                      ? 'bg-slate-200/90 text-slate-500 cursor-not-allowed'
+                      : loading
+                      ? 'bg-red-400/90 text-white cursor-not-allowed'
+                      : 'bg-red-600/90 text-white hover:bg-red-700/90'
+                    }`}
+                >
+                  <XCircle className="w-6 h-6" />
+                  <span>{loading ? 'Processing...' : 'Sign Out'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-center">
+                <div className="flex justify-center">
+                  <WorkHoursRing hours={effectiveWorkHours} targetHours={WORK_TARGET_HOURS} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 sm:gap-8">
+                  <div className="text-center p-6 bg-slate-50/90 rounded-xl">
+                    <Clock className="w-8 h-8 text-indigo-600 mx-auto mb-3" />
+                    <p className="text-slate-600 font-semibold mb-2">Sign In</p>
+                    <p className="text-2xl font-bold text-slate-800">
+                      {todayAttendance?.checkInTime || '—'}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center p-6 bg-slate-50/90 rounded-xl">
+                    <Clock className="w-8 h-8 text-rose-600 mx-auto mb-3" />
+                    <p className="text-slate-600 font-semibold mb-2">Sign Out</p>
+                    <p className="text-2xl font-bold text-slate-800">
+                      {todayAttendance?.checkOutTime || '—'}
+                    </p>
+                  </div>
+                  
+                  <div className="text-center p-6 bg-slate-50/90 rounded-xl">
+                    <Target className="w-8 h-8 text-emerald-600 mx-auto mb-3" />
+                    <p className="text-slate-600 font-semibold mb-2">Work Hours</p>
+                    <p className="text-2xl font-bold text-slate-800">
+                      {effectiveWorkHours.toFixed(1)} hrs
+                    </p>
+                  </div>
+                  
+                  <div className="text-center p-6 bg-slate-50/90 rounded-xl">
+                    <Award className="w-8 h-8 text-purple-600 mx-auto mb-3" />
+                    <p className="text-slate-600 font-semibold mb-2">Status</p>
+                    <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold border
+                                      ${todayAttendance ? getStatusColor(todayAttendance.status) : 'bg-slate-100/90 text-slate-600'}`}>
+                      {todayAttendance ? todayAttendance.status.charAt(0).toUpperCase() + todayAttendance.status.slice(1) : 'Absent'}
+                    </span>
                   </div>
                 </div>
-
-                <div className="p-8">
-                  <div className="flex flex-wrap gap-3 mb-8">
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowLocationDropdown(true)}
-                        disabled={loading || todayAttendance?.checkInTime !== null}
-                        className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center space-x-3
-                          ${todayAttendance?.checkInTime !== null
-                            ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                            : loading
-                            ? 'bg-emerald-400 text-white cursor-not-allowed'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                          }`}
-                      >
-                        <CheckCircle className="w-6 h-6" />
-                        <span>{loading ? 'Processing...' : 'Sign In'}</span>
-                        {!todayAttendance?.checkInTime && !loading && (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-                      
-                      {showLocationDropdown && (
-                        <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                          <div className="p-4">
-                            <p className="text-sm font-semibold text-slate-700 mb-3">Select Work Location</p>
-                            <div className="space-y-2">
-                              {WORK_LOCATIONS.map((location) => (
-                                <button
-                                  key={location.value}
-                                  onClick={() => handleLocationSelect(location.value)}
-                                  disabled={loading}
-                                  className="w-full text-left px-3 py-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                                >
-                                  <MapPin className="w-4 h-4 text-slate-400" />
-                                  <span>{location.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                            <div className="mt-3 pt-3 border-t border-slate-200">
-                              <button
-                                onClick={cancelSignIn}
-                                className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={handleSignOut}
-                      disabled={loading || !todayAttendance?.checkInTime || todayAttendance?.checkOutTime !== null}
-                      className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center space-x-3
-                        ${!todayAttendance?.checkInTime || todayAttendance?.checkOutTime !== null
-                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                          : loading
-                          ? 'bg-red-400 text-white cursor-not-allowed'
-                          : 'bg-red-600 text-white hover:bg-red-700'
-                        }`}
-                    >
-                      <XCircle className="w-6 h-6" />
-                      <span>{loading ? 'Processing...' : 'Sign Out'}</span>
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-center">
-                    <div className="flex justify-center">
-                      <WorkHoursRing hours={effectiveWorkHours} targetHours={WORK_TARGET_HOURS} />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-8">
-                      <div className="text-center p-6 bg-slate-50 rounded-xl">
-                        <Clock className="w-8 h-8 text-indigo-600 mx-auto mb-3" />
-                        <p className="text-slate-600 font-semibold mb-2">Sign In</p>
-                        <p className="text-2xl font-bold text-slate-800">
-                          {todayAttendance?.checkInTime || '—'}
-                        </p>
-                      </div>
-                      
-                      <div className="text-center p-6 bg-slate-50 rounded-xl">
-                        <Clock className="w-8 h-8 text-rose-600 mx-auto mb-3" />
-                        <p className="text-slate-600 font-semibold mb-2">Sign Out</p>
-                        <p className="text-2xl font-bold text-slate-800">
-                          {todayAttendance?.checkOutTime || '—'}
-                        </p>
-                      </div>
-                      
-                      <div className="text-center p-6 bg-slate-50 rounded-xl">
-                        <Target className="w-8 h-8 text-emerald-600 mx-auto mb-3" />
-                        <p className="text-slate-600 font-semibold mb-2">Work Hours</p>
-                        <p className="text-2xl font-bold text-slate-800">
-                          {effectiveWorkHours.toFixed(1)} hrs
-                        </p>
-                      </div>
-                      
-                      <div className="text-center p-6 bg-slate-50 rounded-xl">
-                        <Award className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                        <p className="text-slate-600 font-semibold mb-2">Status</p>
-                        <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold border
-                                         ${todayAttendance ? getStatusColor(todayAttendance.status) : 'bg-slate-100 text-slate-600'}`}>
-                          {todayAttendance ? todayAttendance.status.charAt(0).toUpperCase() + todayAttendance.status.slice(1) : 'Absent'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {renderAttendanceStats()}
-              {renderAttendanceHistory()}
+              </div>
             </div>
-          </div>
+          </section>
+
+          {renderAttendanceStats()}
+          {renderAttendanceHistory()}
         </div>
       </div>
     </div>

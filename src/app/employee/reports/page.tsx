@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText,
@@ -9,13 +10,12 @@ import {
   Target,
   Award,
   Calendar,
-  Download,
-  ArrowLeft,
   Trash2,
   Upload,
   X,
+  Eye,
+  AlertCircle,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
@@ -26,7 +26,7 @@ interface Report {
   subtype?: string;
   title: string;
   date: string | number[];
-  status: 'draft' | 'submitted' | 'approved' | null;
+  status?: 'draft' | 'submitted' | 'approved' | null;
   content?: string | null;
   attachments?: string[] | null;
   submittedBy?: string;
@@ -54,6 +54,8 @@ interface Report {
   totalPoValue?: string;
   xmwInvoiceRef?: string;
   xmwInvoiceDate?: string;
+  nre?: string;
+  quoteDate?: string;
   // OEM - competitor_analysis
   slNo?: number;
   itemDescription?: string;
@@ -70,12 +72,16 @@ interface Report {
     productDescription?: string;
     quantity?: string;
     xmwValue?: string;
-    remarks?: string;
   }[];
+  // Add originalFileName to the interface to match the backend model
+  originalFileName?: string;
 }
 
-// Define your backend API base URL
-const BASE_URL = APIURL + '/api/reports'; // Your Spring Boot backend URL
+const BASE_URL = APIURL + '/api/reports';
+
+// Allowed file types matching backend
+const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -88,7 +94,7 @@ export default function ReportsPage() {
     subtype: 'daily',
     title: '',
     content: '',
-    status: 'draft'
+    status: 'draft',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,9 +117,10 @@ export default function ReportsPage() {
   });
   const [divisionOptions, setDivisionOptions] = useState<string[]>([]);
   const [companyOptions, setCompanyOptions] = useState<string[]>([]);
-  const [searchOption, setSearchOption] = useState("");
+  const [searchOption, setSearchOption] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const reportTypes = [
     { id: 'employee', label: 'Employee Report', icon: <FileText className="w-5 h-5" /> },
@@ -122,14 +129,14 @@ export default function ReportsPage() {
     { id: 'customer', label: 'Customer Report', icon: <Users className="w-5 h-5" /> },
     { id: 'blueprint', label: 'Blueprint Report', icon: <FileText className="w-5 h-5" /> },
     { id: 'projection', label: 'Projection Report', icon: <Target className="w-5 h-5" /> },
-    { id: 'achievement', label: 'Achievement Report', icon: <Award className="w-5 h-5" /> }
+    { id: 'achievement', label: 'Achievement Report', icon: <Award className="w-5 h-5" /> },
   ];
 
   const employeeSubtypes = [
     { id: 'daily', label: 'Daily Report', icon: <Calendar className="w-5 h-5" /> },
     { id: 'weekly', label: 'Weekly Report', icon: <Calendar className="w-5 h-5" /> },
     { id: 'monthly', label: 'Monthly Report', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'yearly', label: 'Yearly Report', icon: <Calendar className="w-5 h-5" /> }
+    { id: 'yearly', label: 'Yearly Report', icon: <Calendar className="w-5 h-5" /> },
   ];
 
   const oemSubtypes = [
@@ -141,8 +148,49 @@ export default function ReportsPage() {
     { id: 'holding_projects', label: 'Holding Projects' },
   ];
 
+  const validateFile = (file: File): string | null => {
+    // Check file extension
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+    
+    if (!hasValidExtension) {
+      return `File "${file.name}" is not allowed. Only PDF, DOC, DOCX, XLS, XLSX files are allowed.`;
+    }
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      return `File "${file.name}" is too large. Maximum file size is 10MB.`;
+    }
+
+    return null;
+  };
+
+  const handleFileSelection = (files: FileList | null) => {
+    if (!files) return;
+
+    const fileArray = Array.from(files);
+    const validationErrors: string[] = [];
+
+    // Validate each file
+    fileArray.forEach(file => {
+      const error = validateFile(file);
+      if (error) {
+        validationErrors.push(error);
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('\n'));
+      toast.error('Some files were rejected. Please check the file types and sizes.');
+      return;
+    }
+
+    setUploadedFiles(fileArray);
+    setError(null);
+  };
+
   const getReportIcon = (type: string) => {
-    const reportType = reportTypes.find(t => t.id === type);
+    const reportType = reportTypes.find((t) => t.id === type);
     return reportType?.icon || <FileText className="w-5 h-5" />;
   };
 
@@ -159,16 +207,17 @@ export default function ReportsPage() {
   }, [router]);
 
   useEffect(() => {
-    fetch(APIURL + '/api/reports/customer-divisions')
-      .then(res => res.json())
-      .then(data => {
+    fetch(`${APIURL}/api/reports/customer-divisions`)
+      .then((res) => res.json())
+      .then((data) => {
         if (Array.isArray(data)) setDivisionOptions(data);
         else if (data && Array.isArray(data.divisions)) setDivisionOptions(data.divisions);
       })
       .catch(() => console.log('Failed to fetch divisions'));
-    fetch(APIURL + '/api/reports/customer-companies')
-      .then(res => res.json())
-      .then(data => {
+    
+    fetch(`${APIURL}/api/reports/customer-companies`)
+      .then((res) => res.json())
+      .then((data) => {
         if (Array.isArray(data)) setCompanyOptions(data);
         else if (data && Array.isArray(data.companies)) setCompanyOptions(data.companies);
       })
@@ -183,32 +232,24 @@ export default function ReportsPage() {
 
     try {
       const url = `${BASE_URL}/employee/${employeeId}`;
-      console.log('Fetching reports with URL:', url);
-      console.log('Selected type:', selectedType);
-      console.log('Selected subtype:', selectedSubtype);
-
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const allReports: Report[] = await response.json();
-      console.log('Received all reports:', allReports);
       let filteredReports = allReports;
 
       if (selectedType !== 'all') {
-        filteredReports = filteredReports.filter(report => report.type === selectedType);
+        filteredReports = filteredReports.filter((report) => report.type === selectedType);
       }
 
       if (selectedType === 'employee' && selectedSubtype !== 'all') {
-        filteredReports = filteredReports.filter(report => report.subtype === selectedSubtype);
+        filteredReports = filteredReports.filter((report) => report.subtype === selectedSubtype);
       }
 
-      console.log('Filtered reports:', filteredReports);
       setReports(filteredReports);
-
-    } catch {
-      setError('Failed to fetch reports');
-      console.error('Error fetching reports');
+    } catch (e) {
+      setError('Failed to fetch reports: ' + (e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -221,14 +262,28 @@ export default function ReportsPage() {
   }, [fetchReports, employeeId]);
 
   const uploadFiles = async (files: File[]) => {
-    const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
-    const response = await fetch(`${APIURL}/api/reports/upload`, {
-      method: 'POST',
-      body: formData
-    });
-    if (!response.ok) throw new Error('File upload failed');
-    return await response.json();
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      
+      const response = await fetch(`${APIURL}/api/reports/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`File upload failed: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      throw error;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmitReport = async () => {
@@ -241,9 +296,9 @@ export default function ReportsPage() {
     if (uploadedFiles.length > 0) {
       try {
         const uploadResult = await uploadFiles(uploadedFiles);
-        uploadedFileUrls = uploadResult;
-      } catch {
-        setError('Failed to upload files');
+        uploadedFileUrls = Array.isArray(uploadResult) ? uploadResult : [uploadResult];
+      } catch (err: unknown) {
+        setError(`Failed to upload files: ${err instanceof Error ? err.message : 'Unknown error'}`);
         return;
       }
     }
@@ -256,7 +311,10 @@ export default function ReportsPage() {
         subtype: newReport.subtype,
         submittedBy: employeeId,
         attachments: uploadedFileUrls,
+        status: 'submitted',
+        originalFileName: uploadedFiles.length > 0 ? uploadedFiles[0].name : undefined,
       };
+      
       if (newReport.subtype === 'orders') {
         reportData = {
           ...reportData,
@@ -273,7 +331,8 @@ export default function ReportsPage() {
           customerName: newReport.customerName,
           xmwInvoiceRef: newReport.xmwInvoiceRef,
           xmwInvoiceDate: newReport.xmwInvoiceDate,
-          status: newReport.status,
+          nre: newReport.nre,
+          quoteDate: newReport.quoteDate,
         };
       } else if (newReport.subtype === 'competitor_analysis') {
         reportData = {
@@ -298,18 +357,25 @@ export default function ReportsPage() {
           quantity: newReport.quantity,
           xmwValue: newReport.xmwValue,
           remarks: newReport.remarks,
-          attachments: uploadedFileUrls,
         };
       }
-    }
-    else if (newReport.type === 'customer') {
-      if (!customerReport.date || !customerReport.customerName || !customerReport.designation || !customerReport.landlineOrMobile || !customerReport.emailId || !customerReport.productOrRequirements || !customerReport.division || !customerReport.company) {
+    } else if (newReport.type === 'customer') {
+      if (
+        !customerReport.date ||
+        !customerReport.customerName ||
+        !customerReport.designation ||
+        !customerReport.landlineOrMobile ||
+        !customerReport.emailId ||
+        !customerReport.productOrRequirements ||
+        !customerReport.division ||
+        !customerReport.company
+      ) {
         setError('Please fill all required fields for Customer Report.');
         return;
       }
       reportData = {
         type: 'customer',
-        title: `Customer Report for ${customerReport.customerName || 'N/A'} - ${customerReport.date}`,
+        title: `Customer Report for ${customerReport.customerName} - ${customerReport.date}`,
         content: customerReport.content || 'Customer report data',
         date: customerReport.date,
         status: customerReport.status as 'draft' | 'submitted' | 'approved' | null,
@@ -323,15 +389,15 @@ export default function ReportsPage() {
         division: customerReport.division,
         company: customerReport.company,
         attachments: uploadedFileUrls,
+        originalFileName: uploadedFiles.length > 0 ? uploadedFiles[0].name : undefined,
       };
-    }
-    else {
+    } else {
       if (!newReport.content) {
         setError('Content is required.');
         return;
       }
 
-      const selectedSubtypeLabel = employeeSubtypes.find(s => s.id === newReport.subtype)?.label || newReport.subtype;
+      const selectedSubtypeLabel = employeeSubtypes.find((s) => s.id === newReport.subtype)?.label || newReport.subtype;
       reportData = {
         ...newReport,
         title: `${selectedSubtypeLabel} - ${new Date().toLocaleDateString()}`,
@@ -339,6 +405,7 @@ export default function ReportsPage() {
         status: newReport.status || 'submitted',
         submittedBy: employeeId,
         attachments: uploadedFileUrls,
+        originalFileName: uploadedFiles.length > 0 ? uploadedFiles[0].name : undefined,
       };
     }
 
@@ -352,7 +419,7 @@ export default function ReportsPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to create report: ${response.status}`);
       }
 
@@ -364,17 +431,29 @@ export default function ReportsPage() {
         subtype: 'daily',
         title: '',
         content: '',
-        status: 'draft'
+        status: 'draft',
       });
       setCustomerReport({
-        title: '', content: '', date: '', status: 'submitted', submittedBy: '', customerName: '', designation: '', landlineOrMobile: '', emailId: '', remarks: '', productOrRequirements: '', division: '', company: '', attachments: []
+        title: '',
+        content: '',
+        date: '',
+        status: 'submitted',
+        submittedBy: '',
+        customerName: '',
+        designation: '',
+        landlineOrMobile: '',
+        emailId: '',
+        remarks: '',
+        productOrRequirements: '',
+        division: '',
+        company: '',
+        attachments: [],
       });
       setUploadedFiles([]);
       setError(null);
       toast.success('Report submitted successfully!');
     } catch (err: unknown) {
       setError(`Error submitting report: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error("Error submitting report:", err);
       toast.error('Failed to submit report. Please try again later.');
     }
   };
@@ -393,25 +472,25 @@ export default function ReportsPage() {
         throw new Error(`Failed to delete report: ${response.status}`);
       }
 
-      setReports(reports.filter(report => report.id !== id));
+      setReports(reports.filter((report) => report.id !== id));
       setError(null);
       toast.success('Report deleted successfully!');
     } catch (err: unknown) {
       setError(`Error deleting report: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error("Error deleting report:", err);
       toast.error('Failed to delete report. Please try again later.');
     }
   };
 
   const renderNewReportForm = () => {
     if (!showNewReportForm) return null;
+    
     if (newReport.type === 'oem') {
       return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white/90 rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-blue-50 rounded-xl">
+                <div className="p-3 bg-blue-50/90 rounded-xl">
                   <FilePlus className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
@@ -426,203 +505,231 @@ export default function ReportsPage() {
                   setUploadedFiles([]);
                   setError(null);
                 }}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/90 rounded-lg transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-6 h-6" />
               </button>
             </div>
+            
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">OEM Report Subtype</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <select
-                    value={oemSubtypes.some(s => s.id === (newReport.subtype || '')) ? newReport.subtype || '' : ''}
-                    onChange={e => setNewReport({ ...newReport, subtype: e.target.value })}
-                    className="w-1/2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors appearance-none bg-white pr-10 py-2.5"
+                    value={oemSubtypes.some((s) => s.id === (newReport.subtype || '')) ? newReport.subtype || '' : ''}
+                    onChange={(e) => setNewReport({ ...newReport, subtype: e.target.value })}
+                    className="w-full sm:w-1/2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors appearance-none bg-white/90 pr-10 py-2.5"
                   >
                     <option value="">-- Select Subtype --</option>
-                    {oemSubtypes.map(subtype => (
-                      <option key={subtype.id} value={subtype.id}>{subtype.label}</option>
+                    {oemSubtypes.map((subtype) => (
+                      <option key={subtype.id} value={subtype.id}>
+                        {subtype.label}
+                      </option>
                     ))}
                   </select>
                   <input
                     type="text"
-                    value={oemSubtypes.some(s => s.id === (newReport.subtype || '')) ? '' : (newReport.subtype || '')}
-                    onChange={e => setNewReport({ ...newReport, subtype: e.target.value })}
+                    value={oemSubtypes.some((s) => s.id === (newReport.subtype || '')) ? '' : newReport.subtype || ''}
+                    onChange={(e) => setNewReport({ ...newReport, subtype: e.target.value })}
                     placeholder="Or enter new subtype"
-                    className="w-1/2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5"
+                    className="w-full sm:w-1/2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 bg-white/90"
                   />
                 </div>
               </div>
+
               {newReport.subtype === 'orders' && (
-                <div className="max-w-2xl mx-auto">
-                  <div className="max-h-[400px] overflow-y-auto pr-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {[
-                        { label: "PO Number", key: "poNumber", type: "text" },
-                        { label: "Order Date", key: "orderDate", type: "date" },
-                        { label: "Item", key: "item", type: "text" },
-                        { label: "Quantity", key: "quantity", type: "text" },
-                        { label: "Part Number", key: "partNumber", type: "text" },
-                        { label: "XMW Price", key: "xmwPrice", type: "text" },
-                        { label: "Unit Total Order Value", key: "unitTotalOrderValue", type: "text" },
-                        { label: "Total PO Value", key: "totalPoValue", type: "text" },
-                        { label: "Customer Name", key: "customerName", type: "text" },
-                        { label: "XMW Invoice Ref", key: "xmwInvoiceRef", type: "text" },
-                        { label: "XMW Invoice Date", key: "xmwInvoiceDate", type: "date" },
-                        { label: "Status", key: "status", type: "text" },
-                      ].map(field => (
-                        <div key={field.key} className="flex flex-col">
-                          <label className="block text-sm font-medium text-gray-700">{field.label}</label>
-                          <input
-                            type={field.type}
-                            value={
-                              typeof newReport[field.key as keyof typeof newReport] === 'string'
-                                ? newReport[field.key as keyof typeof newReport] as string
-                                : typeof newReport[field.key as keyof typeof newReport] === 'number'
-                                  ? String(newReport[field.key as keyof typeof newReport])
-                                  : ''
-                            }
-                            onChange={e => setNewReport({ ...newReport, [field.key]: e.target.value })}
-                            className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { label: 'PO Number', key: 'poNumber', type: 'text' },
+                      { label: 'Order Date', key: 'orderDate', type: 'date' },
+                      { label: 'Item', key: 'item', type: 'text' },
+                      { label: 'Quantity', key: 'quantity', type: 'text' },
+                      { label: 'Part Number', key: 'partNumber', type: 'text' },
+                      { label: 'XMW Price', key: 'xmwPrice', type: 'text' },
+                      { label: 'Unit Total Order Value', key: 'unitTotalOrderValue', type: 'text' },
+                      { label: 'Total PO Value', key: 'totalPoValue', type: 'text' },
+                      { label: 'Customer Name', key: 'customerName', type: 'text' },
+                      { label: 'XMW Invoice Ref', key: 'xmwInvoiceRef', type: 'text' },
+                      { label: 'XMW Invoice Date', key: 'xmwInvoiceDate', type: 'date' },
+                      { label: 'NRE', key: 'nre', type: 'text' },
+                      { label: 'Quote Date', key: 'quoteDate', type: 'date' },
+                    ].map((field) => (
+                      <div key={field.key} className="flex flex-col">
+                        <label className="block text-sm font-medium text-gray-700">{field.label}</label>
+                        <input
+                          type={field.type}
+                          value={
+                            typeof newReport[field.key as keyof typeof newReport] === 'string'
+                              ? (newReport[field.key as keyof typeof newReport] as string)
+                              : typeof newReport[field.key as keyof typeof newReport] === 'number'
+                              ? String(newReport[field.key as keyof typeof newReport])
+                              : ''
+                          }
+                          onChange={(e) => setNewReport({ ...newReport, [field.key]: e.target.value })}
+                          className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
+
               {newReport.subtype === 'competitor_analysis' && (
                 <div className="max-h-[400px] overflow-y-auto pr-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Sl. No.</label>
-                      <input type="number" value={newReport.slNo || ''} onChange={e => setNewReport({ ...newReport, slNo: Number(e.target.value) })} className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1" />
+                      <input
+                        type="number"
+                        value={newReport.slNo || ''}
+                        onChange={(e) => setNewReport({ ...newReport, slNo: Number(e.target.value) })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Customer Name</label>
-                      <input type="text" value={newReport.customerName || ''} onChange={e => setNewReport({ ...newReport, customerName: e.target.value })} className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Item Description</label>
-                      <input type="text" value={newReport.itemDescription || ''} onChange={e => setNewReport({ ...newReport, itemDescription: e.target.value })} className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Competitor</label>
-                      <input type="text" value={newReport.competitor || ''} onChange={e => setNewReport({ ...newReport, competitor: e.target.value })} className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Model Number</label>
-                      <input type="text" value={newReport.modelNumber || ''} onChange={e => setNewReport({ ...newReport, modelNumber: e.target.value })} className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Unit Price</label>
-                      <input type="text" value={newReport.unitPrice || ''} onChange={e => setNewReport({ ...newReport, unitPrice: e.target.value })} className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1" />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {newReport.type === 'oem' && ['holding_projects', 'open_tenders', 'bugetary_submits', 'lost_tenders'].includes(newReport.subtype || '') && (
-                <div className="max-w-2xl mx-auto max-h-[500px] overflow-y-auto pr-2">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col">
                       <label className="block text-sm font-medium text-gray-700">Customer Name</label>
                       <input
                         type="text"
                         value={newReport.customerName || ''}
-                        onChange={e => setNewReport({ ...newReport, customerName: e.target.value })}
-                        className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
+                        onChange={(e) => setNewReport({ ...newReport, customerName: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-gray-700">Quotation Number</label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Item Description</label>
                       <input
                         type="text"
-                        value={newReport.quotationNumber || ''}
-                        onChange={e => setNewReport({ ...newReport, quotationNumber: e.target.value })}
-                        className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
+                        value={newReport.itemDescription || ''}
+                        onChange={(e) => setNewReport({ ...newReport, itemDescription: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-gray-700">Product Description</label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Competitor</label>
                       <input
                         type="text"
-                        value={newReport.productDescription || ''}
-                        onChange={e => setNewReport({ ...newReport, productDescription: e.target.value })}
-                        className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
+                        value={newReport.competitor || ''}
+                        onChange={(e) => setNewReport({ ...newReport, competitor: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Model Number</label>
                       <input
                         type="text"
-                        value={newReport.quantity || ''}
-                        onChange={e => setNewReport({ ...newReport, quantity: e.target.value })}
-                        className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
+                        value={newReport.modelNumber || ''}
+                        onChange={(e) => setNewReport({ ...newReport, modelNumber: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-gray-700">XMW Value</label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Unit Price</label>
                       <input
                         type="text"
-                        value={newReport.xmwValue || ''}
-                        onChange={e => setNewReport({ ...newReport, xmwValue: e.target.value })}
-                        className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-gray-700">Remarks</label>
-                      <input
-                        type="text"
-                        value={newReport.remarks || ''}
-                        onChange={e => setNewReport({ ...newReport, remarks: e.target.value })}
-                        className="w-full rounded-lg border-gray-200 shadow-sm py-2.5 mt-1"
+                        value={newReport.unitPrice || ''}
+                        onChange={(e) => setNewReport({ ...newReport, unitPrice: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
                       />
                     </div>
                   </div>
                 </div>
               )}
+
+              {newReport.type === 'oem' &&
+                ['holding_projects', 'open_tenders', 'bugetary_submits', 'lost_tenders'].includes(
+                  newReport.subtype || ''
+                ) && (
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Customer Name</label>
+                      <input
+                        type="text"
+                        value={newReport.customerName || ''}
+                        onChange={(e) => setNewReport({ ...newReport, customerName: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quotation Number</label>
+                      <input
+                        type="text"
+                        value={newReport.quotationNumber || ''}
+                        onChange={(e) => setNewReport({ ...newReport, quotationNumber: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Product Description</label>
+                      <input
+                        type="text"
+                        value={newReport.productDescription || ''}
+                        onChange={(e) => setNewReport({ ...newReport, productDescription: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                      <input
+                        type="text"
+                        value={newReport.quantity || ''}
+                        onChange={(e) => setNewReport({ ...newReport, quantity: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">XMW Value</label>
+                      <input
+                        type="text"
+                        value={newReport.xmwValue || ''}
+                        onChange={(e) => setNewReport({ ...newReport, xmwValue: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Remarks</label>
+                      <input
+                        type="text"
+                        value={newReport.remarks || ''}
+                        onChange={(e) => setNewReport({ ...newReport, remarks: e.target.value })}
+                        className="w-full rounded-lg border-gray-200/90 shadow-sm py-2.5 mt-1 bg-white/90"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Attachments</label>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
                   <input
                     type="file"
                     multiple
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        const files = Array.from(e.target.files);
-                        setUploadedFiles(files);
-                        setNewReport({
-                          ...newReport,
-                          attachments: files.map(f => f.name)
-                        });
-                      }
-                    }}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={(e) => handleFileSelection(e.target.files)}
                     className="hidden"
                     id="file-upload-oem"
                   />
-                  <label htmlFor="file-upload-oem" className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <label
+                    htmlFor="file-upload-oem"
+                    className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-colors"
+                  >
                     <Upload className="w-4 h-4 mr-2" />
                     Upload Files
                   </label>
-                  <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG up to 10MB each</span>
+                  <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX up to 10MB each</span>
                 </div>
                 {uploadedFiles.length > 0 && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm font-medium text-gray-700">Uploaded Files:</p>
                     {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
+                      <div key={index} className="flex items-center justify-between bg-gray-50/90 p-2 rounded-lg">
                         <span className="text-sm text-gray-700">{file.name}</span>
                         <button
                           onClick={() => {
                             const newFiles = uploadedFiles.filter((_, i) => i !== index);
                             setUploadedFiles(newFiles);
-                            setNewReport({
-                              ...newReport,
-                              attachments: newFiles.map(f => f.name)
-                            });
                           }}
                           className="text-red-500 hover:text-red-700"
                         >
@@ -633,8 +740,23 @@ export default function ReportsPage() {
                   </div>
                 )}
               </div>
-              {error && <div className="text-red-600 text-sm">{error}</div>}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
+              
+              {uploading && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-blue-600">Uploading files...</div>
+                </div>
+              )}
+              
+              {error && (
+                <div className="bg-red-50/90 border border-red-200/90 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                    <div className="text-red-700 text-sm whitespace-pre-line">{error}</div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200/90">
                 <button
                   onClick={() => {
                     setShowNewReportForm(false);
@@ -642,15 +764,16 @@ export default function ReportsPage() {
                     setUploadedFiles([]);
                     setError(null);
                   }}
-                  className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                  className="px-6 py-2.5 text-gray-700 bg-gray-100/90 rounded-xl hover:bg-gray-200/90 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitReport}
-                  className="px-6 py-2.5 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  disabled={uploading}
+                  className="px-6 py-2.5 text-white bg-blue-600/90 rounded-xl hover:bg-blue-700/90 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Submit Report
+                  {uploading ? 'Uploading...' : 'Submit Report'}
                 </button>
               </div>
             </div>
@@ -658,16 +781,18 @@ export default function ReportsPage() {
         </div>
       );
     }
+    
     if (newReport.type === 'customer') {
       const maxWords = 1000;
-      const wordCount = customerReport.content?.trim().split(/\s+/).filter(word => word.length > 0).length || 0;
+      const wordCount = customerReport.content?.trim().split(/\s+/).filter((word) => word.length > 0).length || 0;
       const remainingWords = maxWords - wordCount;
+      
       return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white/90 rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center space-x-4">
-                <div className="p-3 bg-blue-50 rounded-xl">
+                <div className="p-3 bg-blue-50/90 rounded-xl">
                   <FilePlus className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
@@ -679,185 +804,198 @@ export default function ReportsPage() {
                 onClick={() => {
                   setShowNewReportForm(false);
                   setCustomerReport({
-                    title: '', content: '', date: '', status: 'submitted', submittedBy: '', customerName: '', designation: '', landlineOrMobile: '', emailId: '', remarks: '', productOrRequirements: '', division: '', company: '', attachments: []
+                    title: '',
+                    content: '',
+                    date: '',
+                    status: 'submitted',
+                    submittedBy: '',
+                    customerName: '',
+                    designation: '',
+                    landlineOrMobile: '',
+                    emailId: '',
+                    remarks: '',
+                    productOrRequirements: '',
+                    division: '',
+                    company: '',
+                    attachments: [],
                   });
                   setNewReport({ type: 'employee', subtype: 'daily', title: '', content: '', status: 'draft' });
+                  setUploadedFiles([]);
                   setError(null);
                 }}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/90 rounded-lg transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-6 h-6" />
               </button>
             </div>
+            
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Date</label>
+                  <label className="block text-sm font-medium text-gray-700">Date *</label>
                   <input
                     type="date"
                     value={customerReport.date}
-                    onChange={e => setCustomerReport({ ...customerReport, date: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    onChange={(e) => setCustomerReport({ ...customerReport, date: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Customer Name</label>
+                  <label className="block text-sm font-medium text-gray-700">Customer Name *</label>
                   <input
                     type="text"
                     value={customerReport.customerName}
-                    onChange={e => setCustomerReport({ ...customerReport, customerName: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    onChange={(e) => setCustomerReport({ ...customerReport, customerName: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Designation</label>
+                  <label className="block text-sm font-medium text-gray-700">Designation *</label>
                   <input
                     type="text"
                     value={customerReport.designation}
-                    onChange={e => setCustomerReport({ ...customerReport, designation: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    onChange={(e) => setCustomerReport({ ...customerReport, designation: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Landline/Mobile</label>
+                  <label className="block text-sm font-medium text-gray-700">Landline/Mobile *</label>
                   <input
                     type="text"
                     value={customerReport.landlineOrMobile}
-                    onChange={e => setCustomerReport({ ...customerReport, landlineOrMobile: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    onChange={(e) => setCustomerReport({ ...customerReport, landlineOrMobile: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Email ID</label>
+                  <label className="block text-sm font-medium text-gray-700">Email ID *</label>
                   <input
                     type="email"
                     value={customerReport.emailId}
-                    onChange={e => setCustomerReport({ ...customerReport, emailId: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    onChange={(e) => setCustomerReport({ ...customerReport, emailId: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Product/Requirements</label>
+                  <label className="block text-sm font-medium text-gray-700">Product/Requirements *</label>
                   <input
                     type="text"
                     value={customerReport.productOrRequirements}
-                    onChange={e => setCustomerReport({ ...customerReport, productOrRequirements: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    onChange={(e) => setCustomerReport({ ...customerReport, productOrRequirements: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Department (Division)</label>
+                  <label className="block text-sm font-medium text-gray-700">Department (Division) *</label>
                   <select
                     value={customerReport.division}
-                    onChange={e => setCustomerReport({ ...customerReport, division: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 mb-2"
+                    onChange={(e) => setCustomerReport({ ...customerReport, division: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 mb-2 bg-white/90"
                   >
                     <option value="">Select Division</option>
-                    {divisionOptions.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {divisionOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
                     ))}
                   </select>
                   <input
                     type="text"
                     value={customerReport.division}
-                    onChange={e => setCustomerReport({ ...customerReport, division: e.target.value })}
+                    onChange={(e) => setCustomerReport({ ...customerReport, division: e.target.value })}
                     placeholder="Enter or select department/division"
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Company</label>
+                  <label className="block text-sm font-medium text-gray-700">Company *</label>
                   <select
                     value={customerReport.company}
-                    onChange={e => setCustomerReport({ ...customerReport, company: e.target.value })}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 mb-2"
+                    onChange={(e) => setCustomerReport({ ...customerReport, company: e.target.value })}
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 mb-2 bg-white/90"
                   >
                     <option value="">Select Company</option>
-                    {companyOptions.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {companyOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
                     ))}
                   </select>
                   <input
                     type="text"
                     value={customerReport.company}
-                    onChange={e => setCustomerReport({ ...customerReport, company: e.target.value })}
+                    onChange={(e) => setCustomerReport({ ...customerReport, company: e.target.value })}
                     placeholder="Enter or select company"
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                   />
                 </div>
               </div>
+              
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Remarks</label>
                 <input
                   type="text"
                   value={customerReport.remarks}
-                  onChange={e => setCustomerReport({ ...customerReport, remarks: e.target.value })}
-                  className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5"
+                  onChange={(e) => setCustomerReport({ ...customerReport, remarks: e.target.value })}
+                  className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors py-2.5 bg-white/90"
                 />
               </div>
+              
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="block text-sm font-medium text-gray-700">Content</label>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">{wordCount} words</span>
-                    <span className={`text-sm ${remainingWords < 100 ? 'text-red-500' : 'text-gray-500'}`}>({remainingWords} remaining)</span>
+                    <span className={`text-sm ${remainingWords < 100 ? 'text-red-500' : 'text-gray-500'}`}>
+                      ({remainingWords} remaining)
+                    </span>
                   </div>
                 </div>
                 <textarea
                   value={customerReport.content}
-                  onChange={e => {
+                  onChange={(e) => {
                     const text = e.target.value;
-                    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+                    const words = text.trim().split(/\s+/).filter((word) => word.length > 0);
                     if (words.length <= maxWords) {
                       setCustomerReport({ ...customerReport, content: text });
                     }
                   }}
                   rows={6}
                   placeholder="Write your report content here (max 1000 words)"
-                  className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors resize-none py-2.5"
+                  className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors resize-none py-2.5 bg-white/90"
                 />
               </div>
+              
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Attachments</label>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
                   <input
                     type="file"
                     multiple
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        const files = Array.from(e.target.files);
-                        setUploadedFiles(files);
-                        setCustomerReport({
-                          ...customerReport,
-                          attachments: files.map(f => f.name)
-                        });
-                      }
-                    }}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={(e) => handleFileSelection(e.target.files)}
                     className="hidden"
                     id="file-upload-customer"
                   />
-                  <label htmlFor="file-upload-customer" className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <label
+                    htmlFor="file-upload-customer"
+                    className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-colors"
+                  >
                     <Upload className="w-4 h-4 mr-2" />
                     Upload Files
                   </label>
-                  <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG up to 10MB each</span>
+                  <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX up to 10MB each</span>
                 </div>
                 {uploadedFiles.length > 0 && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm font-medium text-gray-700">Uploaded Files:</p>
                     {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
+                      <div key={index} className="flex items-center justify-between bg-gray-50/90 p-2 rounded-lg">
                         <span className="text-sm text-gray-700">{file.name}</span>
                         <button
                           onClick={() => {
                             const newFiles = uploadedFiles.filter((_, i) => i !== index);
                             setUploadedFiles(newFiles);
-                            setCustomerReport({
-                              ...customerReport,
-                              attachments: newFiles.map(f => f.name)
-                            });
                           }}
                           className="text-red-500 hover:text-red-700"
                         >
@@ -868,28 +1006,56 @@ export default function ReportsPage() {
                   </div>
                 )}
               </div>
-              {error && <div className="text-red-600 text-sm">{error}</div>}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
+              
+              {uploading && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-blue-600">Uploading files...</div>
+                </div>
+              )}
+              
+              {error && (
+                <div className="bg-red-50/90 border border-red-200/90 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                    <div className="text-red-700 text-sm whitespace-pre-line">{error}</div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200/90">
                 <button
                   onClick={() => {
                     setShowNewReportForm(false);
                     setCustomerReport({
-                      title: '', content: '', date: '', status: 'submitted', submittedBy: '', customerName: '', designation: '', landlineOrMobile: '', emailId: '', remarks: '', productOrRequirements: '', division: '', company: '', attachments: []
+                      title: '',
+                      content: '',
+                      date: '',
+                      status: 'submitted',
+                      submittedBy: '',
+                      customerName: '',
+                      designation: '',
+                      landlineOrMobile: '',
+                      emailId: '',
+                      remarks: '',
+                      productOrRequirements: '',
+                      division: '',
+                      company: '',
+                      attachments: [],
                     });
                     setNewReport({ type: 'employee', subtype: 'daily', title: '', content: '', status: 'draft' });
+                    setUploadedFiles([]);
                     setError(null);
                   }}
-                  className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                  className="px-6 py-2.5 text-gray-700 bg-gray-100/90 rounded-xl hover:bg-gray-200/90 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    handleSubmitReport();
-                  }}
-                  className="px-6 py-2.5 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  onClick={handleSubmitReport}
+                  disabled={uploading}
+                  className="px-6 py-2.5 text-white bg-blue-600/90 rounded-xl hover:bg-blue-700/90 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Submit Report
+                  {uploading ? 'Uploading...' : 'Submit Report'}
                 </button>
               </div>
             </div>
@@ -897,16 +1063,18 @@ export default function ReportsPage() {
         </div>
       );
     }
+
+    // Regular employee/other reports form
     const maxWords = 1000;
-    const wordCount = newReport.content?.trim().split(/\s+/).filter(word => word.length > 0).length || 0;
+    const wordCount = newReport.content?.trim().split(/\s+/).filter((word) => word.length > 0).length || 0;
     const remainingWords = maxWords - wordCount;
 
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-        <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+        <div className="bg-white/90 rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-50 rounded-xl">
+              <div className="p-3 bg-blue-50/90 rounded-xl">
                 <FilePlus className="w-6 h-6 text-blue-600" />
               </div>
               <div>
@@ -922,16 +1090,14 @@ export default function ReportsPage() {
                   subtype: 'daily',
                   title: '',
                   content: '',
-                  status: 'draft'
+                  status: 'draft',
                 });
                 setUploadedFiles([]);
                 setError(null);
               }}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/90 rounded-lg transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-6 h-6" />
             </button>
           </div>
 
@@ -947,13 +1113,15 @@ export default function ReportsPage() {
                       setNewReport({
                         ...newReport,
                         type,
-                        subtype: type === 'employee' ? newReport.subtype : undefined
+                        subtype: type === 'employee' ? newReport.subtype : undefined,
                       });
                     }}
-                    className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors appearance-none bg-white pr-10 py-2.5"
+                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500/90 focus:ring-blue-500/90 transition-colors appearance-none bg-white/90 pr-10 py-2.5"
                   >
-                    {reportTypes.map(type => (
-                      <option key={type.id} value={type.id}>{type.label}</option>
+                    {reportTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.label}
+                      </option>
                     ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
@@ -971,10 +1139,12 @@ export default function ReportsPage() {
                     <select
                       value={newReport.subtype || 'daily'}
                       onChange={(e) => setNewReport({ ...newReport, subtype: e.target.value as Report['subtype'] })}
-                      className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors appearance-none bg-white pr-10 py-2.5"
+                      className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500/90 focus:ring-blue-500/90 transition-colors appearance-none bg-white/90 pr-10 py-2.5"
                     >
-                      {employeeSubtypes.map(subtype => (
-                        <option key={subtype.id} value={subtype.id}>{subtype.label}</option>
+                      {employeeSubtypes.map((subtype) => (
+                        <option key={subtype.id} value={subtype.id}>
+                          {subtype.label}
+                        </option>
                       ))}
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
@@ -989,11 +1159,9 @@ export default function ReportsPage() {
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-gray-700">Content</label>
+                <label className="block text-sm font-medium text-gray-700">Content *</label>
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">
-                    {wordCount} words
-                  </span>
+                  <span className="text-sm text-gray-500">{wordCount} words</span>
                   <span className={`text-sm ${remainingWords < 100 ? 'text-red-500' : 'text-gray-500'}`}>
                     ({remainingWords} remaining)
                   </span>
@@ -1003,56 +1171,47 @@ export default function ReportsPage() {
                 value={newReport.content ?? ''}
                 onChange={(e) => {
                   const text = e.target.value;
-                  const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+                  const words = text.trim().split(/\s+/).filter((word) => word.length > 0);
                   if (words.length <= maxWords) {
                     setNewReport({ ...newReport, content: text });
                   }
                 }}
                 rows={8}
                 placeholder="Write your report content here (max 1000 words)"
-                className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors resize-none py-2.5"
+                className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500/90 focus:ring-blue-500/90 transition-colors resize-none py-2.5 bg-white/90"
               />
             </div>
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Attachments</label>
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
                 <input
                   type="file"
                   multiple
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      const files = Array.from(e.target.files);
-                      setUploadedFiles(files);
-                      setNewReport({
-                        ...newReport,
-                        attachments: files.map(f => f.name)
-                      });
-                    }
-                  }}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={(e) => handleFileSelection(e.target.files)}
                   className="hidden"
                   id="file-upload-employee"
                 />
-                <label htmlFor="file-upload-employee" className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <label
+                  htmlFor="file-upload-employee"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-colors"
+                >
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Files
                 </label>
-                <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG up to 10MB each</span>
+                <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX up to 10MB each</span>
               </div>
               {uploadedFiles.length > 0 && (
                 <div className="mt-3 space-y-2">
                   <p className="text-sm font-medium text-gray-700">Uploaded Files:</p>
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
+                    <div key={index} className="flex items-center justify-between bg-gray-50/90 p-2 rounded-lg">
                       <span className="text-sm text-gray-700">{file.name}</span>
                       <button
                         onClick={() => {
                           const newFiles = uploadedFiles.filter((_, i) => i !== index);
                           setUploadedFiles(newFiles);
-                          setNewReport({
-                            ...newReport,
-                            attachments: newFiles.map(f => f.name)
-                          });
                         }}
                         className="text-red-500 hover:text-red-700"
                       >
@@ -1063,8 +1222,23 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
-            {error && <div className="text-red-600 text-sm">{error}</div>}
-            <div className="flex justify-end space-x-4 pt-6 border-t">
+
+            {uploading && (
+              <div className="flex items-center justify-center py-4">
+                <div className="text-blue-600">Uploading files...</div>
+              </div>
+            )}
+            
+            {error && (
+              <div className="bg-red-50/90 border border-red-200/90 rounded-lg p-3">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                  <div className="text-red-700 text-sm whitespace-pre-line">{error}</div>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200/90">
               <button
                 onClick={() => {
                   setShowNewReportForm(false);
@@ -1073,21 +1247,21 @@ export default function ReportsPage() {
                     subtype: 'daily',
                     title: '',
                     content: '',
-                    status: null
+                    status: 'draft',
                   });
                   setUploadedFiles([]);
                   setError(null);
                 }}
-                className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                className="px-6 py-2.5 text-gray-700 bg-gray-100/90 rounded-xl hover:bg-gray-200/90 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitReport}
-                disabled={!newReport.content || wordCount === 0}
-                className="px-6 py-2.5 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                disabled={!newReport.content || wordCount === 0 || uploading}
+                className="px-6 py-2.5 text-white bg-blue-600/90 rounded-xl hover:bg-blue-700/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2"
               >
-                Submit Report
+                {uploading ? 'Uploading...' : 'Submit Report'}
               </button>
             </div>
           </div>
@@ -1115,44 +1289,40 @@ export default function ReportsPage() {
 
   return (
     <>
-      <style>{styles}</style>
-      <div className="min-h-screen bg-gray-50 py-8">
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <div className="min-h-screen bg-transparent py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Toaster position="top-right" />
-          <div className="mb-6">
-            <Link
-              href="/employee"
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
-            >
+          {/* <div className="mb-6">
+            <Link href="/employee" className="inline-flex items-center text-gray-600 hover:text-gray-900">
               <ArrowLeft className="w-5 h-5 mr-2" />
               Back to Dashboard
             </Link>
-          </div>
+          </div> */}
 
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">Reports</h1>
               <button
                 onClick={() => setShowNewReportForm(true)}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="inline-flex items-center px-6 py-3 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2 w-full sm:w-auto justify-center"
               >
                 <FilePlus className="w-5 h-5 mr-2 transition-transform group-hover:rotate-90 duration-200" />
                 <span>New Report</span>
               </button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200/90 p-4">
               <div className="flex flex-wrap gap-2">
-                {reportTypes.map(type => (
+                {reportTypes.map((type) => (
                   <button
                     key={type.id}
                     onClick={() => {
-                      console.log('Setting filter to:', type.id);
                       setSelectedType(type.id);
                       setSelectedSubtype('all');
                     }}
                     className={`px-3 py-1 rounded-lg flex items-center space-x-2 ${
-                      selectedType === type.id ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                      selectedType === type.id ? 'bg-blue-100/90 text-blue-700' : 'text-gray-600 hover:bg-gray-100/90'
                     }`}
                   >
                     {type.icon}
@@ -1163,28 +1333,26 @@ export default function ReportsPage() {
             </div>
 
             {selectedType === 'employee' && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200/90 p-4">
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => {
-                      console.log('Setting subtype to: all');
                       setSelectedSubtype('all');
                     }}
                     className={`px-3 py-1 rounded-lg ${
-                      selectedSubtype === 'all' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                      selectedSubtype === 'all' ? 'bg-blue-100/90 text-blue-700' : 'text-gray-600 hover:bg-gray-100/90'
                     }`}
                   >
                     All Employee Reports
                   </button>
-                  {employeeSubtypes.map(subtype => (
+                  {employeeSubtypes.map((subtype) => (
                     <button
                       key={subtype.id}
                       onClick={() => {
-                        console.log('Setting subtype to:', subtype.id);
                         setSelectedSubtype(subtype.id);
                       }}
                       className={`px-3 py-1 rounded-lg flex items-center space-x-2 ${
-                        selectedSubtype === subtype.id ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                        selectedSubtype === subtype.id ? 'bg-blue-100/90 text-blue-700' : 'text-gray-600 hover:bg-gray-100/90'
                       }`}
                     >
                       {subtype.icon}
@@ -1202,344 +1370,413 @@ export default function ReportsPage() {
                     type="text"
                     id="modern-search"
                     value={searchOption}
-                    onChange={e => setSearchOption(e.target.value)}
+                    onChange={(e) => setSearchOption(e.target.value)}
                     onFocus={() => setShowSearchDropdown(true)}
                     onBlur={() => setTimeout(() => setShowSearchDropdown(false), 100)}
                     placeholder=" "
-                    className="block w-full px-12 py-3 text-base bg-white border border-gray-200 rounded-2xl shadow focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-150 peer"
+                    className="block w-full px-12 py-3 text-base bg-white/90 border border-gray-200/90 rounded-2xl shadow focus:border-blue-500/90 focus:ring-2 focus:ring-blue-200/90 transition-all duration-150 peer"
                     autoComplete="off"
                   />
-                  <label htmlFor="modern-search" className="absolute left-12 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none transition-all duration-150 peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-600 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 bg-white px-1">
+                  <label
+                    htmlFor="modern-search"
+                    className="absolute left-12 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none transition-all duration-150 peer-focus:-top-2 peer-focus:text-xs peer-focus:text-blue-600/90 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 bg-white/90 px-1"
+                  >
                     Search Department or Company
                   </label>
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="M21 21l-4.35-4.35" />
+                    </svg>
                   </span>
                   {searchOption && (
                     <button
                       type="button"
-                      onClick={() => setSearchOption("")}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none bg-white rounded-full p-1 shadow-sm"
+                      onClick={() => setSearchOption('')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600/90 focus:outline-none bg-white/90 rounded-full p-1 shadow-sm"
                       tabIndex={-1}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <X className="w-4 h-4" />
                     </button>
                   )}
                   {showSearchDropdown && (
-                    <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-2xl mt-2 shadow-xl animate-fadeIn overflow-hidden">
-                      {divisionOptions.filter(opt =>
-                        opt.toLowerCase().includes(searchOption.toLowerCase())
-                      ).map(opt => (
-                        <li
-                          key={"division-" + opt}
-                          onMouseDown={() => {
-                            setSearchOption(opt);
-                            setShowSearchDropdown(false);
-                          }}
-                          className="px-4 py-3 cursor-pointer hover:bg-blue-50 border-b last:border-b-0 flex items-center gap-2"
-                        >
-                          <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-2"></span>
-                          <span className="text-xs text-blue-600 font-semibold">Department</span>
-                          <span className="ml-2 text-gray-800">{opt}</span>
-                        </li>
-                      ))}
-                      {companyOptions.filter(opt =>
-                        opt.toLowerCase().includes(searchOption.toLowerCase())
-                      ).map(opt => (
-                        <li
-                          key={"company-" + opt}
-                          onMouseDown={() => {
-                            setSearchOption(opt);
-                            setShowSearchDropdown(false);
-                          }}
-                          className="px-4 py-3 cursor-pointer hover:bg-green-50 border-b last:border-b-0 flex items-center gap-2"
-                        >
-                          <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-2"></span>
-                          <span className="text-xs text-green-600 font-semibold">Company</span>
-                          <span className="ml-2 text-gray-800">{opt}</span>
-                        </li>
-                      ))}
-                      {divisionOptions.filter(opt =>
-                        opt.toLowerCase().includes(searchOption.toLowerCase())
-                      ).length === 0 && companyOptions.filter(opt =>
-                        opt.toLowerCase().includes(searchOption.toLowerCase())
-                      ).length === 0 && (
-                        <li className="px-4 py-3 text-gray-400">No results found</li>
-                      )}
+                    <ul className="absolute z-20 w-full bg-white/90 border border-gray-200/90 rounded-2xl mt-2 shadow-xl animate-fadeIn overflow-hidden">
+                      {divisionOptions
+                        .filter((opt) => opt.toLowerCase().includes(searchOption.toLowerCase()))
+                        .map((opt) => (
+                          <li
+                            key={'division-' + opt}
+                            onMouseDown={() => {
+                              setSearchOption(opt);
+                              setShowSearchDropdown(false);
+                            }}
+                            className="px-4 py-3 cursor-pointer hover:bg-blue-50/90 border-b last:border-b-0 flex items-center gap-2"
+                          >
+                            <span className="inline-block w-2 h-2 rounded-full bg-blue-400/90 mr-2"></span>
+                            <span className="text-xs text-blue-600/90 font-semibold">Department</span>
+                            <span className="ml-2 text-gray-800">{opt}</span>
+                          </li>
+                        ))}
+                      {companyOptions
+                        .filter((opt) => opt.toLowerCase().includes(searchOption.toLowerCase()))
+                        .map((opt) => (
+                          <li
+                            key={'company-' + opt}
+                            onMouseDown={() => {
+                              setSearchOption(opt);
+                              setShowSearchDropdown(false);
+                            }}
+                            className="px-4 py-3 cursor-pointer hover:bg-green-50/90 border-b last:border-b-0 flex items-center gap-2"
+                          >
+                            <span className="inline-block w-2 h-2 rounded-full bg-green-400/90 mr-2"></span>
+                            <span className="text-xs text-green-600/90 font-semibold">Company</span>
+                            <span className="ml-2 text-gray-800">{opt}</span>
+                          </li>
+                        ))}
+                      {divisionOptions.filter((opt) => opt.toLowerCase().includes(searchOption.toLowerCase())).length ===
+                        0 &&
+                        companyOptions.filter((opt) => opt.toLowerCase().includes(searchOption.toLowerCase())).length ===
+                          0 && <li className="px-4 py-3 text-gray-400">No results found</li>}
                     </ul>
                   )}
                 </div>
               </div>
             )}
+            
             {loading && <div className="text-center py-4 text-gray-500">Loading reports...</div>}
             {error && <div className="text-center py-4 text-red-600">{error}</div>}
 
             {!loading && !error && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200/90 p-6">
                 <div className="space-y-4">
                   {reports.length === 0 ? (
                     <div className="text-center text-gray-500 py-8">No reports found for the selected filters.</div>
                   ) : (
-                    reports.filter(report => {
-                      if (selectedType === 'customer') {
-                        return report.type === 'customer' && (!searchOption || report.division === searchOption || report.company === searchOption);
-                      }
-                      return report.type === selectedType;
-                    }).map(report => (
-                      report.type === 'customer' ? (
-                        <div key={report.id} className="border rounded-2xl p-6 bg-gradient-to-br from-blue-50 to-white shadow-md animate-fadeIn">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                {getReportIcon(report.type)}
+                    reports
+                      .filter((report) => {
+                        if (selectedType === 'customer') {
+                          return (
+                            report.type === 'customer' &&
+                            (!searchOption || report.division === searchOption || report.company === searchOption)
+                          );
+                        }
+                        return report.type === selectedType;
+                      })
+                      .map((report) =>
+                        report.type === 'customer' ? (
+                          <div
+                            key={report.id}
+                            className="border rounded-2xl p-6 bg-gradient-to-br from-blue-50/90 to-white/90 shadow-md animate-fadeIn"
+                          >
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100/90 rounded-lg">{getReportIcon(report.type)}</div>
+                                <h3 className="font-semibold text-xl text-gray-900">{report.title}</h3>
                               </div>
-                              <h3 className="font-semibold text-xl text-gray-900">{report.title}</h3>
                             </div>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Customer Name</div>
-                              <div className="font-medium text-gray-800">{report.customerName || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Company</div>
-                              <div className="font-medium text-gray-800">{report.company || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Designation</div>
-                              <div className="font-medium text-gray-800">{report.designation || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Landline/Mobile</div>
-                              <div className="font-medium text-gray-800">{report.landlineOrMobile || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Email ID</div>
-                              <div className="font-medium text-gray-800">{report.emailId || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Product/Requirements</div>
-                              <div className="font-medium text-gray-800">{report.productOrRequirements || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Date</div>
-                              <div className="font-medium text-gray-800">{Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Department</div>
-                              <div className="font-medium text-gray-800">{report.division || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Submitted By</div>
-                              <div className="font-medium text-gray-800">{report.submittedBy || '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Type</div>
-                              <div className="font-medium text-gray-800">{reportTypes.find(t => t.id === report.type)?.label}</div>
-                            </div>
-                          </div>
-                          <div className="mb-2">
-                            <div className="text-xs text-gray-500 mb-1">Remarks</div>
-                            <div className="text-gray-700">{report.remarks || '-'}</div>
-                          </div>
-                          <div className="mb-2">
-                            <div className="text-xs text-gray-500 mb-1">Content</div>
-                            <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
-                          </div>
-
-                          <div className="flex justify-end gap-2 mt-4">
-                            {report.attachments && report.attachments.length > 0 && (
-                                <>
-                                  <button
-                                    onClick={() => window.open(report.attachments![0], '_blank')}
-                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
-                                    title="View Report"
-                                  >
-                                    <FileText className="w-5 h-5" />
-                                  </button>
-                                  <a
-                                    href={report.attachments[0]}
-                                    download
-                                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                                    title="Download Report"
-                                  >
-                                    <Download className="w-5 h-5" />
-                                  </a>
-                                </>
-                            )}
-                            <button
-                              onClick={() => handleDeleteReport(report.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
-                              title="Delete Report"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : report.type === 'visit' ? (
-                        <div key={report.id} className="border rounded-2xl p-6 bg-gradient-to-br from-yellow-50 to-white shadow-md animate-fadeIn">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-yellow-100 rounded-lg">
-                                {getReportIcon(report.type)}
-                              </div>
-                              <h3 className="font-semibold text-xl text-gray-900">{report.title}</h3>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Date</div>
-                              <div className="font-medium text-gray-800">{Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 mb-1">Submitted By</div>
-                              <div className="font-medium text-gray-800">{report.submittedBy || '-'}</div>
-                            </div>
-                          </div>
-                          <div className="mb-2">
-                            <div className="text-xs text-gray-500 mb-1">Content</div>
-                            <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
-                          </div>
-                          <div className="flex justify-end gap-2 mt-4">
-                            {report.attachments && report.attachments.length > 0 && (
-                                <>
-                                  <button
-                                    onClick={() => window.open(report.attachments![0], '_blank')}
-                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
-                                    title="View Report"
-                                  >
-                                    <FileText className="w-5 h-5" />
-                                  </button>
-                                  <a
-                                    href={report.attachments[0]}
-                                    download
-                                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                                    title="Download Report"
-                                  >
-                                    <Download className="w-5 h-5" />
-                                  </a>
-                                </>
-                            )}
-                            <button
-                              onClick={() => handleDeleteReport(report.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
-                              title="Delete Report"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={report.id} className="border rounded-lg p-4 animate-fadeIn">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-4">
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                {getReportIcon(report.type)}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Customer Name</div>
+                                <div className="font-medium text-gray-800">{report.customerName || '-'}</div>
                               </div>
                               <div>
-                                <h3 className="font-medium text-gray-900">{report.title}</h3>
-                                <div className="mt-1 text-sm text-gray-600">
-                                  <p>Type: {reportTypes.find(t => t.id === report.type)?.label}</p>
-                                  {report.type === 'employee' && report.subtype && (
-                                    <p>Subtype: {employeeSubtypes.find(s => s.id === report.subtype)?.label}</p>
-                                  )}
-                                  <p>Date: {Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date}</p>
-                                  <p>Submitted by: {report.submittedBy}</p>
-                                  {report.approvedBy && (
-                                    <p>Approved by: {report.approvedBy} on {new Date(report.approvedDate!).toLocaleDateString()}</p>
-                                  )}
+                                <div className="text-xs text-gray-500 mb-1">Company</div>
+                                <div className="font-medium text-gray-800">{report.company || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Designation</div>
+                                <div className="font-medium text-gray-800">{report.designation || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Landline/Mobile</div>
+                                <div className="font-medium text-gray-800">{report.landlineOrMobile || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Email ID</div>
+                                <div className="font-medium text-gray-800">{report.emailId || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Product/Requirements</div>
+                                <div className="font-medium text-gray-800">{report.productOrRequirements || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Date</div>
+                                <div className="font-medium text-gray-800">
+                                  {Array.isArray(report.date)
+                                    ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(
+                                        report.date[2]
+                                      ).padStart(2, '0')}`
+                                    : report.date}
                                 </div>
                               </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Department</div>
+                                <div className="font-medium text-gray-800">{report.division || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Submitted By</div>
+                                <div className="font-medium text-gray-800">{report.submittedBy || '-'}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Employee Name</div>
+                                <div className="font-medium text-gray-800">{report.employeeName || '-'}</div>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                               {report.attachments && report.attachments.length > 0 && (
-                                  <>
-                                     <button
-                                       onClick={() => window.open(report.attachments![0], '_blank')}
-                                       className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
-                                       title="View Report"
-                                     >
-                                       <FileText className="w-5 h-5" />
-                                     </button>
-                                     <a
-                                        href={report.attachments[0]}
-                                        download
-                                        className="p-2 text-green-600 hover:bg-green-100 rounded-lg"
-                                        title="Download Report"
-                                     >
-                                       <Download className="w-5 h-5" />
-                                     </a>
-                                  </>
+                            <div className="mb-2">
+                              <div className="text-xs text-gray-500 mb-1">Remarks</div>
+                              <div className="text-gray-700">{report.remarks || '-'}</div>
+                            </div>
+                            <div className="mb-2">
+                              <div className="text-xs text-gray-500 mb-1">Content</div>
+                              <div className="text-gray-700">
+                                {typeof report.content === 'string' && report.content.trim() ? report.content : '-'}
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                              {report.attachments && report.attachments.length > 0 && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      console.log('Viewing report:', report.id, 'Attachments:', report.attachments);
+                                      window.open(`${BASE_URL}/${report.id}/view`, '_blank');
+                                    }}
+                                    className="p-2 text-blue-600 hover:bg-blue-100/90 rounded-lg"
+                                    title="View Report"
+                                  >
+                                    <Eye className="w-5 h-5" />
+                                  </button>
+                                </>
                               )}
                               <button
                                 onClick={() => handleDeleteReport(report.id)}
-                                className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
+                                className="p-2 text-red-600 hover:bg-red-100/90 rounded-lg"
                                 title="Delete Report"
                               >
                                 <Trash2 className="w-5 h-5" />
                               </button>
                             </div>
                           </div>
-                          <div className="mb-2">
-                            <div className="text-xs text-gray-500 mb-1">Content</div>
-                            <div className="text-gray-700">{typeof report.content === 'string' && report.content.trim() ? report.content : '-'}</div>
+                        ) : report.type === 'oem' && report.subtype === 'competitor_analysis' ? (
+                          null
+                        ) : (
+                          <div key={report.id} className="border rounded-lg p-4 bg-white/90 animate-fadeIn">
+                            <div className="flex flex-col sm:flex-row items-start justify-between">
+                              <div className="flex items-start space-x-4 mb-4 sm:mb-0">
+                                <div className="p-2 bg-blue-100/90 rounded-lg">{getReportIcon(report.type)}</div>
+                                <div>
+                                  <h3 className="font-medium text-gray-900">{report.title}</h3>
+                                  <div className="mt-1 text-sm text-gray-600">
+                                    <p>Type: {reportTypes.find((t) => t.id === report.type)?.label}</p>
+                                    {report.type === 'employee' && report.subtype && (
+                                      <p>Subtype: {employeeSubtypes.find((s) => s.id === report.subtype)?.label}</p>
+                                    )}
+                                    {report.type === 'oem' && report.subtype && (
+                                      <p>Subtype: {oemSubtypes.find((s) => s.id === report.subtype)?.label}</p>
+                                    )}
+                                    <p>
+                                      Date:{' '}
+                                      {Array.isArray(report.date)
+                                        ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(
+                                            report.date[2]
+                                          ).padStart(2, '0')}`
+                                        : report.date}
+                                    </p>
+                                    <p>Submitted by: {report.employeeName || report.submittedBy}</p>
+                                    {report.approvedBy && (
+                                      <p>
+                                        Approved by: {report.approvedBy} on{' '}
+                                        {new Date(report.approvedDate!).toLocaleDateString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 mt-4 sm:mt-0">
+                                {report.attachments && report.attachments.length > 0 && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        console.log('Viewing report:', report.id, 'Attachments:', report.attachments);
+                                        window.open(`${BASE_URL}/${report.id}/view`, '_blank');
+                                      }}
+                                      className="p-2 text-blue-600 hover:bg-blue-100/90 rounded-lg"
+                                      title="View Report"
+                                    >
+                                      <Eye className="w-5 h-5" />
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteReport(report.id)}
+                                  className="p-2 text-red-600 hover:bg-red-100/90 rounded-lg"
+                                  title="Delete Report"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+                            {report.content && (
+                              <div className="mt-4">
+                                <div className="text-xs text-gray-500 mb-1">Content</div>
+                                <div className="text-gray-700">
+                                  {typeof report.content === 'string' && report.content.trim() ? report.content : '-'}
+                                </div>
+                              </div>
+                            )}
+                            {/* OEM specific fields */}
+                            {report.type === 'oem' && report.subtype === 'orders' && (
+                              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                {report.customerName && (
+                                  <div>
+                                    <span className="text-gray-500">Customer:</span> {report.customerName}
+                                  </div>
+                                )}
+                                {report.poNumber && (
+                                  <div>
+                                    <span className="text-gray-500">PO Number:</span> {report.poNumber}
+                                  </div>
+                                )}
+                                {report.item && (
+                                  <div>
+                                    <span className="text-gray-500">Item:</span> {report.item}
+                                  </div>
+                                )}
+                                {report.quantity && (
+                                  <div>
+                                    <span className="text-gray-500">Quantity:</span> {report.quantity}
+                                  </div>
+                                )}
+                                {report.totalPoValue && (
+                                  <div>
+                                    <span className="text-gray-500">Total PO Value:</span> {report.totalPoValue}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        )
                       )
-                    ))
                   )}
                 </div>
               </div>
             )}
+            
+            {/* Competitor Analysis Table */}
             {selectedType === 'oem' && selectedSubtype === 'competitor_analysis' && (
-              <div className="overflow-x-auto rounded-2xl shadow border border-gray-200 bg-white mt-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto rounded-2xl shadow border border-gray-200/90 bg-white/90 mt-6">
+                <table className="min-w-full divide-y divide-gray-200/90">
+                  <thead className="bg-gray-50/90">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Sl. No.</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Item Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Competitor</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Model Number</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Unit Price</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Submitted By</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Employee Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Attachments</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Sl. No.
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Customer Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Item Description
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Competitor
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Model Number
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Unit Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Submitted By
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Employee Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Attachments
+                      </th>
+                      <th className="relative px-6 py-3">
+                        <span className="sr-only">Actions</span>
+                      </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {reports.filter(r => r.type === 'oem' && r.subtype === 'competitor_analysis').length === 0 ? (
+                  <tbody className="bg-white/90 divide-y divide-gray-100/90">
+                    {reports.filter((r) => r.type === 'oem' && r.subtype === 'competitor_analysis').length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="px-6 py-4 text-center text-gray-400">No competitor analysis reports found.</td>
+                        <td colSpan={11} className="px-6 py-4 text-center text-gray-400">
+                          No competitor analysis reports found.
+                        </td>
                       </tr>
                     ) : (
-                      reports.filter(r => r.type === 'oem' && r.subtype === 'competitor_analysis').map((report) => (
-                        <tr key={report.id} className="hover:bg-blue-50 transition">
-                          <td className="px-6 py-4">{report.slNo ?? '-'}</td>
-                          <td className="px-6 py-4">{report.customerName || '-'}</td>
-                          <td className="px-6 py-4">{report.itemDescription || '-'}</td>
-                          <td className="px-6 py-4">{report.competitor || '-'}</td>
-                          <td className="px-6 py-4">{report.modelNumber || '-'}</td>
-                          <td className="px-6 py-4">{report.unitPrice || '-'}</td>
-                          <td className="px-6 py-4">{Array.isArray(report.date) ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(report.date[2]).padStart(2, '0')}` : report.date || '-'}</td>
-                          <td className="px-6 py-4">{report.submittedBy || '-'}</td>
-                          <td className="px-6 py-4">{report.employeeName || '-'}</td>
-                          <td className="px-6 py-4">
-                            {report.attachments && report.attachments.length > 0 ? (
-                              <ul className="list-disc ml-4">
-                                {report.attachments.map((att, idx) => (
-                                  <li key={idx}>
-                                    <a href={att} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                      {att}
-                                    </a>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : '-'}
-                          </td>
-                        </tr>
-                      ))
+                      reports
+                        .filter((r) => r.type === 'oem' && r.subtype === 'competitor_analysis')
+                        .map((report) => (
+                          <tr key={report.id} className="hover:bg-blue-50/90 transition">
+                            <td className="px-6 py-4">{report.slNo ?? '-'}</td>
+                            <td className="px-6 py-4">{report.customerName || '-'}</td>
+                            <td className="px-6 py-4">{report.itemDescription || '-'}</td>
+                            <td className="px-6 py-4">{report.competitor || '-'}</td>
+                            <td className="px-6 py-4">{report.modelNumber || '-'}</td>
+                            <td className="px-6 py-4">{report.unitPrice || '-'}</td>
+                            <td className="px-6 py-4">
+                              {Array.isArray(report.date)
+                                ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(
+                                    report.date[2]
+                                  ).padStart(2, '0')}`
+                                : report.date || '-'}
+                            </td>
+                            <td className="px-6 py-4">{report.submittedBy || '-'}</td>
+                            <td className="px-6 py-4">{report.employeeName || '-'}</td>
+                            <td className="px-6 py-4">
+                              {report.attachments && report.attachments.length > 0 ? (
+                                <ul className="list-disc ml-4">
+                                  {report.attachments.map((att, idx) => (
+                                    <li key={idx}>
+                                      <a
+                                        href={`${BASE_URL}/${report.id}/view`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600/90 underline"
+                                      >
+                                        {/* Use report.originalFileName for the display text if available, otherwise fallback */}
+                                        {report.originalFileName || att.split('/').pop()}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                              <div className="flex items-center space-x-2">
+                                {report.attachments && report.attachments.length > 0 && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        console.log('Viewing report:', report.id, 'Attachments:', report.attachments);
+                                        window.open(`${BASE_URL}/${report.id}/view`, '_blank');
+                                      }}
+                                      className="p-2 text-blue-600 hover:bg-blue-100/90 rounded-lg"
+                                      title="View Report"
+                                    >
+                                      <Eye className="w-5 h-5" />
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteReport(report.id)}
+                                  className="p-2 text-red-600 hover:bg-red-100/90 rounded-lg"
+                                  title="Delete Report"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
                     )}
                   </tbody>
                 </table>

@@ -39,30 +39,30 @@ export default function FinanceDashboardPage() {
           fetch(`${APIURL}/api/investments`),
         ]);
 
-        // Helper function to safely parse JSON
-        const safeJsonParse = async (response: Response, defaultValue: any[] = []) => {
+        // Helper function to safely parse JSON with a generic type
+        const safeJsonParse = async <T,>(response: Response, defaultValue: T[] = [] as T[]) => {
           if (!response.ok) {
             console.warn(`API endpoint returned ${response.status}: ${response.statusText}`);
             return defaultValue;
           }
-          
+
           const text = await response.text();
           if (!text.trim()) {
             console.warn('Empty response received from API');
             return defaultValue;
           }
-          
+
           try {
-            return JSON.parse(text);
+            return JSON.parse(text) as T[];
           } catch (error) {
             console.warn('Failed to parse JSON response:', error);
             return defaultValue;
           }
         };
 
-        const fixedData = await safeJsonParse(fixedRes, []);
-        const variableData = await safeJsonParse(variableRes, []);
-        const investmentsData = await safeJsonParse(investmentsRes, []);
+        const fixedData = await safeJsonParse<FixedExpense>(fixedRes, []);
+        const variableData = await safeJsonParse<VariableExpense>(variableRes, []);
+        const investmentsData = await safeJsonParse<Investment>(investmentsRes, []);
 
         setFixedExpenses(fixedData);
         setVariableExpenses(variableData);

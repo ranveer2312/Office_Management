@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import {
   Calendar,
@@ -15,8 +16,6 @@ import {
   MessageSquare,
   Users,
   Settings,
-  Home,
-  Menu,
   X,
 } from 'lucide-react';
 import axios from 'axios';
@@ -75,7 +74,7 @@ export default function MemosAnnouncementsPage() {
   const normalizeDate = (d: number[] | string | undefined): string => {
     if (!d) return '';
     if (Array.isArray(d) && d.length >= 3) {
-      const [y, m, day] = d; return `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const [y, m, day] = d; return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
     if (typeof d === 'string') return d.split('T')[0];
     return '';
@@ -143,15 +142,15 @@ export default function MemosAnnouncementsPage() {
   const getTypeGradient = (type: string) => {
     switch (type) {
       case 'meeting':
-        return 'bg-gradient-to-br from-blue-500 to-blue-600';
+        return 'bg-gradient-to-br from-blue-500/90 to-blue-600/90';
       case 'policy':
-        return 'bg-gradient-to-br from-red-500 to-red-600';
+        return 'bg-gradient-to-br from-red-500/90 to-red-600/90';
       case 'maintenance':
-        return 'bg-gradient-to-br from-orange-500 to-orange-600';
+        return 'bg-gradient-to-br from-orange-500/90 to-orange-600/90';
       case 'onboarding':
-        return 'bg-gradient-to-br from-green-500 to-green-600';
+        return 'bg-gradient-to-br from-green-500/90 to-green-600/90';
       default:
-        return 'bg-gradient-to-br from-purple-500 to-purple-600';
+        return 'bg-gradient-to-br from-purple-500/90 to-purple-600/90';
     }
   };
 
@@ -175,13 +174,13 @@ export default function MemosAnnouncementsPage() {
 
   const filteredMemos = memos.filter(memo => {
     const matchesSearch = memo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          memo.description.toLowerCase().includes(searchTerm.toLowerCase());
+      memo.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = filterPriority === 'all' || memo.priority === filterPriority;
     return matchesSearch && matchesPriority;
   });
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="flex min-h-screen bg-transparent">
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
@@ -194,22 +193,22 @@ export default function MemosAnnouncementsPage() {
       <div className="flex-1 lg:ml-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Mobile menu button */}
-          <button
+          {/* <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden mb-4 p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl shadow-lg"
+            className="lg:hidden mb-4 p-2 text-slate-600 hover:text-slate-900 hover:bg-white/90 rounded-xl shadow-lg"
           >
             <Menu className="w-6 h-6" />
-          </button>
+          </button> */}
 
           {/* Breadcrumb */}
-          <div className="flex items-center text-sm text-slate-600 mb-6">
+          {/* <div className="flex items-center text-sm text-slate-600 mb-6">
             <Home className="w-4 h-4 mr-2" />
             <span>Back to Dashboard</span>
-          </div>
+          </div> */}
 
           {/* Header Section */}
           <div className="mb-8">
-            <div className="bg-white rounded-2xl shadow-xl border border-white/20 p-8 backdrop-blur-sm">
+            <div className="bg-white/90 rounded-2xl shadow-xl border border-white/20 p-8 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">
@@ -222,7 +221,7 @@ export default function MemosAnnouncementsPage() {
                     <p className="text-sm text-slate-600">Unread Messages</p>
                     <p className="text-2xl font-bold text-red-500">{memos.filter(m => m.status === 'unread').length}</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-red-500/90 to-pink-600/90 flex items-center justify-center">
                     <Bell className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -231,7 +230,7 @@ export default function MemosAnnouncementsPage() {
           </div>
 
           {/* Search and Filter Section */}
-          <div className="bg-white rounded-2xl shadow-lg border border-white/20 p-6 mb-8">
+          <div className="bg-white/90 rounded-2xl shadow-lg border border-white/20 p-6 mb-8">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -240,7 +239,7 @@ export default function MemosAnnouncementsPage() {
                   placeholder="Search memos and announcements..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/90"
                 />
               </div>
               <div className="flex items-center gap-4">
@@ -249,7 +248,7 @@ export default function MemosAnnouncementsPage() {
                   <select
                     value={filterPriority}
                     onChange={(e) => setFilterPriority(e.target.value as typeof filterPriority)}
-                    className="pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white min-w-[180px]"
+                    className="pl-10 pr-8 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white/90 min-w-[180px]"
                   >
                     <option value="all">All Priorities</option>
                     <option value="High Priority">High Priority</option>
@@ -262,15 +261,15 @@ export default function MemosAnnouncementsPage() {
           </div>
 
           {/* Memos List */}
-          <div className="bg-white rounded-2xl shadow-lg border border-white/20 overflow-hidden">
-            <div className="p-6 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+          <div className="bg-white/90 rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+            <div className="p-6 bg-gradient-to-r from-slate-50/90 to-slate-100/90 border-b border-slate-200">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900">Memos & Announcements</h2>
                   <p className="text-slate-600 mt-1">{filteredMemos.length} messages found</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                  <button className="flex items-center px-4 py-2 bg-blue-500/90 text-white rounded-lg hover:bg-blue-600/90 transition-colors">
                     <Archive className="w-4 h-4 mr-2" />
                     Archive
                   </button>
@@ -280,31 +279,31 @@ export default function MemosAnnouncementsPage() {
             
             {loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500/90 border-t-transparent mx-auto"></div>
                 <p className="mt-4 text-slate-600">Loading memos...</p>
               </div>
             ) : error ? (
               <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-500" />
+                <div className="w-16 h-16 bg-red-100/90 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-500/90" />
                 </div>
                 <p className="text-red-600 font-medium">{error}</p>
               </div>
             ) : filteredMemos.length === 0 ? (
               <div className="p-12 text-center">
-                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-20 h-20 bg-slate-100/90 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MessageSquare className="w-10 h-10 text-slate-400" />
                 </div>
                 <h3 className="text-lg font-medium text-slate-900 mb-2">No memos found</h3>
                 <p className="text-slate-600">No memos match your current search criteria</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100/90">
                 {filteredMemos.map((memo) => (
-                  <div key={memo.id} className={`p-6 hover:bg-slate-50 transition-all duration-200 cursor-pointer ${memo.status === 'unread' ? 'bg-blue-50/30 border-l-4 border-l-blue-500' : ''}`}
+                  <div key={memo.id} className={`p-6 hover:bg-slate-50/90 transition-all duration-200 cursor-pointer ${memo.status === 'unread' ? 'bg-blue-50/90 border-l-4 border-l-blue-500/90' : ''}`}
                     onClick={() => handleViewMemo(memo)}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4 flex-1">
+                    <div className="flex items-start justify-between flex-col sm:flex-row">
+                      <div className="flex items-start space-x-4 flex-1 mb-4 sm:mb-0">
                         <div className={`w-12 h-12 ${getTypeGradient(memo.type)} rounded-xl flex items-center justify-center shadow-lg`}>
                           {getTypeIcon(memo.type)}
                         </div>
@@ -317,7 +316,7 @@ export default function MemosAnnouncementsPage() {
                               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                             )}
                           </div>
-                          <div className="flex items-center space-x-4 mb-3">
+                          <div className="flex flex-wrap items-center space-x-4 mb-3">
                             <span className="text-sm text-slate-600 flex items-center">
                               <User className="w-4 h-4 mr-1" />
                               Sent by {memo.sender}
@@ -338,9 +337,9 @@ export default function MemosAnnouncementsPage() {
                             )}
                           </div>
                           <p className="text-slate-600 leading-relaxed mb-4">{memo.description}</p>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex flex-wrap items-center space-x-2">
                             {memo.tags.map((tag, index) => (
-                              <span key={index} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md">
+                              <span key={index} className="px-2 py-1 bg-slate-100/90 text-slate-600 text-xs rounded-md">
                                 {tag}
                               </span>
                             ))}
@@ -348,7 +347,7 @@ export default function MemosAnnouncementsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3 ml-4">
+                      <div className="flex-shrink-0 flex items-center space-x-3 ml-0 sm:ml-4 mt-4 sm:mt-0">
                         <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border ${getPriorityColor(memo.priority)}`}>
                           {memo.priority}
                         </div>
@@ -356,13 +355,13 @@ export default function MemosAnnouncementsPage() {
                         <div className="flex items-center space-x-1">
                           <button
                             onClick={() => handleViewMemo(memo)}
-                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/90 rounded-lg transition-all duration-200"
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            className="p-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                            className="p-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100/90 rounded-lg transition-all duration-200"
                             title="More Options"
                           >
                             <MoreVertical className="w-4 h-4" />
@@ -378,8 +377,8 @@ export default function MemosAnnouncementsPage() {
           </div>
 
           {/* Stats Section */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+            <div className="bg-gradient-to-br from-blue-500/90 to-blue-600/90 rounded-2xl p-6 text-white backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100">Total Memos</p>
@@ -389,7 +388,7 @@ export default function MemosAnnouncementsPage() {
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white">
+            <div className="bg-gradient-to-br from-red-500/90 to-red-600/90 rounded-2xl p-6 text-white backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-red-100">Unread</p>
@@ -399,7 +398,7 @@ export default function MemosAnnouncementsPage() {
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6 text-white">
+            <div className="bg-gradient-to-br from-amber-500/90 to-amber-600/90 rounded-2xl p-6 text-white backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-amber-100">High Priority</p>
@@ -409,7 +408,7 @@ export default function MemosAnnouncementsPage() {
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white">
+            <div className="bg-gradient-to-br from-emerald-500/90 to-emerald-600/90 rounded-2xl p-6 text-white backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-emerald-100">This Week</p>
@@ -425,8 +424,8 @@ export default function MemosAnnouncementsPage() {
       {/* Memo Detail Modal */}
       {showMemoModal && selectedMemo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200/90">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-12 h-12 ${getTypeGradient(selectedMemo.type)} rounded-xl flex items-center justify-center shadow-lg`}>
@@ -439,7 +438,7 @@ export default function MemosAnnouncementsPage() {
                 </div>
                 <button
                   onClick={closeMemoModal}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100/90 rounded-lg transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -458,7 +457,7 @@ export default function MemosAnnouncementsPage() {
               </div>
 
               {/* Sender and Date Info */}
-              <div className="bg-slate-50 rounded-xl p-4">
+              <div className="bg-slate-50/90 rounded-xl p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-slate-500" />
@@ -487,7 +486,7 @@ export default function MemosAnnouncementsPage() {
               {/* Description */}
               <div>
                 <h3 className="text-lg font-semibold text-slate-900 mb-3">Description</h3>
-                <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <div className="bg-white/90 border border-slate-200/90 rounded-xl p-4">
                   <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMemo.description}</p>
                 </div>
               </div>
@@ -498,7 +497,7 @@ export default function MemosAnnouncementsPage() {
                   <h3 className="text-lg font-semibold text-slate-900 mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedMemo.tags.map((tag, index) => (
-                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 text-sm rounded-lg border border-slate-200">
+                      <span key={index} className="px-3 py-1 bg-slate-100/90 text-slate-700 text-sm rounded-lg border border-slate-200/90">
                         {tag}
                       </span>
                     ))}
@@ -507,11 +506,11 @@ export default function MemosAnnouncementsPage() {
               )}
             </div>
 
-            <div className="p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+            <div className="p-6 border-t border-slate-200/90 bg-slate-50/90 rounded-b-2xl">
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={closeMemoModal}
-                  className="px-6 py-2 text-slate-600 hover:text-slate-800 hover:bg-white border border-slate-300 rounded-lg transition-colors"
+                  className="px-6 py-2 text-slate-600 hover:text-slate-800 hover:bg-white/90 border border-slate-300 rounded-lg transition-colors"
                 >
                   Close
                 </button>

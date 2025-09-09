@@ -68,7 +68,7 @@ export default function AdminAttendanceDashboard() {
       setError(null);
       try {
         // Fetch all attendance records
-        const attendanceResponse = await axios.get(`${APIURL}/api/attendance`);
+        const attendanceResponse = await axios.get(`${APIURL}/a  pi/attendance`);
         // Fetch all employees to get names and departments
         const employeesResponse = await axios.get(`${APIURL}/api/employees`);
         

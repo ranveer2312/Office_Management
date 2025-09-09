@@ -1,7 +1,7 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import { Laptop, Smartphone, CreditCard, Car, Wifi, AlertCircle, CheckCircle, ArrowLeft, Wrench, Package, PackageCheck } from 'lucide-react';
-import Link from 'next/link';
+
+import React, { useState, useEffect } from 'react';
+import { Laptop, Smartphone, CreditCard, Car, Wifi, AlertCircle, CheckCircle, Wrench, Package, PackageCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { APIURL } from '@/constants/api';
 
@@ -60,7 +60,6 @@ function mapApiAssetToAsset(api: ApiAsset): Asset {
   };
 }
 
-
 export default function AssetsPage() {
   const router = useRouter();
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -83,7 +82,7 @@ export default function AssetsPage() {
 
   useEffect(() => {
     if (!employeeId) return;
-    
+
     const fetchAssets = async () => {
       try {
         setLoading(true);
@@ -102,7 +101,7 @@ export default function AssetsPage() {
         setLoading(false);
       }
     };
-    
+
     fetchAssets();
   }, [employeeId]);
 
@@ -111,62 +110,65 @@ export default function AssetsPage() {
     const iconProps = { className: "w-7 h-7" };
     switch (type) {
       case 'laptop':
-        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">{<Laptop {...iconProps} />}</div>;
+        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-blue-100/90 text-blue-600">{<Laptop {...iconProps} />}</div>;
       case 'phone':
-        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-green-100 text-green-600">{<Smartphone {...iconProps} />}</div>;
+        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-green-100/90 text-green-600">{<Smartphone {...iconProps} />}</div>;
       case 'sim':
-        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-purple-100 text-purple-600">{<Wifi {...iconProps} />}</div>;
+        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-purple-100/90 text-purple-600">{<Wifi {...iconProps} />}</div>;
       case 'idCard':
-        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600">{<CreditCard {...iconProps} />}</div>;
+        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100/90 text-orange-600">{<CreditCard {...iconProps} />}</div>;
       case 'vehicle':
-        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-red-100 text-red-600">{<Car {...iconProps} />}</div>;
+        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-red-100/90 text-red-600">{<Car {...iconProps} />}</div>;
       default:
         // Added a default case for robustness
-        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 text-gray-600">{<Package {...iconProps} />}</div>;
+        return <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-gray-100/90 text-gray-600">{<Package {...iconProps} />}</div>;
     }
   };
 
   const getStatusColor = (status: Asset['status']) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'returned': return 'bg-gray-200 text-gray-800';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
+      case 'active': return 'bg-green-100/90 text-green-800';
+      case 'returned': return 'bg-gray-200/90 text-gray-800';
+      case 'maintenance': return 'bg-yellow-100/90 text-yellow-800';
     }
   };
 
   const getConditionColor = (condition: Asset['condition']) => {
     switch (condition) {
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'fair': return 'bg-orange-100 text-orange-800';
-      case 'poor': return 'bg-red-100 text-red-800';
+      case 'good': return 'bg-blue-100/90 text-blue-800';
+      case 'fair': return 'bg-orange-100/90 text-orange-800';
+      case 'poor': return 'bg-red-100/90 text-red-800';
     }
   };
 
   // --- ✨ NEW, MODERNIZED JSX ✨ ---
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-transparent min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="space-y-8">
-          
+
           {/* Back Link */}
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <Link href="/employee" className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Link>
-          </div>
+          </div> */}
 
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">My Assets</h1>
-            <p className="mt-2 text-md text-gray-500">View and manage your assigned company assets.</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/20">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">My Assets</h1>
+              <p className="mt-2 text-md text-gray-500">View and manage your assigned company assets.</p>
+            </div>
+            {/* You could add a button here for "Request New Asset" if functionality existed */}
           </div>
 
           {/* Loading/Error State */}
           {loading ? (
-            <div className="text-center text-gray-500 py-12">Loading assets...</div>
+            <div className="text-center text-gray-500 py-12 bg-white/90 rounded-xl shadow-md border border-white/20">Loading assets...</div>
           ) : error ? (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
+            <div className="bg-red-50/90 border-l-4 border-red-400 p-4 rounded-md">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <AlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
@@ -181,7 +183,7 @@ export default function AssetsPage() {
               {/* --- 📊 REVAMPED Asset Stats Cards --- */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Active Assets Card */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-400 to-teal-500 p-6 shadow-lg text-white">
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-400/90 to-teal-500/90 p-6 shadow-lg text-white backdrop-blur-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-5xl font-bold">{assets.filter(a => a.status === 'active').length}</p>
@@ -192,7 +194,7 @@ export default function AssetsPage() {
                 </div>
 
                 {/* Under Maintenance Card */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 p-6 shadow-lg text-white">
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-400/90 to-orange-500/90 p-6 shadow-lg text-white backdrop-blur-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-5xl font-bold">{assets.filter(a => a.status === 'maintenance').length}</p>
@@ -201,9 +203,9 @@ export default function AssetsPage() {
                     <Wrench className="w-16 h-16 opacity-20 absolute -right-4 -top-2" />
                   </div>
                 </div>
-                
+
                 {/* Returned Assets Card */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-500 to-gray-700 p-6 shadow-lg text-white">
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-500/90 to-gray-700/90 p-6 shadow-lg text-white backdrop-blur-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-5xl font-bold">{assets.filter(a => a.status === 'returned').length}</p>
@@ -215,7 +217,7 @@ export default function AssetsPage() {
               </div>
 
               {/* --- 📋 POLISHED Asset List --- */}
-              <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+              <div className="bg-white/90 rounded-xl shadow-md p-6 border border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Asset Details</h2>
                 <div className="space-y-4">
                   {assets.length === 0 ? (
@@ -225,7 +227,7 @@ export default function AssetsPage() {
                     </div>
                   ) : (
                     assets.map((asset) => (
-                      <div key={asset.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all duration-200">
+                      <div key={asset.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-gray-50/90 hover:shadow-sm transition-all duration-200">
                         <div className="flex items-center space-x-4 mb-3 sm:mb-0">
                           {getAssetIcon(asset.type)}
                           <div>
@@ -242,7 +244,7 @@ export default function AssetsPage() {
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getConditionColor(asset.condition)}`}>
                             {asset.condition}
                           </span>
-                           <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(asset.status)}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(asset.status)}`}>
                             {asset.status}
                           </span>
                         </div>
