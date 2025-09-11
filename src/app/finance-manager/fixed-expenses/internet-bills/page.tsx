@@ -14,7 +14,7 @@ interface InternetBillExpense {
   month: string;
   payment: number;
   remarks: string;
-  documentPath?: string;
+  documentUrl?: string;
   date: string;
 }
 
@@ -28,27 +28,21 @@ export default function InternetBillsPage() {
     month: '',
     payment: '',
     remarks: '',
+    documentUrl: '', // Add documentUrl field
   });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [existingDocumentPath, setExistingDocumentPath] = useState<string | null>(null);
 
   const API_URL = APIURL + '/api/internet-bills';
 
   const fetchExpenses = useCallback(async () => {
     try {
-      console.log('Fetching from:', API_URL);
       const res = await fetch(API_URL);
-      console.log('Response status:', res.status);
-      
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('Server error response:', errorText);
         throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
-      
       const data = await res.json();
-      console.log('Fetched data:', data);
       setExpenses(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Fetch error:', error);
@@ -66,33 +60,58 @@ export default function InternetBillsPage() {
     setNewExpense({ ...newExpense, [name]: value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // Accept all file types - no restrictions
-      setSelectedFile(file);
-      toast.success(`File "${file.name}" selected successfully!`);
+  const uploadFile = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`${API_URL}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'File upload failed');
+      }
+
+      const data = await res.json();
+      setNewExpense(prev => ({ ...prev, documentUrl: data.documentUrl }));
+    } catch (err) {
+      console.error('File upload error:', err);
+      toast.error('Failed to upload document.');
+      setSelectedFile(null);
     }
   };
 
-  // Add new expense (POST)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      toast.promise(uploadFile(file), {
+        loading: 'Uploading document...',
+        success: 'Document uploaded successfully!',
+        error: 'Failed to upload document. Please try again.',
+      });
+    }
+  };
+
   const handleAddExpense = async () => {
-    if (!newExpense.accountNo || !newExpense.paymentDate || !newExpense.paymentMode || 
-        !newExpense.month || !newExpense.payment) {
+    if (!newExpense.accountNo || !newExpense.paymentDate || !newExpense.paymentMode ||
+      !newExpense.month || !newExpense.payment) {
       toast.error('Please fill in all required fields.');
+      return;
+    }
+
+    if (selectedFile && !newExpense.documentUrl) {
+      toast.error('Please wait for the document to finish uploading.');
       return;
     }
 
     try {
       const requestBody = {
-        accountNo: newExpense.accountNo,
-        paymentDate: newExpense.paymentDate,
-        date: newExpense.date || newExpense.paymentDate,
-        paymentMode: newExpense.paymentMode,
-        month: newExpense.month,
+        ...newExpense,
         payment: parseFloat(newExpense.payment),
-        remarks: newExpense.remarks || '',
-        documentPath: selectedFile ? selectedFile.name : ''
       };
 
       const res = await fetch(API_URL, {
@@ -104,13 +123,7 @@ export default function InternetBillsPage() {
       if (res.ok) {
         fetchExpenses();
         setNewExpense({
-          accountNo: '',
-          paymentDate: '',
-          date: '',
-          paymentMode: '',
-          month: '',
-          payment: '',
-          remarks: '',
+          accountNo: '', paymentDate: '', date: '', paymentMode: '', month: '', payment: '', remarks: '', documentUrl: ''
         });
         setSelectedFile(null);
         toast.success('Internet bill added successfully!');
@@ -124,7 +137,6 @@ export default function InternetBillsPage() {
     }
   };
 
-  // Delete (DELETE)
   const handleDeleteExpense = async (id: number) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
@@ -139,26 +151,18 @@ export default function InternetBillsPage() {
 
   const handleEditClick = (expense: InternetBillExpense) => {
     setEditingId(expense.id);
-    
-    // Format dates for input fields (YYYY-MM-DD)
     const formatDateForInput = (dateStr: unknown) => {
       if (!dateStr) return '';
-      
       const dateString = String(dateStr).trim();
       if (!dateString || dateString === 'null' || dateString === 'undefined') return '';
-      
-      // If already in YYYY-MM-DD format, return as is
       if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return dateString;
       }
-      
       try {
-        // Handle different date formats
         const date = new Date(dateString);
         if (isNaN(date.getTime())) {
           return '';
         }
-        // Format to YYYY-MM-DD for input field
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -167,7 +171,6 @@ export default function InternetBillsPage() {
         return '';
       }
     };
-    
     setNewExpense({
       accountNo: expense.accountNo,
       paymentDate: formatDateForInput(expense.paymentDate),
@@ -176,30 +179,27 @@ export default function InternetBillsPage() {
       month: expense.month,
       payment: expense.payment.toString(),
       remarks: expense.remarks || '',
+      documentUrl: expense.documentUrl || '',
     });
     setSelectedFile(null);
-    setExistingDocumentPath(expense.documentPath || null);
   };
 
-  // Update (PUT)
   const handleUpdateExpense = async () => {
-    if (!newExpense.accountNo || !newExpense.paymentDate || !newExpense.paymentMode || 
-        !newExpense.month || !newExpense.payment || editingId === null) {
+    if (!newExpense.accountNo || !newExpense.paymentDate || !newExpense.paymentMode ||
+      !newExpense.month || !newExpense.payment || editingId === null) {
       toast.error('Please fill in all required fields.');
       return;
     }
 
+    if (selectedFile && !newExpense.documentUrl) {
+      toast.error('Please wait for the new document to finish uploading.');
+      return;
+    }
+
     try {
-      const currentExpense = expenses.find(exp => exp.id === editingId);
       const requestBody = {
-        accountNo: newExpense.accountNo,
-        paymentDate: newExpense.paymentDate,
-        date: newExpense.date || newExpense.paymentDate,
-        paymentMode: newExpense.paymentMode,
-        month: newExpense.month,
+        ...newExpense,
         payment: parseFloat(newExpense.payment),
-        remarks: newExpense.remarks || '',
-        documentPath: selectedFile ? selectedFile.name : (currentExpense?.documentPath || '')
       };
 
       const res = await fetch(`${API_URL}/${editingId}`, {
@@ -210,17 +210,8 @@ export default function InternetBillsPage() {
 
       if (res.ok) {
         fetchExpenses();
-        setNewExpense({
-          accountNo: '',
-          paymentDate: '',
-          date: '',
-          paymentMode: '',
-          month: '',
-          payment: '',
-          remarks: '',
-        });
+        setNewExpense({ accountNo: '', paymentDate: '', date: '', paymentMode: '', month: '', payment: '', remarks: '', documentUrl: '' });
         setSelectedFile(null);
-        setExistingDocumentPath(null);
         setEditingId(null);
         toast.success('Internet bill updated successfully!');
       } else {
@@ -234,44 +225,24 @@ export default function InternetBillsPage() {
   };
 
   const handleCancelEdit = () => {
-    setNewExpense({
-      accountNo: '',
-      paymentDate: '',
-      date: '',
-      paymentMode: '',
-      month: '',
-      payment: '',
-      remarks: '',
-    });
+    setNewExpense({ accountNo: '', paymentDate: '', date: '', paymentMode: '', month: '', payment: '', remarks: '', documentUrl: '' });
     setSelectedFile(null);
-    setExistingDocumentPath(null);
     setEditingId(null);
-    // Clear the file input
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
+    if (fileInput) fileInput.value = '';
   };
 
   const formatDate = (dateString: unknown) => {
     if (!dateString) return 'N/A';
-    
-    // Convert to string if it's not already
     const dateStr = String(dateString).trim();
     if (!dateStr || dateStr === 'null' || dateStr === 'undefined') return 'N/A';
-    
-    // Handle YYYY-MM-DD format directly
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-');
       return `${month}/${day}/${year}`;
     }
-    
-    // For other formats, try to parse and format
     try {
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) {
-        return dateStr;
-      }
+      if (isNaN(date.getTime())) return dateStr;
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const year = date.getFullYear();
@@ -284,8 +255,6 @@ export default function InternetBillsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950">
       <Toaster position="top-right" />
-      
-      {/* Header Section */}
       <div className="bg-gradient-to-r from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <BackButton href="/finance-manager/fixed-expenses" label="Back to Dashboard" />
@@ -308,10 +277,7 @@ export default function InternetBillsPage() {
           </div>
         </div>
       </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Add/Edit Form */}
         <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:via-slate-800/50 dark:to-indigo-900/30 rounded-2xl shadow-2xl border border-blue-200/50 dark:border-indigo-700/50 mb-8 backdrop-blur-sm">
           <div className="px-8 py-6 border-b border-blue-200/50 dark:border-indigo-700/50 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-800/50 dark:to-indigo-900/50 rounded-t-2xl">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -443,57 +409,19 @@ export default function InternetBillsPage() {
                       </p>
                     </div>
                   )}
-                  
-                  {/* Show existing document when editing */}
-                  {editingId && existingDocumentPath && !selectedFile && (
+                  {editingId && newExpense.documentUrl && !selectedFile && (
                     <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">📄 Current Document:</span>
-                          <button
-                            onClick={() => {
-                              try {
-                                const filename = existingDocumentPath.includes('/') ? existingDocumentPath.split('/').pop() : existingDocumentPath;
-                                if (!filename) {
-                                  toast.error('Invalid document path');
-                                  return;
-                                }
-                                // Try multiple endpoints for compatibility
-                                const encodedFilename = encodeURIComponent(filename);
-                                const urls = [
-                                  `${APIURL}/api/files/${encodedFilename}`,
-                                  `${APIURL}/files/${encodedFilename}`,
-                                  `${APIURL}/api/internet-bills/files/${encodedFilename}`
-                                ];
-                                
-                                // Try first URL, if it fails, try others
-                                const tryUrl = async (urlIndex = 0) => {
-                                  if (urlIndex >= urls.length) {
-                                    toast.error('File not found on server');
-                                    return;
-                                  }
-                                  
-                                  try {
-                                    const response = await fetch(urls[urlIndex], { method: 'HEAD' });
-                                    if (response.ok) {
-                                      window.open(urls[urlIndex], '_blank');
-                                    } else {
-                                      tryUrl(urlIndex + 1);
-                                    }
-                                  } catch {
-                                    tryUrl(urlIndex + 1);
-                                  }
-                                };
-                                
-                                tryUrl();
-                              } catch {
-                                toast.error('Error opening document');
-                              }
-                            }}
+                          <a
+                            href={newExpense.documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline text-sm"
                           >
                             View Document
-                          </button>
+                          </a>
                         </div>
                         <span className="text-xs text-blue-600 dark:text-blue-400">Upload new file to replace</span>
                       </div>
@@ -502,7 +430,6 @@ export default function InternetBillsPage() {
                 </div>
               </div>
             </div>
-            
             <div className="flex justify-end space-x-4 pt-6 border-t border-blue-200/50 dark:border-indigo-700/50">
               {editingId ? (
                 <>
@@ -532,8 +459,6 @@ export default function InternetBillsPage() {
             </div>
           </div>
         </div>
-
-        {/* Bills List */}
         <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:via-slate-800/50 dark:to-indigo-900/30 rounded-2xl shadow-2xl border border-blue-200/50 dark:border-indigo-700/50 backdrop-blur-sm">
           <div className="px-8 py-6 border-b border-blue-200/50 dark:border-indigo-700/50 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-800/50 dark:to-indigo-900/50 rounded-t-2xl">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -578,55 +503,15 @@ export default function InternetBillsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{expense.month}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">₹{expense.payment.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      {expense.documentPath ? (
-                        <button
-                          onClick={() => {
-                            try {
-                              if (!expense.documentPath) {
-                                toast.error('No document path found');
-                                return;
-                              }
-                              const filename = expense.documentPath.includes('/') ? expense.documentPath.split('/').pop() : expense.documentPath;
-                              if (!filename) {
-                                toast.error('Invalid document path');
-                                return;
-                              }
-                              // Try multiple endpoints for compatibility
-                              const encodedFilename = encodeURIComponent(filename);
-                              const urls = [
-                                `${APIURL}/api/files/${encodedFilename}`,
-                                `${APIURL}/files/${encodedFilename}`,
-                                `${APIURL}/api/internet-bills/files/${encodedFilename}`
-                              ];
-                              
-                              // Try first URL, if it fails, try others
-                              const tryUrl = async (urlIndex = 0) => {
-                                if (urlIndex >= urls.length) {
-                                  toast.error('File not found on server');
-                                  return;
-                                }
-                                
-                                try {
-                                  const response = await fetch(urls[urlIndex], { method: 'HEAD' });
-                                  if (response.ok) {
-                                    window.open(urls[urlIndex], '_blank');
-                                  } else {
-                                    tryUrl(urlIndex + 1);
-                                  }
-                                } catch {
-                                  tryUrl(urlIndex + 1);
-                                }
-                              };
-                              
-                              tryUrl();
-                            } catch {
-                              toast.error('Error opening document');
-                            }
-                          }}
+                      {expense.documentUrl ? (
+                        <a
+                          href={expense.documentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
                         >
                           📄 View
-                        </button>
+                        </a>
                       ) : (
                         <span className="text-gray-400">No document</span>
                       )}

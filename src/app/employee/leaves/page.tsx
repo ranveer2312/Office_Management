@@ -218,7 +218,7 @@ export default function LeavesPage() {
                     <CheckCircle className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                   </div>
                 </div>
-              </div>
+              </div> 
 
               {/* Pending */}
               <div className="bg-white/90 rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group hover:-translate-y-1">

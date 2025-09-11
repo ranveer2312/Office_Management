@@ -28,7 +28,7 @@ export default function CommissionsPage() {
     achieved: '',
     pending: '',
     payment: '',
-    payment_mode: 'CASH' as 'UPI' | 'BANK_TRANSFER' | 'CASH' | 'CARD' | 'CHEQUE',
+    paymentMode: 'CASH' as 'UPI' | 'BANK_TRANSFER' | 'CASH' | 'CARD' | 'CHEQUE',
     remarks: '',
     date: ''
   });
@@ -60,7 +60,7 @@ export default function CommissionsPage() {
   };
 
   const handleAddExpense = async () => {
-    if (!newExpense.fixedTarget || !newExpense.recipient || !newExpense.achieved || !newExpense.pending || !newExpense.payment || !newExpense.payment_mode || !newExpense.date) {
+    if (!newExpense.fixedTarget || !newExpense.recipient || !newExpense.achieved || !newExpense.pending || !newExpense.payment || !newExpense.paymentMode || !newExpense.date) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -72,7 +72,7 @@ export default function CommissionsPage() {
         achieved: parseFloat(newExpense.achieved),
         pending: parseFloat(newExpense.pending),
         payment: parseFloat(newExpense.payment),
-        paymentMode: newExpense.payment_mode,
+        paymentMode: newExpense.paymentMode,
         remarks: newExpense.remarks,
         date: newExpense.date
       };
@@ -80,6 +80,7 @@ export default function CommissionsPage() {
       let url = BASE_URL;
       let body: FormData | string;
       let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      let method = 'POST';
       
       if (selectedFile) {
         const formData = new FormData();
@@ -92,28 +93,20 @@ export default function CommissionsPage() {
         body = JSON.stringify(expenseToAdd);
       }
       
-      console.log('Sending request to:', url);
-      console.log('Request body:', body);
-      console.log('Request headers:', headers);
-      
       const res = await fetch(url, {
-        method: 'POST',
+        method,
         headers,
         body,
       });
       
-      console.log('Response status:', res.status);
-      console.log('Response headers:', res.headers);
-      
       if (res.ok) {
         const saved = await res.json();
         setExpenses([...expenses, saved]);
-        setNewExpense({ fixedTarget: '', recipient: '', achieved: '', pending: '', payment: '', payment_mode: 'CASH', remarks: '', date: '' });
+        setNewExpense({ fixedTarget: '', recipient: '', achieved: '', pending: '', payment: '', paymentMode: 'CASH', remarks: '', date: '' });
         setSelectedFile(null);
         toast.success('Expense added successfully');
       } else {
         const errorText = await res.text();
-        console.error('Error response:', errorText);
         toast.error(`Error ${res.status}: ${errorText || 'Failed to add expense'}`);
       }
     } catch (error) {
@@ -136,15 +129,12 @@ export default function CommissionsPage() {
   const handleEditClick = (expense: CommissionExpense) => {
     setEditingIdx(expense.id);
     
-    // Format date for input field (YYYY-MM-DD)
     const formatDateForInput = (dateStr: string) => {
       if (!dateStr) return '';
       try {
-        // If already in YYYY-MM-DD format, return as is
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
           return dateStr;
         }
-        // Handle other date formats
         const date = new Date(dateStr);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -161,13 +151,12 @@ export default function CommissionsPage() {
       achieved: expense.achieved.toString(),
       pending: expense.pending.toString(),
       payment: expense.payment.toString(),
-      payment_mode: expense.paymentMode,
+      paymentMode: expense.paymentMode,
       remarks: expense.remarks,
       date: formatDateForInput(expense.date)
     });
     setSelectedFile(null);
     
-    // Extract and decode filename from document path
     const getFileNameFromPath = (path: string) => {
       if (!path) return '';
       const parts = path.split('/');
@@ -182,25 +171,21 @@ export default function CommissionsPage() {
     if (editingIdx === null) return;
     
     try {
-      // Get the current expense to preserve existing document path
-      const currentExpense = expenses.find(e => e.id === editingIdx);
-      
       const updatedExpense = {
         fixedTarget: parseFloat(newExpense.fixedTarget),
         recipient: newExpense.recipient,
         achieved: parseFloat(newExpense.achieved),
         pending: parseFloat(newExpense.pending),
         payment: parseFloat(newExpense.payment),
-        paymentMode: newExpense.payment_mode,
+        paymentMode: newExpense.paymentMode,
         remarks: newExpense.remarks,
         date: newExpense.date,
-        // Preserve existing document path if no new file is uploaded
-        documentPath: selectedFile ? undefined : (currentExpense?.documentPath || '')
       };
       
       let url = `${BASE_URL}/${editingIdx}`;
       let body: FormData | string;
       let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      let method = 'PUT';
       
       if (selectedFile) {
         const formData = new FormData();
@@ -214,7 +199,7 @@ export default function CommissionsPage() {
       }
       
       const res = await fetch(url, {
-        method: selectedFile ? 'POST' : 'PUT',
+        method,
         headers,
         body,
       });
@@ -223,7 +208,7 @@ export default function CommissionsPage() {
         const updated = await res.json();
         setExpenses(expenses.map(e => (e.id === editingIdx ? updated : e)));
         setEditingIdx(null);
-        setNewExpense({ fixedTarget: '', recipient: '', achieved: '', pending: '', payment: '', payment_mode: 'CASH', remarks: '', date: '' });
+        setNewExpense({ fixedTarget: '', recipient: '', achieved: '', pending: '', payment: '', paymentMode: 'CASH', remarks: '', date: '' });
         setSelectedFile(null);
         setExistingFileName('');
         toast.success('Expense updated successfully');
@@ -239,7 +224,7 @@ export default function CommissionsPage() {
 
   const handleCancelEdit = () => {
     setEditingIdx(null);
-    setNewExpense({ fixedTarget: '', recipient: '', achieved: '', pending: '', payment: '', payment_mode: 'CASH', remarks: '', date: '' });
+    setNewExpense({ fixedTarget: '', recipient: '', achieved: '', pending: '', payment: '', paymentMode: 'CASH', remarks: '', date: '' });
     setSelectedFile(null);
     setExistingFileName('');
   };
@@ -259,10 +244,10 @@ export default function CommissionsPage() {
           <input type="number" name="pending" placeholder="Pending" value={newExpense.pending} onChange={handleInputChange} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white" />
           <input type="number" name="payment" placeholder="Payment" value={newExpense.payment} onChange={handleInputChange} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white" />
           <input type="date" name="date" placeholder="Date" value={newExpense.date} onChange={handleInputChange} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white" />
-          <select name="payment_mode" value={newExpense.payment_mode} onChange={handleInputChange} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white">
+          <select name="paymentMode" value={newExpense.paymentMode} onChange={handleInputChange} className="p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white">
             <option value="CASH">CASH</option>
             <option value="UPI">UPI</option>
-            <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+            <option value="BANK_TRANSFER">BANK TRANSFER</option>
             <option value="CHEQUE">CHEQUE</option>
             <option value="CARD">CARD</option>
           </select>
@@ -354,41 +339,13 @@ export default function CommissionsPage() {
                       {expense.remarks}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      {(() => {
-                        console.log('Document path for expense', expense.id, ':', expense.documentPath);
-                        return expense.documentPath && expense.documentPath.trim() !== '' ? (
+                      {expense.documentPath ? (
                           <button
                             onClick={() => {
-                              try {
-                                if (!expense.documentPath) {
-                                  toast.error('No document available');
-                                  return;
-                                }
-                                let url;
-                                if (expense.documentPath.startsWith('http')) {
-                                  // Full URL from backend
-                                  url = expense.documentPath;
-                                } else if (expense.documentPath.startsWith('/uploads/')) {
-                                  // Replace /uploads/ with /files/
-                                  const filename = expense.documentPath.split('/').pop();
-                                  if (!filename) {
-                                    toast.error('Invalid document path');
-                                    return;
-                                  }
-                                  url = `${APIURL}/files/${encodeURIComponent(filename)}`;
-                                } else {
-                                  // Just filename
-                                  const filename = expense.documentPath.includes('/') ? expense.documentPath.split('/').pop() : expense.documentPath;
-                                  if (!filename) {
-                                    toast.error('Invalid document path');
-                                    return;
-                                  }
-                                  url = `${APIURL}/files/${encodeURIComponent(filename)}`;
-                                }
-                                window.open(url, '_blank');
-                              } catch (error) {
-                                console.error('Error opening document:', error);
-                                toast.error('Error opening document');
+                              if (expense.documentPath) {
+                                window.open(expense.documentPath, '_blank');
+                              } else {
+                                toast.error('No document available.');
                               }
                             }}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
@@ -397,8 +354,7 @@ export default function CommissionsPage() {
                           </button>
                         ) : (
                           <span className="text-gray-400">No document</span>
-                        );
-                      })()}
+                        )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       <button onClick={() => handleEditClick(expense)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mr-4">

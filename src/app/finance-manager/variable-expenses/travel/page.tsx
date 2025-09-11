@@ -10,79 +10,53 @@ import toast, { Toaster } from 'react-hot-toast';
 interface TravelExpense {
   id: number;
   vendor: string;
-  fromDate: number[] | string; // Backend returns LocalDate as array [year, month, day]
-  toDate: number[] | string; // Backend returns LocalDate as array [year, month, day]
+  fromDate: number[] | string;
+  toDate: number[] | string;
   noOfDays: number;
   advancePay: number;
   paymentMode: 'UPI' | 'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'CARD';
-  paymentDate: number[] | string; // Backend returns LocalDate as array [year, month, day]
+  paymentDate: number[] | string;
   remarks: string;
-  documentPath?: string; // Add document path field
+  documentPath?: string;
 }
 
-const API_URL = APIURL +'/api/travel';
+const API_URL = APIURL + '/api/travel';
 
 const travelAPI = {
   getAll: async (): Promise<TravelExpense[]> => {
-    console.log('Fetching from:', API_URL);
     const res = await fetch(API_URL);
     if (!res.ok) {
-      console.error('GET request failed:', res.status, res.statusText);
       throw new Error('Failed to fetch travel expenses');
     }
     return res.json();
   },
   create: async (expense: Omit<TravelExpense, 'id'>, file?: File): Promise<TravelExpense> => {
-    console.log('Sending data to backend:', expense);
-    console.log('API URL:', API_URL);
-    
-    try {
-      let url = API_URL;
-      let body: FormData | string;
-      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    let url = API_URL;
+    let body: FormData | string;
+    let headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-      if (file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('travelData', JSON.stringify(expense));
-        body = formData;
-        headers = {}; // Let browser set Content-Type for FormData
-        url = API_URL + '/upload';
-      } else {
-        body = JSON.stringify({
-          vendor: expense.vendor,
-          fromDate: expense.fromDate,
-          toDate: expense.toDate,
-          noOfDays: expense.noOfDays,
-          advancePay: expense.advancePay,
-          paymentMode: expense.paymentMode,
-          paymentDate: expense.paymentDate,
-          remarks: expense.remarks || ''
-        });
-      }
-      
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body,
-      });
-      
-      console.log('Response status:', res.status);
-      console.log('Response headers:', res.headers);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Backend error response:', errorText);
-        throw new Error(`Failed to create travel expense: ${res.status} ${res.statusText} - ${errorText}`);
-      }
-      
-      const result = await res.json();
-      console.log('Backend response:', result);
-      return result;
-    } catch (error) {
-      console.error('Network error:', error);
-      throw error;
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('travelData', JSON.stringify(expense));
+      body = formData;
+      headers = {}; // Let browser set Content-Type for FormData
+      url = API_URL + '/upload';
+    } else {
+      body = JSON.stringify(expense);
     }
+    
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to create travel expense: ${res.status} ${res.statusText} - ${errorText}`);
+    }
+    return res.json();
   },
   update: async (id: number, expense: Omit<TravelExpense, 'id'>, file?: File): Promise<TravelExpense> => {
     let url = `${API_URL}/${id}`;
@@ -97,16 +71,7 @@ const travelAPI = {
       headers = {};
       url = `${API_URL}/upload/${id}`;
     } else {
-      body = JSON.stringify({
-        vendor: expense.vendor,
-        fromDate: expense.fromDate,
-        toDate: expense.toDate,
-        noOfDays: expense.noOfDays,
-        advancePay: expense.advancePay,
-        paymentMode: expense.paymentMode,
-        paymentDate: expense.paymentDate,
-        remarks: expense.remarks || ''
-      });
+      body = JSON.stringify(expense);
     }
 
     const res = await fetch(url, {
@@ -116,7 +81,6 @@ const travelAPI = {
     });
     if (!res.ok) {
       const errorText = await res.text();
-      console.error('Backend error response:', errorText);
       throw new Error(`Failed to update travel expense: ${res.status} ${res.statusText}`);
     }
     return res.json();
@@ -148,20 +112,15 @@ export default function TravelPage() {
     const fetchExpenses = async () => {
       try {
         setLoading(true);
-        console.log('Fetching travel expenses...');
-        
         const data = await travelAPI.getAll();
-        console.log('Fetched expenses:', data);
         setExpenses(data || []);
       } catch (err) {
-        console.error('Error fetching expenses:', err);
         toast.error('Failed to fetch travel expenses');
         setExpenses([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchExpenses();
   }, []);
 
@@ -188,28 +147,7 @@ export default function TravelPage() {
         remarks: newExpense.remarks,
       };
       
-      let url = APIURL + '/api/travel';
-      let body: FormData | string;
-      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('travelData', JSON.stringify(expenseData));
-        body = formData;
-        headers = {};
-        url = APIURL + '/api/travel/upload';
-      } else {
-        body = JSON.stringify(expenseData);
-      }
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body,
-      });
-      if (!res.ok) throw new Error('Failed to add travel expense');
-      const added = await res.json();
+      const added = await travelAPI.create(expenseData, selectedFile || undefined);
       setExpenses([...expenses, added]);
       setNewExpense({ 
         vendor: '', 
@@ -225,7 +163,6 @@ export default function TravelPage() {
       setExistingFileName('');
       toast.success('Travel expense added successfully');
     } catch (err) {
-      console.error('Add failed:', err);
       toast.error(`Failed to add travel expense: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
@@ -236,7 +173,6 @@ export default function TravelPage() {
       setExpenses(expenses.filter(expense => expense.id !== id));
       toast.success('Travel expense deleted successfully');
     } catch (err) {
-      console.error('Delete failed:', err);
       toast.error('Failed to delete travel expense');
     }
   };
@@ -244,16 +180,13 @@ export default function TravelPage() {
   const handleEditClick = (expense: TravelExpense) => {
     setEditingId(expense.id);
     
-    // Format dates for input fields (YYYY-MM-DD)
     const formatDateForInput = (dateValue: number[] | string) => {
       if (!dateValue) return '';
       try {
-        // Handle array format [year, month, day]
         if (Array.isArray(dateValue) && dateValue.length === 3) {
           const [year, month, day] = dateValue;
           return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         }
-        // Handle string format
         if (typeof dateValue === 'string') {
           if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
             return dateValue;
@@ -281,7 +214,6 @@ export default function TravelPage() {
       remarks: expense.remarks,
     });
     
-    // Extract filename from document path and decode URL encoding
     const getFileNameFromPath = (path: string) => {
       if (!path) return '';
       const parts = path.split('/');
@@ -290,15 +222,16 @@ export default function TravelPage() {
     };
     
     setExistingFileName(getFileNameFromPath(expense.documentPath || ''));
-    setSelectedFile(null); // Reset file selection when editing
+    setSelectedFile(null);
   };
 
   const handleUpdateExpense = async () => {
-    if (!newExpense.vendor || !newExpense.fromDate || !newExpense.toDate || !newExpense.noOfDays || !newExpense.advancePay || !newExpense.paymentDate || editingId === null) return;
+    if (!newExpense.vendor || !newExpense.fromDate || !newExpense.toDate || !newExpense.noOfDays || !newExpense.advancePay || !newExpense.paymentDate || editingId === null) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
     try {
-      // Get current expense to preserve document path
-      const currentExpense = expenses.find(e => e.id === editingId);
-      
       const expenseData = {
         vendor: newExpense.vendor,
         fromDate: newExpense.fromDate,
@@ -308,29 +241,10 @@ export default function TravelPage() {
         paymentMode: newExpense.paymentMode,
         paymentDate: newExpense.paymentDate,
         remarks: newExpense.remarks,
-        // Preserve existing document path if no new file
-        documentPath: selectedFile ? undefined : (currentExpense?.documentPath || '')
+        documentPath: selectedFile ? undefined : expenses.find(e => e.id === editingId)?.documentPath
       };
-      let url = APIURL + `/api/travel/${editingId}`;
-      let body: FormData | string;
-      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('travelData', JSON.stringify(expenseData));
-        body = formData;
-        headers = {};
-        url = APIURL + `/api/travel/upload/${editingId}`;
-      } else {
-        body = JSON.stringify(expenseData);
-      }
-      const res = await fetch(url, {
-        method: selectedFile ? 'POST' : 'PUT',
-        headers,
-        body,
-      });
-      if (!res.ok) throw new Error('Failed to update travel expense');
-      const updated = await res.json();
+
+      const updated = await travelAPI.update(editingId, expenseData, selectedFile || undefined);
       setExpenses(expenses.map(exp => (exp.id === editingId ? updated : exp)));
       setNewExpense({ 
         vendor: '', 
@@ -347,7 +261,6 @@ export default function TravelPage() {
       setEditingId(null);
       toast.success('Travel expense updated successfully');
     } catch (err) {
-      console.error('Update failed:', err);
       toast.error('Failed to update travel expense');
     }
   };
@@ -450,7 +363,6 @@ export default function TravelPage() {
           />
         </div>
         
-        {/* Document Upload */}
         <div className="mb-4">
           <DocumentUpload
             selectedFile={selectedFile}
@@ -575,39 +487,14 @@ export default function TravelPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                     {expense.documentPath ? (
-                      <button
-                        onClick={() => {
-                          try {
-                            if (!expense.documentPath) {
-                              toast.error('No document path found');
-                              return;
-                            }
-                            
-                            // Handle different path formats
-                            let url;
-                            if (expense.documentPath.startsWith('http')) {
-                              url = expense.documentPath;
-                            } else if (expense.documentPath.startsWith('/uploads/')) {
-                              url = `${APIURL}${expense.documentPath}`;
-                            } else {
-                              const filename = expense.documentPath.includes('/') ? expense.documentPath.split('/').pop() : expense.documentPath;
-                              if (!filename) {
-                                toast.error('Invalid document path');
-                                return;
-                              }
-                              url = `${APIURL}/files/${encodeURIComponent(filename)}`;
-                            }
-                            
-                            window.open(url, '_blank');
-                          } catch (error) {
-                            console.error('Error opening document:', error);
-                            toast.error('Error opening document');
-                          }
-                        }}
+                      <a
+                        href={expense.documentPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
                       >
                         📄 View
-                      </button>
+                      </a>
                     ) : (
                       <span className="text-gray-400">No document</span>
                     )}

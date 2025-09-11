@@ -70,7 +70,6 @@ export default function ElectricBillsPage() {
       ];
       const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt'];
       
-      // Check file type and extension
       const isValidType = allowedTypes.includes(file.type);
       const isValidExtension = allowedExtensions.some(ext => 
         file.name.toLowerCase().endsWith(ext)
@@ -81,7 +80,7 @@ export default function ElectricBillsPage() {
         toast.success(`File "${file.name}" selected successfully!`);
       } else {
         toast.error('Please select a valid file type (PDF, DOC, DOCX, or TXT)');
-        e.target.value = ''; // Clear the input
+        e.target.value = '';
         setSelectedFile(null);
       }
     }
@@ -158,19 +157,15 @@ export default function ElectricBillsPage() {
 
   const handleEditClick = (expense: ElectricBillExpense) => {
     setEditingId(expense.id);
-    
-    // Format dates for input fields (YYYY-MM-DD)
     const formatDateForInput = (dateStr: string | number[]) => {
       if (!dateStr) return '';
       try {
         if (Array.isArray(dateStr) && dateStr.length >= 3) {
-          // Handle array format [year, month, day] - format directly to avoid timezone issues
           const year = dateStr[0];
           const month = String(dateStr[1]).padStart(2, '0');
           const day = String(dateStr[2]).padStart(2, '0');
           return `${year}-${month}-${day}`;
         } else {
-          // Handle string format
           const date = new Date(dateStr as string);
           if (isNaN(date.getTime())) {
             return '';
@@ -264,7 +259,6 @@ export default function ElectricBillsPage() {
     setSelectedFile(null);
     setExistingDocumentPath(null);
     setEditingId(null);
-    // Clear the file input
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -457,7 +451,6 @@ export default function ElectricBillsPage() {
                     </div>
                   )}
                   
-                  {/* Show existing document when editing */}
                   {editingId && existingDocumentPath && !selectedFile && (
                     <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                       <div className="flex items-center justify-between">
@@ -466,7 +459,11 @@ export default function ElectricBillsPage() {
                           <button
                             onClick={() => {
                               try {
-                                window.open(`${APIURL}${existingDocumentPath}`, '_blank');
+                                if (existingDocumentPath) {
+                                  window.open(existingDocumentPath, '_blank');
+                                } else {
+                                  toast.error('No document path found.');
+                                }
                               } catch {
                                 toast.error('Error opening document');
                               }
@@ -569,10 +566,11 @@ export default function ElectricBillsPage() {
                         <button
                           onClick={() => {
                             try {
-                              const url = expense.documentPath?.startsWith('/') 
-                                ? `${APIURL}${expense.documentPath}` 
-                                : `${APIURL}/uploads/${expense.documentPath}`;
-                              window.open(url, '_blank');
+                                if (expense.documentPath) {
+                                    window.open(expense.documentPath, '_blank');
+                                } else {
+                                    toast.error('No document path found.');
+                                }
                             } catch {
                               toast.error('Error opening document');
                             }

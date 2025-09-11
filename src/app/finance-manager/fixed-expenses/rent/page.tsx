@@ -610,12 +610,10 @@ export default function RentPage() {
                         <span className="text-sm font-medium text-green-700 dark:text-green-300">📄 Current Document:</span>
                         <button
                           onClick={() => {
-                            try {
-                              const filename = existingDocumentPath?.includes('/') ? existingDocumentPath.split('/').pop() : existingDocumentPath;
-                              const url = `${APIURL}/uploads/${filename}`;
-                              window.open(url, '_blank');
-                            } catch {
-                              toast.error('Error opening document');
+                            if (existingDocumentPath) {
+                              window.open(existingDocumentPath, '_blank');
+                            } else {
+                              toast.error('No document URL found.');
                             }
                           }}
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline text-sm"
@@ -706,7 +704,7 @@ export default function RentPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Document
                   </th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -744,12 +742,10 @@ export default function RentPage() {
                       {expense.documentPath ? (
                         <button
                           onClick={() => {
-                            try {
-                              const filename = expense.documentPath?.includes('/') ? expense.documentPath.split('/').pop() : expense.documentPath;
-                              const url = `${APIURL}/uploads/${filename}`;
-                              window.open(url, '_blank');
-                            } catch {
-                              toast.error('Error opening document');
+                            if (expense.documentPath) {
+                              window.open(expense.documentPath, '_blank');
+                            } else {
+                              toast.error('No document URL found.');
                             }
                           }}
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
