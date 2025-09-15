@@ -9,7 +9,7 @@ import {
   Award, 
   UserPlus, 
   Clock,
- 
+  
   LucideIcon,
 } from 'lucide-react';
 
@@ -36,14 +36,8 @@ export default function HRLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
- 
-
-
-
   return (
-    <div className="min-h-screen bg-gray-50">
-     
-   
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Tabs */}
         <div className="mb-8">
@@ -76,4 +70,4 @@ export default function HRLayout({
       </div>
     </div>
   );
-} 
+}

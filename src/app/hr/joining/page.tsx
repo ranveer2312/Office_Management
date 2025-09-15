@@ -1,7 +1,5 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image'; // <-- Import the Image component
 import {
   Search,
   Plus,
@@ -18,16 +16,15 @@ import {
 } from 'lucide-react';
 import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
-import Loader from '@/components/Loader';
 
 import axios from 'axios';
-
+ 
 interface Employee {
   id: string;
   employeeId: string;
   employeeName: string;
   email: string;
-  password:string;
+  password: string;
   phoneNumber: string;
   bloodGroup: string;
   profilePhotoUrl: string | null;
@@ -36,19 +33,17 @@ interface Employee {
   position: string;
   department: string;
   joiningDate: string; // YYYY-MM-DD
-  //added DOB
-  dateOfBirth?: string; // YYYY-MM-DD
   status: 'Active' | 'Joining' | 'Exit';
 }
-
+ 
 interface ApiEmployeeResponse extends Omit<Employee, 'joiningDate' | 'status'> {
   joiningDate: [number, number, number] | string;
   status: string;
 }
-
+ 
 const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Employee => {
   let formattedDate = '';
-  
+  
   try {
     if (Array.isArray(apiEmployee.joiningDate) && apiEmployee.joiningDate.length === 3) {
       const [year, month, day] = apiEmployee.joiningDate;
@@ -75,7 +70,7 @@ const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Emp
     console.error('Date parsing error:', error);
     formattedDate = new Date().toISOString().split('T')[0];
   }
-  
+  
   return {
     id: apiEmployee.id,
     employeeId: apiEmployee.employeeId,
@@ -95,7 +90,7 @@ const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Emp
 };
 
 const API_BASE_URL = `${APIURL}/api/employees`;
-
+ 
 const employeesAPI = {
   getAll: async (): Promise<Employee[]> => {
     const res = await fetch(API_BASE_URL);
@@ -103,41 +98,41 @@ const employeesAPI = {
     const data: ApiEmployeeResponse[] = await res.json();
     return data.map(transformEmployeeFromApiResponse);
   },
-  
+ 
   create: async (employee: Omit<Employee, 'id'>, profilePhotoFile?: File | null): Promise<Employee> => {
     const formData = new FormData();
     formData.append('employee', JSON.stringify(employee));
     if (profilePhotoFile) {
       formData.append('photo', profilePhotoFile);
     }
-    
+   
     const res = await fetch(API_BASE_URL, {
       method: 'POST',
       body: formData,
     });
-
+ 
     if (!res.ok) throw new Error('Failed to create employee');
     const data: ApiEmployeeResponse = await res.json();
     return transformEmployeeFromApiResponse(data);
   },
-  
+ 
   update: async (id: string, employee: Omit<Employee, 'id'>, profilePhotoFile?: File | null): Promise<Employee> => {
     const formData = new FormData();
     formData.append('employee', JSON.stringify(employee));
     if (profilePhotoFile) {
       formData.append('photo', profilePhotoFile);
     }
-
+ 
     const res = await fetch(`${API_BASE_URL}/${id}`, {
       method: 'PUT',
       body: formData,
     });
-
+ 
     if (!res.ok) throw new Error('Failed to update employee');
     const data: ApiEmployeeResponse = await res.json();
     return transformEmployeeFromApiResponse(data);
   },
-  
+ 
   delete: async (id: string): Promise<void> => {
     const res = await fetch(`${API_BASE_URL}/${id}`, {
       method: 'DELETE',
@@ -145,7 +140,7 @@ const employeesAPI = {
     if (!res.ok) throw new Error('Failed to delete employee');
   },
 };
-
+ 
 // Add axios-based multi-part form data functions
 const submitEmployee = async (employeeObj: Omit<Employee, 'id'>, photoFile?: File | null) => {
   const formData = new FormData();
@@ -170,7 +165,6 @@ const submitEmployee = async (employeeObj: Omit<Employee, 'id'>, photoFile?: Fil
   }
 };
 
-
 const updateEmployee = async (id: string, employeeObj: Omit<Employee, 'id'>, photoFile?: File | null) => {
   const formData = new FormData();
   formData.append('employee', JSON.stringify(employeeObj));
@@ -193,9 +187,9 @@ const updateEmployee = async (id: string, employeeObj: Omit<Employee, 'id'>, pho
     throw new Error(error instanceof Error ? error.message : 'Failed to update employee');
   }
 };
-
+ 
 type ModalType = 'add' | 'edit' | 'view';
-
+ 
 export default function JoiningPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -206,60 +200,63 @@ export default function JoiningPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
-  
+  
   // Error boundary state
   const [hasError, setHasError] = useState(false);
   const departmentOptions = [
-      'Sales and marketing', 'IT', 'Backend operations', 'design and development', 'HR', 'Manpower and internship', 'Other'
+    'Sales and marketing', 'IT', 'Backend operations', 'design and development', 'HR', 'Manpower and internship', 'Other'
   ];
+ 
   const bloodGroupOptions = [
-    '', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
+    'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
   ];
+ 
   const [formError, setFormError] = useState('');
-  
+ 
   // Add country code options
   const countryCodeOptions = ['+91', '+1', '+44', '+61', '+81', '+971', '+49', '+86', '+33', '+7'];
   const [countryCode, setCountryCode] = useState<string>(countryCodeOptions[0]);
   const [phoneNumberOnly, setPhoneNumberOnly] = useState<string>('');
-  
+ 
   // Add a state for employee ID error
   const [employeeIdError, setEmployeeIdError] = useState('');
   // Add a state for employee ID prefix
   const [employeeIdPrefix, setEmployeeIdPrefix] = useState('EMPTA');
-  
+ 
   const isViewMode = modalType === 'view';
-  
+
+  // FIX 1: Extracted the data fetching logic into its own function for reusability.
+  const fetchEmployees = async () => {
+    setIsLoading(true);
+    setError(null);
+    setHasError(false);
+    try {
+      const data = await employeesAPI.getAll();
+      setEmployees(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch employees');
+      setEmployees([]);
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+ 
   useEffect(() => {
-    const fetchEmployees = async () => {
-      setIsLoading(true);
-      setError(null);
-      setHasError(false);
-      try {
-        const data = await employeesAPI.getAll();
-        setEmployees(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-        setError(error instanceof Error ? error.message : 'Failed to fetch employees');
-        setEmployees([]);
-        setHasError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchEmployees();
   }, []);
-  
+ 
   // Update formData.phoneNumber when either changes
   useEffect(() => {
     setFormData({ ...formData, phoneNumber: countryCode + phoneNumberOnly });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countryCode, phoneNumberOnly]);
-  
+ 
   // Real-time check for duplicate Employee ID and enforce 'EMP' prefix
   useEffect(() => {
     if (!formData.employeeId) {
@@ -281,7 +278,7 @@ export default function JoiningPage() {
       setEmployeeIdError('');
     }
   }, [formData, employees, modalType, selectedEmployee]);
-  
+ 
   const openModal = (type: ModalType, employee?: Employee) => {
     setModalType(type);
     setSelectedEmployee(employee || null);
@@ -322,14 +319,13 @@ export default function JoiningPage() {
         email: '',
         password: '',
         phoneNumber: '',
-        bloodGroup: '',
+        bloodGroup: '', 
         currentAddress: '',
         permanentAddress: '',
         position: '',
         department: '',
-        joiningDate: '',
-        dateOfBirth: '',
-        status: 'Active',
+        joiningDate: new Date().toISOString().split('T')[0],
+        status: 'Joining',
         profilePhotoUrl: '',
       });
       setCountryCode(countryCodeOptions[0]);
@@ -350,15 +346,16 @@ export default function JoiningPage() {
     }
     setShowModal(true);
   };
-  
+ 
   const closeModal = () => {
     setShowModal(false);
     setSelectedEmployee(null);
     setFormData({});
     setProfilePhotoFile(null);
     setProfilePhotoPreview(null);
+    setFormError(''); // FIX 2: Reset form error on modal close.
   };
-  
+ 
   const handleSubmit = async () => {
     setFormError('');
     if (employeeIdError) {
@@ -424,38 +421,32 @@ export default function JoiningPage() {
       setFormError('Blood Group is required.');
       return;
     }
-    setIsSubmitting(true);
     try {
       if (modalType === 'add') {
-        const newEmployee = await submitEmployee(formData as Omit<Employee, 'id'>, profilePhotoFile);
-        setEmployees([...employees, newEmployee]);
+        await submitEmployee(formData as Omit<Employee, 'id'>, profilePhotoFile);
         toast.success('Employee added successfully');
       } else if (modalType === 'edit' && selectedEmployee) {
         await updateEmployee(selectedEmployee.id, formData as Omit<Employee, 'id'>, profilePhotoFile);
-        // Refresh the employee list to get the latest data
-        const refreshedData = await employeesAPI.getAll();
-        setEmployees(refreshedData);
         toast.success('Employee updated successfully');
       }
+      await fetchEmployees(); // FIX 3: Refetch employees after a successful API call to ensure the list is up-to-date.
       closeModal();
     } catch (error) {
       console.error('Error saving employee:', error);
       let errorMessage = 'Failed to save employee';
       
-      if (error instanceof Error) {
-        errorMessage = error.message;
+      if (axios.isAxiosError(error)) {
+        errorMessage = error.response?.data?.message || error.response?.data || error.message;
       } else if (typeof error === 'string') {
         errorMessage = error;
       } else if (error && typeof error === 'object') {
-        errorMessage = (error as { message?: string }).message || JSON.stringify(error);
+        errorMessage = (error as any).message || JSON.stringify(error);
       }
       
       toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
     }
   };
-  
+ 
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this employee record?')) {
       try {
@@ -468,11 +459,11 @@ export default function JoiningPage() {
       }
     }
   };
-  
+ 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
-  
+ 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch =
       employee.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -483,25 +474,25 @@ export default function JoiningPage() {
     const matchesStatus = selectedStatus === 'all' || employee.status === selectedStatus;
     return matchesSearch && matchesDepartment && matchesStatus;
   });
-  
+ 
   const departments = [ 'all','Sales and marketing', 'IT', 'Backend operations', 'design and development', 'HR', 'Manpower and internship', 'Other'];
   const statuses = ['all', 'Active', 'Joining', 'Exit'];
-  
+ 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <Loader />
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-gray-600">Loading employees...</div>
       </div>
     );
   }
-  
+ 
   if (error || hasError) {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="text-red-600">
           <p>Error: {error || 'Something went wrong'}</p>
-          <button
-            onClick={() => window.location.reload()}
+          <button 
+            onClick={() => window.location.reload()} 
             className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Reload Page
@@ -510,7 +501,7 @@ export default function JoiningPage() {
       </div>
     );
   }
-  
+ 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Toaster position="top-right" />
@@ -525,7 +516,7 @@ export default function JoiningPage() {
             <span>New Employee</span>
           </button>
         </div>
-
+ 
         {/* Search and Filter Bar */}
         <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -565,7 +556,7 @@ export default function JoiningPage() {
             </div>
           </div>
         </div>
-
+ 
         {/* Employees Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-6">
           {filteredEmployees.map((employee) => {
@@ -574,12 +565,10 @@ export default function JoiningPage() {
                 <div className="flex items-center mb-4">
                   {employee.profilePhotoUrl ? (
                     <div className="w-16 h-16 mr-4 shrink-0 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                      <Image
+                      <img 
                         src={employee.profilePhotoUrl}
-                        alt={employee.employeeName || 'Employee'}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
+                        alt={employee.employeeName}
+                        className="w-full h-full object-cover" 
                       />
                     </div>
                   ) : (
@@ -597,7 +586,7 @@ export default function JoiningPage() {
                     <p className="text-sm text-gray-500">{employee.position}</p>
                   </div>
                 </div>
-
+ 
                 <div className="space-y-2 text-sm text-gray-600 mb-4 flex-grow">
                   <div className="flex items-center">
                     <User className="w-4 h-4 mr-2" />
@@ -620,7 +609,7 @@ export default function JoiningPage() {
                     <span>{employee.phoneNumber}</span>
                   </div>
                 </div>
-
+ 
                 <div className="flex space-x-2 mt-auto pt-4 border-t border-gray-100">
                   <button
                     onClick={() => openModal('view', employee)}
@@ -647,7 +636,7 @@ export default function JoiningPage() {
             );
           })}
         </div>
-
+ 
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -670,20 +659,15 @@ export default function JoiningPage() {
                   </button>
                 </div>
               </div>
-
+ 
               <div className="p-6">
                 {isViewMode ? (
                   <div className="space-y-4">
                     <div className="flex justify-center mb-4">
                       {selectedEmployee?.profilePhotoUrl ? (
                         <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                          <Image
-                            src={selectedEmployee.profilePhotoUrl}
-                            alt={selectedEmployee.employeeName || 'Employee'}
-                            width={120}
-                            height={120}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={selectedEmployee.profilePhotoUrl}
+                            alt={selectedEmployee.employeeName || 'Employee'} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center">
@@ -741,12 +725,8 @@ export default function JoiningPage() {
                         <p className="text-sm text-gray-600">Blood Group</p>
                         <p className="font-medium">{selectedEmployee?.bloodGroup}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Date of Birth</p>
-                        <p className="font-medium">{selectedEmployee?.dateOfBirth || 'Not provided'}</p>
-                      </div>
                     </div>
-
+ 
                     <div>
                       <p className="text-sm text-gray-600">Current Address</p>
                       <p className="font-medium">{selectedEmployee?.currentAddress}</p>
@@ -755,9 +735,9 @@ export default function JoiningPage() {
                       <p className="text-sm text-gray-600">Permanent Address</p>
                       <p className="font-medium">{selectedEmployee?.permanentAddress}</p>
                     </div>
-                    
+ 
                   </div>
-
+ 
                 ) : (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -800,7 +780,6 @@ export default function JoiningPage() {
                             className="w-full px-3 py-2 border-t border-b border-r border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={formData.employeeId ? formData.employeeId.replace(employeeIdPrefix, '') : ''}
                             onChange={e => {
-                              // Only allow alphanumeric characters
                               const val = e.target.value.replace(/[^0-9A-Za-z]/g, '');
                               setFormData({ ...formData, employeeId: employeeIdPrefix + val });
                             }}
@@ -865,7 +844,7 @@ export default function JoiningPage() {
                             type="text"
                             required
                             maxLength={10}
-                            pattern="\\d{10}"
+                            pattern="\d{10}"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={phoneNumberOnly}
                             onChange={e => {
@@ -895,8 +874,9 @@ export default function JoiningPage() {
                           value={formData.department || ''}
                           onChange={(e) => setFormData({...formData, department: e.target.value})}
                         >
+                          <option value="" disabled>Select department</option> 
                           {departmentOptions.map(opt => (
-                            <option key={opt} value={opt}>{opt ? opt : 'Select department'}</option>
+                            <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
                       </div>
@@ -915,7 +895,7 @@ export default function JoiningPage() {
                         <select
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={formData.status || 'Active'}
+                          value={formData.status || 'Joining'} 
                           onChange={(e) => setFormData({...formData, status: e.target.value as Employee['status']})}
                         >
                           <option value="Active">Active</option>
@@ -931,19 +911,11 @@ export default function JoiningPage() {
                           value={formData.bloodGroup || ''}
                           onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
                         >
+                          <option value="" disabled hidden>Select blood group</option>
                           {bloodGroupOptions.map(opt => (
-                            <option key={opt} value={opt}>{opt ? opt : 'Select blood group'}</option>
+                            <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                        <input
-                          type="date"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={formData.dateOfBirth || ''}
-                          onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
@@ -975,18 +947,16 @@ export default function JoiningPage() {
                         </div>
                         {profilePhotoPreview && (
                           <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mt-4">
-                            <Image
+                            <img
                               src={profilePhotoPreview}
                               alt="Profile Preview"
-                              width={120}
-                              height={120}
                               className="w-full h-full object-cover"
                             />
                           </div>
                         )}
                       </div>
                     </div>
-
+ 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Current Address</label>
                       <textarea
@@ -1005,15 +975,14 @@ export default function JoiningPage() {
                         onChange={(e) => setFormData({...formData, permanentAddress: e.target.value})}
                       />
                     </div>
-                    
+ 
                     {formError && <div className="text-red-600 text-sm mb-2">{formError}</div>}
                     <div className="flex space-x-3 pt-4">
                       <button
                         type="button"
                         onClick={handleSubmit}
-                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                         disabled={
-                          isSubmitting ||
                           !formData.employeeId ||
                           !formData.employeeName ||
                           !formData.email ||
@@ -1025,13 +994,7 @@ export default function JoiningPage() {
                           !formData.bloodGroup
                         }
                       >
-                        {isSubmitting ? (
-                          <div className="w-5 h-5">
-                            <Loader />
-                          </div>
-                        ) : (
-                          modalType === 'add' ? 'Add Employee' : 'Update Employee'
-                        )}
+                        {modalType === 'add' ? 'Add Employee' : 'Update Employee'}
                       </button>
                       <button
                         type="button"

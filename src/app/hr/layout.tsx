@@ -1,366 +1,289 @@
 'use client';
 
-
-import React, { useState, useEffect } from 'react';
-import {
-  Home,
-  FileText,
-  Archive,
-  Calendar,
-  Activity,
-  UserPlus,
-  TrendingUp,
-  GraduationCap,
-  LogOut,
-
-
-  Bell,
-  User,
-  Menu,
-  X
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { APIURL } from '@/constants/api';
+import {
+  Calendar, FileText, Clock, Briefcase, Star, BookOpen,
+  Laptop, User, LogOut, LayoutDashboard, BarChart2,
+  ChevronRight, StickyNote, Sun, CloudSun, Moon, RefreshCw, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
+} from 'lucide-react';
+import Image from 'next/image';
+import { Poppins } from 'next/font/google';
 
-
-
-
-
-
-
-
-// ------------------- Interfaces --------------------
-interface LeaveRequest {
-  id: string;
+// Interfaces for data type
+interface Employee {
   employeeName: string;
-  leaveType: string;
-  startDate: string;
+  position: string;
+  profilePhotoUrl?: string;
+}
+
+interface Attendance {
   status: string;
 }
 
+// Poppins font for consistent typography
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+});
 
+// Reusable component for sidebar navigation items
+type NavItemProps = {
+  icon: React.ReactNode;
+  label: string;
+  href?: string;
+  active?: boolean;
+  onClick?: () => void;
+};
 
+const NavItem = ({ icon, label, href = '#', active = false, onClick }: NavItemProps) => (
+  <Link
+    href={href}
+    onClick={onClick}
+    className={`group flex items-center justify-between px-4 py-3.5 text-sm font-medium rounded-2xl cursor-pointer transition-all duration-300 ${
+      active
+        ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 text-white shadow-xl scale-105 border border-blue-400/50'
+        : 'text-slate-600 hover:bg-gradient-to-r hover:from-slate-100 hover:via-blue-50 hover:to-slate-100 hover:text-slate-800 hover:scale-102 hover:border hover:border-slate-200'
+    }`}
+  >
+    <div className="flex items-center">
+      <div className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'} transition-colors`}>
+        {icon}
+      </div>
+      <span className="ml-3 font-medium">{label}</span>
+    </div>
+    {!active && <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />}
+  </Link>
+);
 
+// Sidebar component
+type SidebarProps = {
+  employee: Employee | null;
+  profilePhoto: string;
+  onLogout: () => void;
+  isSidebarOpen: boolean;
+  onClose: () => void;
+};
 
+const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: SidebarProps) => {
+  const pathname = usePathname();
 
-
-
-interface Employee {
-  id: string;
-  name: string;
-  status?: string;
-}
-
-
-
-
-
-
-
-
-// ------------------- Sidebar Items -------------------
-const sidebarItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/hr', active: true },
-  { id: 'documents', label: 'Document Vault', icon: FileText, path: '/hr/documents' },
-  { id: 'assets', label: 'Asset Tracker', icon: Archive, path: '/hr/assets' },
-  { id: 'leave', label: 'Leave Management', icon: Calendar, path: '/hr/leaves' },
-  { id: 'performance', label: 'Performance Plus', icon: Activity, path: '/hr/performance' },
-  { id: 'onboarding', label: 'Smart Onboarding', icon: UserPlus, path: '/hr/joining' },
-  { id: 'activities', label: 'Activity Stream', icon: TrendingUp, path: '/hr/activities' },
-  { id: 'training', label: 'Training and Development', icon: GraduationCap, path: '/hr/training' }
-];
-
-
-
-
-
-
-
-
-// ------------------- Notification Bell -------------------
-const NotificationBell = () => {
-  const [notifications, setNotifications] = useState<LeaveRequest[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-
-  useEffect(() => {
-    fetch(`${APIURL}/api/leave-requests`)
-      .then(res => res.json())
-      .then((data: LeaveRequest[]) => {
-        const pendingRequests = data.filter((req: LeaveRequest) => req.status === 'Pending');
-        setNotifications(pendingRequests);
-        setUnreadCount(pendingRequests.length);
-      })
-      .catch(() => {
-        setNotifications([]);
-        setUnreadCount(0);
-      });
-  }, []);
-
+  // HR-specific sidebar items
+  const sidebarItems = [
+    { icon: <Home size={20} />, label: 'Dashboard', href: '/hr' },
+    { icon: <FileText size={20} />, label: 'Document Vault', href: '/hr/documents' },
+    { icon: <Archive size={20} />, label: 'Asset Tracker', href: '/hr/assets' },
+    { icon: <Calendar size={20} />, label: 'Leave Management', href: '/hr/leaves' },
+    { icon: <Activity size={20} />, label: 'Performance Plus', href: '/hr/performance' },
+    { icon: <UserPlus size={20} />, label: 'Smart Onboarding', href: '/hr/joining' },
+    { icon: <TrendingUp size={20} />, label: 'Activity Stream', href: '/hr/activities' },
+    { icon: <GraduationCap size={20} />, label: 'Training & Development', href: '/hr/training' },
+  ];
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setShowDropdown(!showDropdown)}
-        className="relative p-2 sm:p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-      >
-        <Bell className="w-5 h-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
+    <>
+      {/* Mobile Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
 
-
-      {showDropdown && (
-        <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-xl shadow-lg border border-slate-200 z-50 max-w-[calc(100vw-2rem)]">
-          <div className="p-4 border-b border-slate-200">
-            <h3 className="font-semibold text-slate-900">Leave Requests</h3>
+      <aside className={`fixed top-0 left-0 w-80 h-full bg-white flex flex-col shrink-0 shadow-2xl border-r border-slate-200/60 z-50 transition-transform duration-300 ${isSidebarOpen ? 'transform translate-x-0' : 'transform -translate-x-full'} lg:translate-x-0`}>
+        <div className="h-24 flex items-center justify-between px-6 border-b border-slate-200/60 bg-gradient-to-r from-white to-slate-50">
+          <div className="flex items-center space-x-3">
+            <Image
+              src="/hrlogo.png"
+              alt="HR Logo"
+              width={180}
+              height={50}
+              className="h-12 w-auto"
+              priority
+            />
           </div>
-          <div className="max-h-64 overflow-y-auto">
-            {notifications.length > 0 ? (
-              notifications.map((notification) => (
-                <div key={notification.id} className="p-4 border-b border-slate-100 hover:bg-slate-50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 truncate">{notification.employeeName}</p>
-                      <p className="text-sm text-slate-600 truncate">{notification.leaveType}</p>
-                      <p className="text-xs text-slate-500">Start: {notification.startDate}</p>
-                    </div>
-                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full ml-2 flex-shrink-0">
-                      {notification.status}
-                    </span>
-                  </div>
-                </div>
-              ))
+          <button onClick={onClose} className="p-2 lg:hidden text-slate-500 hover:text-slate-800 transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+        <nav className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+          {sidebarItems.map((link) => (
+            <NavItem
+              key={link.label}
+              icon={link.icon}
+              label={link.label}
+              href={link.href}
+              active={pathname === link.href}
+              onClick={onClose}
+            />
+          ))}
+        </nav>
+        <div className="p-6 border-t border-slate-200/60">
+          <div className="flex items-center space-x-3 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-200 backdrop-blur-sm">
+            {profilePhoto ? (
+              <Image
+                src={profilePhoto}
+                alt={employee?.employeeName || 'User'}
+                width={48}
+                height={48}
+                className="w-12 h-12 rounded-full object-cover border-2 border-blue-400/60 shadow-lg"
+              />
             ) : (
-              <div className="p-4 text-center text-slate-500">
-                No pending leave requests
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
+                <User size={20} className="text-white" />
               </div>
             )}
-          </div>
-          {notifications.length > 0 && (
-            <div className="p-4 border-t border-slate-200">
-              <Link href="/hr/leaves" className="text-blue-600 text-sm hover:underline">
-                View all leave requests →
-              </Link>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 truncate">
+                {employee?.employeeName.split(' ')[0] || 'Bharath'}
+              </p>
+              <p className="text-xs text-slate-500 truncate">{employee?.position || 'HR Manager'}</p>
             </div>
-          )}
+            <LogOut
+              size={18}
+              className="text-slate-500 hover:text-red-500 cursor-pointer transition-all duration-300 hover:scale-110"
+              onClick={onLogout}
+            />
+          </div>
         </div>
-      )}
-    </div>
+      </aside>
+    </>
   );
 };
 
+// Header component
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: 'Good Morning', icon: <Sun size={32} className="text-amber-500" /> };
+  if (hour < 17) return { text: 'Good Afternoon', icon: <CloudSun size={32} className="text-sky-500" /> };
+  return { text: 'Good Evening', icon: <Moon size={32} className="text-indigo-500" /> };
+};
 
+const motivationalQuotes = [
+  "The secret of getting ahead is getting started.",
+  "Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work.",
+  "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+  "The future belongs to those who believe in the beauty of their dreams."
+];
 
+type HeaderProps = {
+  employee: Employee | null;
+  todayAttendance: Attendance | null;
+  onRefresh: () => void;
+  loading: boolean;
+  onMenuClick: () => void;
+};
 
-
-
-
-
-// ------------------- Welcome Section -------------------
-const WelcomeSection = () => {
-  const [currentDate, setCurrentDate] = useState('');
-  const [greeting, setGreeting] = useState('');
-  const [activeEmployees, setActiveEmployees] = useState('...');
-
+const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: HeaderProps) => {
+  const greeting = getGreeting();
+  const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const [currentQuote, setCurrentQuote] = useState(motivationalQuotes[0]);
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 18) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
-
-
-    const today = new Date();
-    setCurrentDate(today.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }));
-
-
-    fetch(`${APIURL}/api/employees`)
-      .then(res => res.json())
-      .then((data: Employee[]) => {
-        const active = data.filter((emp: Employee) => emp.status === 'Active' || !emp.status).length;
-        setActiveEmployees(active.toString());
-      })
-      .catch(() => setActiveEmployees('N/A'));
+    const interval = setInterval(() => {
+      setCurrentQuote(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
+    }, 10000); // Change quote every 10 seconds
+    return () => clearInterval(interval);
   }, []);
 
-
   return (
-    <div className="px-4 sm:px-6 py-4 sm:py-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-            Hello, {greeting}!
-          </h2>
-          <p className="text-slate-600 text-base sm:text-lg">
-            Here&apos;s what&apos;s happening with your team today.
-          </p>
+    <header className="h-24 bg-white/80 backdrop-blur-lg border-b border-slate-200/60 flex items-center justify-between px-4 sm:px-8 shadow-sm">
+      <div className="flex items-center space-x-3 sm:space-x-5">
+        <button onClick={onMenuClick} className="lg:hidden p-2 text-slate-600 hover:text-blue-600 transition-colors">
+          <Menu size={24} />
+        </button>
+        <div className="hidden sm:block p-2 bg-gradient-to-br from-amber-100 to-sky-100 rounded-2xl">
+          {greeting.icon}
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 text-sm text-slate-600">
-          <div className="bg-white rounded-lg px-3 sm:px-4 py-2 shadow-sm border border-slate-200 w-full sm:w-auto">
-            <span className="font-medium">Today:</span> <span className="block sm:inline">{currentDate}</span>
-          </div>
-          <div className="bg-white rounded-lg px-3 sm:px-4 py-2 shadow-sm border border-slate-200 w-full sm:w-auto">
-            <span className="font-medium">Active Employees:</span> {activeEmployees}
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+            {greeting.text}, {employee?.employeeName.split(' ')[0] || 'Bharath'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium transition-opacity duration-1000">{currentQuote}</p>
         </div>
       </div>
-    </div>
+      <div className="text-right">
+        <p className="hidden md:block text-sm font-semibold text-slate-800">
+          {currentDate}
+        </p>
+        <div className="flex items-center justify-end mt-1">
+          <div className={`w-2 h-2 rounded-full mr-2 ${todayAttendance?.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <p className="text-xs text-slate-500 font-medium capitalize">{todayAttendance?.status || 'Not checked in'}</p>
+        </div>
+      </div>
+    </header>
   );
 };
 
-
-
-
-
-
-
-
-// ------------------- HR Layout -------------------
+// Main HR Layout component
 export default function HRLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Use a hardcoded data for UI demonstration to avoid API errors
+  const fetchMockData = useCallback(() => {
+    setLoading(true);
+    // Mock API data to display the UI correctly
+    const mockEmployee = {
+      employeeName: 'Bharath',
+      position: 'HR Manager',
+      profilePhotoUrl: '', // You can add a URL here if you have one
+    };
+    const mockAttendance = {
+      status: 'present',
+    };
+    setEmployee(mockEmployee);
+    setProfilePhoto(''); // Use a hardcoded photo or leave empty for initials
+    setTodayAttendance(mockAttendance);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchMockData();
+  }, [fetchMockData]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('employeeId');
+    localStorage.removeItem('employeeToken');
+    router.replace('/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center text-slate-500">
+        Loading...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="px-4 sm:px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-             
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">HR</span>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-                  HR Manager
-                </h1>
-                <p className="text-sm text-slate-500 hidden md:block">Enterprise Workforce Management</p>
-              </div>
-            </div>
-
-
-            <div className="flex items-center space-x-2 sm:space-x-6">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <NotificationBell />
-
-
-                <div className="w-px h-6 bg-slate-200 hidden sm:block"></div>
-
-
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="text-sm hidden md:block">
-                    <div className="font-medium text-slate-900">Bharath</div>
-                    <div className="text-slate-500">HR Manager</div>
-                  </div>
-                </div>
-
-
-                <button
-                  onClick={() => {
-                    localStorage.removeItem('token');
-                    window.location.href = '/login';
-                  }}
-                  className="flex items-center space-x-2 px-2 sm:px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span className="text-sm font-medium hidden sm:inline">Logout</span>
-                </button>
-              </div>
-            </div>
+    <div className={`${poppins.variable} font-sans h-screen flex`}>
+      <Sidebar
+        employee={employee}
+        profilePhoto={profilePhoto}
+        onLogout={handleLogout}
+        isSidebarOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      <div className="flex flex-col flex-1 lg:ml-80 relative z-10">
+        <Header
+          employee={employee}
+          todayAttendance={todayAttendance}
+          onRefresh={fetchMockData}
+          loading={loading}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto relative bg-[url('/hrdash.png')] bg-cover bg-center bg-no-repeat">
+          <div className="absolute inset-0 bg-white/2" />
+          <div className="relative z-10 max-w-7xl mx-auto space-y-6">
+            {children}
           </div>
-        </div>
-
-
-        <div className="hidden lg:block">
-          <WelcomeSection />
-        </div>
-      </header>
-
-
-      <div className="flex relative">
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-
-        {/* Sidebar */}
-        <nav className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-sm transform transition-transform duration-300 ease-in-out lg:transform-none
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
-          <div className="flex items-center justify-between p-4 lg:hidden border-b border-slate-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">HR</span>
-              </div>
-              <span className="font-semibold text-slate-900">HR Manager</span>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-         
-          <div className="p-4 lg:p-6 overflow-y-auto h-full">
-            <div className="space-y-2">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.path}
-                    onClick={() => setSidebarOpen(false)}
-                    className="flex items-center space-x-3 p-3 rounded-lg transition-colors text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                  >
-                    <Icon className="w-5 h-5 flex-shrink-0 text-slate-400" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </nav>
-
-
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          {children}
         </main>
       </div>
     </div>
   );
 }
-
-
-
-
-
-
-

@@ -1,19 +1,16 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
   Search,
- 
 } from 'lucide-react';
 
 import axios from 'axios';
 import { APIURL } from '@/constants/api';
- 
 
- 
 interface AttendanceRecord {
   employeeId: string;
   employeeName: string;
@@ -21,27 +18,23 @@ interface AttendanceRecord {
   date: string;
   signIn: string | null;
   signOut: string | null;
-  status: 'present' | 'absent' | 'half-day' | 'late';
+  status: 'present' | 'absent' | 'half-day' | 'late' | 'not_marked';
   workHours: number;
-}
-
-interface Employee {
-  employeeId: string;
-  employeeName: string;
-  department: string;
+  workLocation: string | null;
 }
 
 interface BackendAttendanceRecord {
   employeeId: string;
-  date: number[] | string;
+  date: string;
   checkInTime: string | null;
   checkOutTime: string | null;
-  status: 'present' | 'absent' | 'half-day' | 'late';
+  status: 'present' | 'absent' | 'half-day' | 'late' | 'not_marked';
   workHours: number;
+  employeeName?: string;
+  department?: string;
+  workLocation?: string | null;
 }
- 
 
- 
 interface AttendanceStats {
   present?: number;
   late?: number;
@@ -51,54 +44,76 @@ interface AttendanceStats {
   totalWorkHours: number;
   avgWorkHours: string;
 }
- 
+
 export default function AdminAttendanceDashboard() {
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
- 
-  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month' | 'year'>('year');
+
+  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
- 
- 
+
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    const startDate = new Date(today);
+    const endDate = new Date(today);
+
+    switch (viewMode) {
+      case 'today':
+        break;
+      case 'week':
+        const dayOfWeek = today.getDay();
+        startDate.setDate(today.getDate() - dayOfWeek);
+        endDate.setDate(startDate.getDate() + 6);
+        break;
+      case 'month':
+        startDate.setDate(1);
+        endDate.setDate(new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate());
+        break;
+      case 'year':
+        startDate.setMonth(0, 1);
+        endDate.setMonth(11, 31);
+        break;
+      default:
+        break;
+    }
+    
+    const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+    };
+  }, [viewMode]);
+
   useEffect(() => {
     const fetchAttendance = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all attendance records
-        const attendanceResponse = await axios.get(`${APIURL}/a  pi/attendance`);
-        // Fetch all employees to get names and departments
-        const employeesResponse = await axios.get(`${APIURL}/api/employees`);
+        const { startDate, endDate } = getDateRange();
         
-        const employees = employeesResponse.data;
-        const employeeMap = employees.reduce((map: Record<string, Employee>, emp: Employee) => {
-          map[emp.employeeId] = emp;
-          return map;
-        }, {});
+        const attendanceResponse = await axios.get(`${APIURL}/api/attendance/by-date-range`, {
+          params: { startDate, endDate }
+        });
 
         const mappedData: AttendanceRecord[] = attendanceResponse.data.map((record: BackendAttendanceRecord) => {
-          const employee = employeeMap[record.employeeId] || {};
-          
-          // Handle date format - could be array or string
-          let dateStr: string;
-          if (Array.isArray(record.date)) {
-            const [year, month, day] = record.date;
-            dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          } else {
-            dateStr = record.date;
-          }
-
           return {
             employeeId: record.employeeId,
-            employeeName: employee.employeeName || 'Unknown',
-            department: employee.department || 'Unknown',
-            date: dateStr,
+            employeeName: record.employeeName || 'Unknown',
+            department: record.department || 'Unknown',
+            date: record.date,
             signIn: record.checkInTime,
             signOut: record.checkOutTime,
             status: record.status,
             workHours: record.workHours || 0,
+            workLocation: record.workLocation || '-',
           };
         });
         
@@ -111,8 +126,8 @@ export default function AdminAttendanceDashboard() {
       }
     };
     fetchAttendance();
-  }, []);
- 
+  }, [viewMode, getDateRange]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'present':
@@ -127,7 +142,7 @@ export default function AdminAttendanceDashboard() {
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
- 
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'present':
@@ -158,69 +173,30 @@ export default function AdminAttendanceDashboard() {
       return `${hrs} hour${hrs > 1 ? 's' : ''} ${mins} mins`;
     }
   };
- 
-  const filterDataByDateRange = () => {
-    // Create a timezone-safe 'YYYY-MM-DD' string for today's date
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayString = `${year}-${month}-${day}`;
-   
-    switch (viewMode) {
-      case 'today':
-        return attendanceData.filter(record => record.date === todayString);
-      case 'week':
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        return attendanceData.filter(record => {
-          const recordDate = new Date(record.date);
-          return recordDate >= weekStart && recordDate <= weekEnd;
-        });
-      case 'month':
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        return attendanceData.filter(record => {
-          const recordDate = new Date(record.date);
-          return recordDate >= monthStart && recordDate <= monthEnd;
-        });
-      case 'year':
-        const yearStart = new Date(today.getFullYear(), 0, 1);
-        const yearEnd = new Date(today.getFullYear(), 11, 31);
-        return attendanceData.filter(record => {
-          const recordDate = new Date(record.date);
-          return recordDate >= yearStart && recordDate <= yearEnd;
-        });
-      default:
-        return attendanceData;
-    }
-  };
- 
-  const filteredData = filterDataByDateRange().filter(record => {
+  
+  const filteredData = attendanceData.filter(record => {
     const matchesDepartment = selectedDepartment === 'all' || record.department === selectedDepartment;
     const matchesSearch = (record.employeeName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (record.department?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+                          (record.department?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     return matchesDepartment && matchesSearch;
   });
- 
+
   const calculateStats = () => {
     const stats = filteredData.reduce((acc, record) => {
       acc[record.status] = (acc[record.status] || 0) + 1;
       acc.total = (acc.total || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
- 
+
     const totalWorkHours = filteredData.reduce((sum, record) => sum + record.workHours, 0);
     const avgWorkHours = stats.total > 0 ? (totalWorkHours / stats.total).toFixed(1) : '0';
-   
+    
     return { ...stats, totalWorkHours, avgWorkHours };
   };
- 
+
   const stats: AttendanceStats = calculateStats();
   const departments = [...new Set(attendanceData.map(record => record.department))];
- 
+
   const renderStatsCards = () => {
     const statCards = [
       {
@@ -256,7 +232,7 @@ export default function AdminAttendanceDashboard() {
         borderColor: 'border-red-200'
       }
     ];
- 
+
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((card, index) => (
@@ -275,20 +251,18 @@ export default function AdminAttendanceDashboard() {
       </div>
     );
   };
- 
+
   const renderAttendanceTable = () => {
-    const groupedData = viewMode === 'today' ?
-      filteredData :
-      filteredData.reduce((acc, record) => {
-        const key = `${record.employeeId}-${record.date}`;
-        if (!acc[key]) {
-          acc[key] = record;
-        }
-        return acc;
-      }, {} as Record<string, AttendanceRecord>);
- 
-    const dataToShow = Array.isArray(groupedData) ? groupedData : Object.values(groupedData);
- 
+    const dataToShow = filteredData;
+    
+    if (dataToShow.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-lg font-medium text-gray-500">No attendance records found for this period.</p>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -317,14 +291,10 @@ export default function AdminAttendanceDashboard() {
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
-              {/* <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </button> */}
             </div>
           </div>
         </div>
-       
+        
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -336,6 +306,7 @@ export default function AdminAttendanceDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sign Out</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Hours</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Location</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -365,6 +336,9 @@ export default function AdminAttendanceDashboard() {
                       <span className="ml-1 capitalize">{record.status}</span>
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{record.workLocation || '-'}</div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -373,7 +347,7 @@ export default function AdminAttendanceDashboard() {
       </div>
     );
   };
- 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -384,7 +358,6 @@ export default function AdminAttendanceDashboard() {
         )}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-       
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Attendance Dashboard</h1>
               <p className="text-gray-600">Monitor and manage employee attendance records</p>
@@ -408,7 +381,7 @@ export default function AdminAttendanceDashboard() {
             </div>
           </div>
         </div>
- 
+
         {loading ? (
           <div className="text-center py-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -416,12 +389,7 @@ export default function AdminAttendanceDashboard() {
           </div>
         ) : (
           <>
-            {/* Stats Cards */}
             {renderStatsCards()}
- 
-   
- 
-            {/* Attendance Table */}
             {renderAttendanceTable()}
           </>
         )}
@@ -429,4 +397,3 @@ export default function AdminAttendanceDashboard() {
     </div>
   );
 }
- 

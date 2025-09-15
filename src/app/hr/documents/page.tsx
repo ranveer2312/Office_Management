@@ -132,7 +132,7 @@ export default function DocumentsPage() {
     { id: 'marks_card', name: 'Marks Card', icon: GraduationCap, color: 'green' },
   ];
 
-  // 2. Update getDocumentIcon and getDocumentColorClasses to support new types (already works)
+  // 2. Update getDocumentIcon and getDocumentColorClasses to support new types (already works)   
   const getDocumentIcon = (type: string): LucideIcon => {
     if (!type) return File;
     const docType = documentTypes.find(dt => dt.id === type.toLowerCase());
