@@ -359,11 +359,15 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+       <div 
+      className="min-h-screen bg-cover bg-center" 
+      style={{ backgroundImage: "url('/dash.jpg')" }}
+    >
+
       <Toaster position="top-right" />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Employee Engagement</h1>
+          <h1 className="text-4xl font-bold text-gray-100">Employee Engagement</h1>
           <button 
             onClick={() => openModal('add')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
@@ -374,7 +378,7 @@ export default function ActivitiesPage() {
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
+        <div className="bg-white/80 p-4 rounded-xl shadow-sm mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -406,7 +410,7 @@ export default function ActivitiesPage() {
         {/* Activities Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredActivities.map((activity) => (
-            <div key={activity.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300">
+            <div key={activity.id} className="bg-white/80 rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-3 rounded-lg bg-blue-50">
                   <Calendar className="w-5 h-5 text-blue-600" />

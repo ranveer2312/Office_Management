@@ -132,7 +132,7 @@ export default function DocumentsPage() {
     { id: 'marks_card', name: 'Marks Card', icon: GraduationCap, color: 'green' },
   ];
 
-  // 2. Update getDocumentIcon and getDocumentColorClasses to support new types (already works)   
+  // 2. Update getDocumentIcon and getDocumentColorClasses to support new types (already works)
   const getDocumentIcon = (type: string): LucideIcon => {
     if (!type) return File;
     const docType = documentTypes.find(dt => dt.id === type.toLowerCase());
@@ -368,9 +368,12 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div 
+  className="flex min-h-screen bg-cover bg-center" 
+  style={{ backgroundImage: "url('/dash.jpg')" }}
+>
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden md:flex flex-col">
+      <aside className="w-64 bg-white/60 border-r border-gray-200 flex-shrink-0 hidden md:flex flex-col">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900">Documents</h2>
         </div>
@@ -471,7 +474,7 @@ export default function DocumentsPage() {
       <main className="flex-1 flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Toaster position="top-right" />
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">HR Document Management</h1>
+          <h1 className="text-4xl font-bold text-gray-100">HR Document Management</h1>
           <button 
             onClick={() => setShowUploadModal(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow"
@@ -497,14 +500,14 @@ export default function DocumentsPage() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+         {/*<button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Filter className="w-5 h-5" />
             <span>Filter</span>
-          </button>
+          </button>*/}
         </div>
         {/* Documents Grid */}
         <div className="flex-1">
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="bg-white/60 rounded-lg shadow p-4">
             {filteredDocuments.length === 0 ? (
               <div className="text-center py-12">
                 <File className="w-12 h-12 text-gray-400 mx-auto mb-4" />
