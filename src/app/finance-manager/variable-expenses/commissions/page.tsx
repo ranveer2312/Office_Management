@@ -64,7 +64,7 @@ export default function CommissionsPage() {
       toast.error('Please fill all required fields');
       return;
     }
-    
+
     try {
       const expenseToAdd = {
         fixedTarget: parseFloat(newExpense.fixedTarget),
@@ -76,29 +76,26 @@ export default function CommissionsPage() {
         remarks: newExpense.remarks,
         date: newExpense.date
       };
-      
+
+      let requestBody: FormData | string;
       let url = BASE_URL;
-      let body: FormData | string;
-      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      let method = 'POST';
-      
+      const requestOptions: RequestInit = { method: 'POST' };
+
       if (selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('commissionData', JSON.stringify(expenseToAdd));
-        body = formData;
-        headers = {};
+        requestBody = formData;
         url = BASE_URL + '/upload';
       } else {
-        body = JSON.stringify(expenseToAdd);
+        requestBody = JSON.stringify(expenseToAdd);
+        requestOptions.headers = { 'Content-Type': 'application/json' };
       }
-      
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-      });
-      
+
+      requestOptions.body = requestBody;
+
+      const res = await fetch(url, requestOptions);
+
       if (res.ok) {
         const saved = await res.json();
         setExpenses([...expenses, saved]);
@@ -128,7 +125,7 @@ export default function CommissionsPage() {
 
   const handleEditClick = (expense: CommissionExpense) => {
     setEditingIdx(expense.id);
-    
+
     const formatDateForInput = (dateStr: string) => {
       if (!dateStr) return '';
       try {
@@ -144,7 +141,7 @@ export default function CommissionsPage() {
         return '';
       }
     };
-    
+
     setNewExpense({
       fixedTarget: expense.fixedTarget.toString(),
       recipient: expense.recipient,
@@ -156,20 +153,20 @@ export default function CommissionsPage() {
       date: formatDateForInput(expense.date)
     });
     setSelectedFile(null);
-    
+
     const getFileNameFromPath = (path: string) => {
       if (!path) return '';
       const parts = path.split('/');
       const filename = parts[parts.length - 1] || '';
       return decodeURIComponent(filename);
     };
-    
+
     setExistingFileName(getFileNameFromPath(expense.documentPath || ''));
   };
 
   const handleUpdateExpense = async () => {
     if (editingIdx === null) return;
-    
+
     try {
       const updatedExpense = {
         fixedTarget: parseFloat(newExpense.fixedTarget),
@@ -181,29 +178,27 @@ export default function CommissionsPage() {
         remarks: newExpense.remarks,
         date: newExpense.date,
       };
-      
+
+      let requestBody: FormData | string;
       let url = `${BASE_URL}/${editingIdx}`;
-      let body: FormData | string;
-      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      let method = 'PUT';
-      
+      const requestOptions: RequestInit = { method: 'PUT' };
+
       if (selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('commissionData', JSON.stringify(updatedExpense));
-        body = formData;
-        headers = {};
+        requestBody = formData;
         url = `${BASE_URL}/upload/${editingIdx}`;
+        requestOptions.method = 'POST';
       } else {
-        body = JSON.stringify(updatedExpense);
+        requestBody = JSON.stringify(updatedExpense);
+        requestOptions.headers = { 'Content-Type': 'application/json' };
       }
-      
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-      });
-      
+
+      requestOptions.body = requestBody;
+
+      const res = await fetch(url, requestOptions);
+
       if (res.ok) {
         const updated = await res.json();
         setExpenses(expenses.map(e => (e.id === editingIdx ? updated : e)));

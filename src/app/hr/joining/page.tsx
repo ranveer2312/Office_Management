@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
-
+import Image from 'next/image';
 import axios from 'axios';
  
 interface Employee {
@@ -105,7 +105,7 @@ const employeesAPI = {
     if (profilePhotoFile) {
       formData.append('photo', profilePhotoFile);
     }
-   
+ 
     const res = await fetch(API_BASE_URL, {
       method: 'POST',
       body: formData,
@@ -204,7 +204,7 @@ export default function JoiningPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
-  
+  
   // Error boundary state
   const [hasError, setHasError] = useState(false);
   const departmentOptions = [
@@ -352,6 +352,9 @@ export default function JoiningPage() {
     setSelectedEmployee(null);
     setFormData({});
     setProfilePhotoFile(null);
+    if (profilePhotoPreview) {
+      URL.revokeObjectURL(profilePhotoPreview);
+    }
     setProfilePhotoPreview(null);
     setFormError(''); // FIX 2: Reset form error on modal close.
   };
@@ -431,7 +434,7 @@ export default function JoiningPage() {
       }
       await fetchEmployees(); // FIX 3: Refetch employees after a successful API call to ensure the list is up-to-date.
       closeModal();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error saving employee:', error);
       let errorMessage = 'Failed to save employee';
       
@@ -440,7 +443,7 @@ export default function JoiningPage() {
       } else if (typeof error === 'string') {
         errorMessage = error;
       } else if (error && typeof error === 'object') {
-        errorMessage = (error as any).message || JSON.stringify(error);
+        errorMessage = (error as { message?: string }).message || JSON.stringify(error);
       }
       
       toast.error(errorMessage);
@@ -565,9 +568,11 @@ export default function JoiningPage() {
                 <div className="flex items-center mb-4">
                   {employee.profilePhotoUrl ? (
                     <div className="w-16 h-16 mr-4 shrink-0 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                      <img 
+                      <Image 
                         src={employee.profilePhotoUrl}
                         alt={employee.employeeName}
+                        width={64}
+                        height={64}
                         className="w-full h-full object-cover" 
                       />
                     </div>
@@ -666,8 +671,8 @@ export default function JoiningPage() {
                     <div className="flex justify-center mb-4">
                       {selectedEmployee?.profilePhotoUrl ? (
                         <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                          <img src={selectedEmployee.profilePhotoUrl}
-                            alt={selectedEmployee.employeeName || 'Employee'} className="w-full h-full object-cover" />
+                          <Image src={selectedEmployee.profilePhotoUrl}
+                            alt={selectedEmployee.employeeName || 'Employee'} width={120} height={120} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center">
@@ -753,20 +758,11 @@ export default function JoiningPage() {
                               // Auto-increment for new prefix
                               const ids = employees
                                 .map(e => e.employeeId)
-                                .filter(id => id.startsWith(newPrefix) && /^EMPTA[A-Z]*\d+$/.test(id));
+                                .filter(id => id.startsWith(newPrefix) && new RegExp(`^${newPrefix}[A-Z]*\\d+$`).test(id));
                               let nextId = newPrefix + '001';
                               if (ids.length > 0) {
-                                const result = ids.reduce((acc, id) => {
-                                  const match = id.match(/^(EMPTA[A-Z]*)(\d+)$/);
-                                  if (match && match[1] === newPrefix) {
-                                    const num = parseInt(match[2], 10);
-                                    if (num > acc.maxNum) {
-                                      return {maxNum: num};
-                                    }
-                                  }
-                                  return acc;
-                                }, {maxNum: 0});
-                                nextId = newPrefix + String(result.maxNum + 1).padStart(3, '0');
+                                const maxId = Math.max(...ids.map(id => parseInt(id.replace(newPrefix, ''), 10)));
+                                nextId = newPrefix + String(maxId + 1).padStart(3, '0');
                               }
                               setFormData({ ...formData, employeeId: nextId });
                             }}
@@ -780,10 +776,11 @@ export default function JoiningPage() {
                             className="w-full px-3 py-2 border-t border-b border-r border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={formData.employeeId ? formData.employeeId.replace(employeeIdPrefix, '') : ''}
                             onChange={e => {
-                              const val = e.target.value.replace(/[^0-9A-Za-z]/g, '');
+                              // Only allow digits
+                              const val = e.target.value.replace(/[^0-9]/g, '');
                               setFormData({ ...formData, employeeId: employeeIdPrefix + val });
                             }}
-                            placeholder="Enter unique ID"
+                            placeholder="10 digit number"
                           />
                         </div>
                         {employeeIdError && <div className="text-red-600 text-xs mt-1">{employeeIdError}</div>}
@@ -855,6 +852,7 @@ export default function JoiningPage() {
                             placeholder="10 digit number"
                           />
                         </div>
+                        {formError && formData.phoneNumber?.length !== 13 && <div className="text-red-600 text-xs mt-1">Phone number must be exactly 10 digits.</div>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
@@ -928,9 +926,15 @@ export default function JoiningPage() {
                               const file = e.target.files?.[0];
                               if (file) {
                                 setProfilePhotoFile(file);
+                                if (profilePhotoPreview) {
+                                  URL.revokeObjectURL(profilePhotoPreview);
+                                }
                                 setProfilePhotoPreview(URL.createObjectURL(file));
                               } else {
                                 setProfilePhotoFile(null);
+                                if (profilePhotoPreview) {
+                                  URL.revokeObjectURL(profilePhotoPreview);
+                                }
                                 setProfilePhotoPreview(selectedEmployee?.profilePhotoUrl || null);
                               }
                             }}
@@ -947,9 +951,11 @@ export default function JoiningPage() {
                         </div>
                         {profilePhotoPreview && (
                           <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mt-4">
-                            <img
+                            <Image
                               src={profilePhotoPreview}
                               alt="Profile Preview"
+                              width={120}
+                              height={120}
                               className="w-full h-full object-cover"
                             />
                           </div>

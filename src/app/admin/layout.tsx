@@ -10,6 +10,7 @@ import {
   Search,
   Menu,
   RefreshCw,
+
   Sun,
   CloudSun,
   Moon,
@@ -23,7 +24,6 @@ import {
   X,
   User,
   ChevronRight,
-  Briefcase,
   LayoutDashboard,
   Clock,
 } from 'lucide-react';
