@@ -76,7 +76,6 @@ export default function AdminDashboard() {
   });
   const [metricsLoading, setMetricsLoading] = useState(true);
 
-  // ✅ Helper to always send auth header
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -249,7 +248,7 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Welcome Section */}
           <div className="mb-10">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-center justify-between">
               <div>
                 <h1 className="text-4xl font-bold text-slate-900 mb-3">
                   Welcome back, Admin
@@ -262,7 +261,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
@@ -337,7 +336,6 @@ export default function AdminDashboard() {
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8 mb-10">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold text-slate-900">Admin Panel</h2>
-              {/* <div className="h-1 bg-gradient-to-r from-slate-900 to-slate-600 rounded-full w-24"></div> */}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {quickActions.map((action, index) => (
@@ -364,7 +362,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Bottom Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
             {/* Recent Activities */}
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8">
               <div className="flex items-center justify-between mb-8">

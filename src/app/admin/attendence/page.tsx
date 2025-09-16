@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Clock,
@@ -263,28 +264,60 @@ export default function AdminAttendanceDashboard() {
       );
     }
 
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    // New mobile-friendly table view
+    const renderMobileTable = () => (
+      <div className="space-y-4 md:hidden">
+        {dataToShow.map((record, index) => (
+          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-bold text-gray-900">{record.employeeName}</h4>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(record.status)}`}>
+                {getStatusIcon(record.status)}
+                <span className="ml-1 capitalize">{record.status}</span>
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+              <div className="font-medium">Department:</div>
+              <div>{record.department}</div>
+              <div className="font-medium">Date:</div>
+              <div>{new Date(record.date).toLocaleDateString()}</div>
+              <div className="font-medium">Sign In:</div>
+              <div>{record.signIn || '-'}</div>
+              <div className="font-medium">Sign Out:</div>
+              <div>{record.signOut || '-'}</div>
+              <div className="font-medium">Work Hours:</div>
+              <div>{formatWorkHours(record.workHours)}</div>
+              <div className="font-medium">Location:</div>
+              <div>{record.workLocation || '-'}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+
+    // Desktop table view
+    const renderDesktopTable = () => (
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Attendance Records - {viewMode.charAt(0).toUpperCase() + viewMode.slice(1)}
             </h3>
-            <div className="flex items-center space-x-3">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+              <div className="relative w-full">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search employees..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <select
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Departments</option>
                 {departments.map(dept => (
@@ -346,6 +379,13 @@ export default function AdminAttendanceDashboard() {
         </div>
       </div>
     );
+
+    return (
+        <>
+          {renderMobileTable()}
+          {renderDesktopTable()}
+        </>
+    );
   };
 
   return (
@@ -357,12 +397,12 @@ export default function AdminAttendanceDashboard() {
           </div>
         )}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Attendance Dashboard</h1>
               <p className="text-gray-600">Monitor and manage employee attendance records</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center space-x-2 sm:space-x-4 mt-2 sm:mt-0">
               <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
                 {['today', 'week', 'month', 'year'].map((mode) => (
                   <button

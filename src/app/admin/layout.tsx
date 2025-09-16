@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
-import Image from 'next/image'; // Import the Image component
+import Image from 'next/image';
 import {
   Bell,
   Search,
@@ -142,12 +142,11 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
       >
         <div className="h-24 flex items-center justify-between px-6 border-b border-slate-200/60 bg-gradient-to-r from-white to-slate-50">
           <div className="flex items-center space-x-3">
-            {/* Replaced ADMIN PANEL with the Image component */}
             <Image
               src="/hrlogo.png"
               alt="HR Logo"
-              width={120} // Adjust width as needed
-              height={40} // Adjust height as needed
+              width={120}
+              height={40}
             />
           </div>
           <button onClick={onClose} className="p-2 lg:hidden text-slate-500 hover:text-slate-800 transition-colors">
@@ -172,7 +171,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
             )
           )}
         </nav>
-        <div className="p-6 border-t border-slate-200/60">
+        <div className="p-6 border-t border-slate-200/60 bg-white/50 backdrop-blur-sm">
           <div className="flex items-center space-x-3 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-200 backdrop-blur-sm">
             {profilePhotoUrl ? (
               <div className="w-12 h-12 rounded-full object-cover border-2 border-blue-400/60 shadow-lg"></div>
@@ -348,7 +347,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                   {greeting.text}, Admin
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium">{motivationalThought}</p>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 font-medium">{motivationalThought}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-6">
@@ -375,7 +374,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </button>
 
                 {notificationOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-full sm:w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                       <span className="text-sm font-medium text-gray-500">{unreadCount} unread</span>
@@ -424,7 +423,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </header>
 
-          <main 
+          <main
             className="flex-1 p-4 sm:p-6 overflow-y-auto bg-gray-50 bg-cover bg-center"
             style={{ backgroundImage: `url('/admindash.png')` }}
           >
