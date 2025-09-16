@@ -36,6 +36,8 @@ interface ApiLabInstrument {
  
 const API_BASE_URL = APIURL +'/store/lab/instruments';
  
+const backgroundImage = '/finance2.jpg';
+
 // Move these functions outside the component to prevent recreation on every render
 const mapCondition = (apiCondition: string): LabInstrument['condition'] => {
   const conditionMap: Record<string, LabInstrument['condition']> = {
@@ -252,7 +254,14 @@ export default function LabInstrumentsPage() {
   }
  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <BackButton />
      

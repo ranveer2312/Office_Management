@@ -21,6 +21,8 @@ interface TDSEntry {
   remarks: string;
 }
 
+const backgroundImage = '/finance2.jpg';
+
 
 export default function TDSCalculatorPage() {
   const API_BASE = APIURL + '/api/tds';
@@ -144,7 +146,14 @@ export default function TDSCalculatorPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
 
 
@@ -152,7 +161,7 @@ export default function TDSCalculatorPage() {
           <div className="mt-4 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">TDS Calculator</h1>
-              <p className="text-gray-600 mt-1">Calculate and manage Tax Deducted at Source</p>
+              <p className="text-gray-900 mt-1">Calculate and manage Tax Deducted at Source</p>
             </div>
             <div className="flex items-center space-x-2 text-blue-600">
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>

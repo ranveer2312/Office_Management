@@ -35,6 +35,8 @@ const viewFields: ViewField[] = [
   { name: 'paymentMethod', label: 'Payment Method', type: 'text' }
 ];
 
+const backgroundImage = '/purchase.jpg';
+
 export default function PurchasePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -182,10 +184,17 @@ export default function PurchasePage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+     <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Purchases</h2>
+        <h2 className="text-4xl sm:text-2xl font-bold text-gray-100">Purchases</h2>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={handleAddNew}

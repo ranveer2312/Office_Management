@@ -35,6 +35,9 @@ interface ApiFurnitureItem {
  
 // API service functions
 const API_BASE_URL = APIURL + '/store/assets/furniture';
+
+const backgroundImage = '/finance2.jpg';
+
  
 const furnitureAPI = {
   // GET - Fetch all furniture items
@@ -255,7 +258,14 @@ export default function FurniturePage() {
   }
  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+     <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <BackButton />
      

@@ -63,6 +63,8 @@ const viewFields: ViewField[] = [
 
 const API_BASE_URL = APIURL + '/api/cadocuments';
 
+const backgroundImage = '/ca.jpg';
+
 export default function CAPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilter, setShowFilter] = useState(false);
@@ -272,7 +274,14 @@ export default function CAPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+     <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-gray-900">CA Documents Management</h2>
@@ -444,7 +453,7 @@ export default function CAPage() {
             </tbody>
           </table>
           {filteredData.length === 0 && !isLoading && !error && (
-            <p className="text-center py-8 text-gray-500">No CA documents found.</p>
+            <p className="text-2xl text-center py-8 text-gray-900">No CA documents found.</p>
           )}
         </div>
       )}

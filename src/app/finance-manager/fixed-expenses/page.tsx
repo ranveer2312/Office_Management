@@ -17,6 +17,8 @@ interface ExpenseItem {
   amount?: number;
 }
 
+const backgroundImage = '/finance2.jpg';
+
 export default function FixedExpensesPage() {
   const [expenseData, setExpenseData] = useState({
     rent: { total: 0, count: 0, trend: 0 },
@@ -149,7 +151,14 @@ export default function FixedExpensesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Fixed Expenses Dashboard</h2>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Overview Cards */}

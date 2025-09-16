@@ -20,7 +20,10 @@ interface LabInventory {
 }
  
 const API_BASE_URL =APIURL + `/store/lab/inventory`;
- 
+
+const backgroundImage = '/finance2.jpg';
+
+
 export default function LabInventoryPage() {
   const [inventory, setInventory] = useState<LabInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -245,7 +248,14 @@ export default function LabInventoryPage() {
   };
  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <BackButton />
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">

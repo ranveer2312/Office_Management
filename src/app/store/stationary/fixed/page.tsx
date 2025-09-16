@@ -38,6 +38,9 @@ interface ApiRequestBody {
 }
  
 const API_BASE_URL = APIURL +`/store/stationary/fixed`;
+
+const backgroundImage = '/finance2.jpg';
+
  
 export default function FixedStationaryPage() {
   const [items, setItems] = useState<FixedItem[]>([]);
@@ -235,7 +238,15 @@ export default function FixedStationaryPage() {
   }
  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+   <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+
       <Toaster position="top-right" />
       <BackButton />
      

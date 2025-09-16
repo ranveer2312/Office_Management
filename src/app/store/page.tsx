@@ -40,6 +40,9 @@ interface SectionData {
   items: ItemData[];
 }
 
+const backgroundImage = '/finance2.jpg';
+
+
 export default function StorePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -308,14 +311,22 @@ export default function StorePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900">
+   <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+
       {/* Header Section */}
       <div className="px-4 py-6">
         <div className="text-center space-y-3">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-100 to-indigo-800 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">
             Store Dashboard
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
+          <p className="text-2xl text-gray-100 dark:text-gray-300 max-w-lg mx-auto">
             Inventory management system
           </p>
         </div>

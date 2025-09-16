@@ -18,6 +18,7 @@ interface InventoryTransaction {
 }
  
 const API_BASE_URL =APIURL + `/store/stationary/inventory`;
+
  
 export default function StationaryInventoryPage() {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);

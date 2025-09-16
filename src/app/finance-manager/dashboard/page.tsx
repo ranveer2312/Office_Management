@@ -26,6 +26,9 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Set the background image URL
+  const backgroundImage = '/finance2.jpg';
+
   useEffect(() => {
     const fetchFinancialData = async () => {
       try {
@@ -39,7 +42,6 @@ export default function FinanceDashboardPage() {
           fetch(`${APIURL}/api/investments`),
         ]);
 
-        // Helper function to safely parse JSON with a generic type
         const safeJsonParse = async <T,>(response: Response, defaultValue: T[] = [] as T[]) => {
           if (!response.ok) {
             console.warn(`API endpoint returned ${response.status}: ${response.statusText}`);
@@ -84,8 +86,8 @@ export default function FinanceDashboardPage() {
   const totalVariableExpenses = variableExpenses.reduce((sum, item) => sum + item.amount, 0);
   const totalExpenses = totalFixedExpenses + totalVariableExpenses;
   const totalInvestments = investments.reduce((sum, item) => sum + item.amount, 0);
-  const monthlyProfit = 50000; // Mocked data
-  const profitTrend = 12.5; // Mocked data
+  const monthlyProfit = 50000;
+  const profitTrend = 12.5;
 
   const keyMetrics = [
     {
@@ -166,75 +168,84 @@ export default function FinanceDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-white p-6">
-      <Toaster />
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold">Finance Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400">Overview of your company&apos;s financial performance.</p>
-        </header>
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="min-h-screen bg-white/20 text-slate-900 dark:bg-slate-950/80 dark:text-white backdrop-blur-sm p-6">
+        <Toaster />
+        <div className="max-w-7xl mx-auto">
+          <header className="mb-8">
+            <h1 className="text-3xl font-bold">Finance Dashboard</h1>
+            <p className="text-slate-500 dark:text-slate-400">Overview of your company&apos;s financial performance.</p>
+          </header>
 
-        <section className="mb-10">
-          <h2 className="text-xl font-semibold mb-4">Key Metrics</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {keyMetrics.map((metric) => (
-              <div key={metric.title} className={`p-6 rounded-lg shadow-sm ${metric.color}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-lg font-bold">{metric.title}</span>
-                  {metric.icon}
+          <section className="mb-10">
+            <h2 className="text-xl font-semibold mb-4">Key Metrics</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {keyMetrics.map((metric) => (
+                <div key={metric.title} className={`p-6 rounded-lg shadow-sm ${metric.color}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-lg font-bold">{metric.title}</span>
+                    {metric.icon}
+                  </div>
+                  <div className="text-3xl font-extrabold mb-1">{metric.value}</div>
+                  <p className="text-sm opacity-75">{metric.description}</p>
                 </div>
-                <div className="text-3xl font-extrabold mb-1">{metric.value}</div>
-                <p className="text-sm opacity-75">{metric.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-        <hr className="my-10 border-t border-slate-200 dark:border-slate-800" />
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Recent Financial Activity</h2>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm overflow-hidden">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-50 dark:bg-slate-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trend</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                {recentTransactions.map((transaction) => (
-                  <tr key={transaction.description}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">{transaction.type}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{transaction.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">₹{transaction.amount.toLocaleString('en-IN')}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{transaction.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        {transaction.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                      {transaction.trend > 0 ? (
-                        <div className="flex items-center text-emerald-500">
-                          <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                          <span>+{transaction.trend}%</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center text-red-500">
-                          <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                          <span>{transaction.trend}%</span>
-                        </div>
-                      )}
-                    </td>
+              ))}
+            </div>
+          </section>
+          <hr className="my-10 border-t border-slate-200 dark:border-slate-800" />
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Recent Financial Activity</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm overflow-hidden">
+              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trend</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                  {recentTransactions.map((transaction) => (
+                    <tr key={transaction.description}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">{transaction.type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{transaction.description}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">₹{transaction.amount.toLocaleString('en-IN')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{transaction.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          {transaction.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+                        {transaction.trend > 0 ? (
+                          <div className="flex items-center text-emerald-500">
+                            <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                            <span>+{transaction.trend}%</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-red-500">
+                            <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                            <span>{transaction.trend}%</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

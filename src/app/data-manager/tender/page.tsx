@@ -43,6 +43,8 @@ const viewFields: ViewField[] = [
   { name: 'status', label: 'Status', type: 'status' }
 ];
 
+const backgroundImage = '/company.jpg';
+
 export default function TenderManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -196,7 +198,14 @@ export default function TenderManagementPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+   <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Tender Management</h2>

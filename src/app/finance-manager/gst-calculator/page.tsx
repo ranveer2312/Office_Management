@@ -15,6 +15,7 @@ const gstRates = [
   { label: '28%', value: 28 }
 ];
 
+const backgroundImage = '/finance2.jpg';
 
 export default function GSTCalculatorPage() {
   const [amount, setAmount] = useState('');
@@ -91,12 +92,19 @@ export default function GSTCalculatorPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
+   <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">GST Calculator</h1>
 
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="bg-white/80 dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Calculate GST</h2>
            
             <div className="space-y-4">
@@ -161,7 +169,7 @@ export default function GSTCalculatorPage() {
           </div>
 
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="bg-white/80 dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">GST Breakdown</h2>
            
             <div className="space-y-4">
@@ -218,7 +226,7 @@ export default function GSTCalculatorPage() {
         </div>
 
 
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <div className="mt-8 bg-white/80 dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">GST Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

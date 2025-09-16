@@ -63,6 +63,8 @@ const viewFields: ViewField[] = [
 
 const API_BASE_URL = APIURL + '/api/billings';
 
+const backgroundImage = '/billing.jpg';
+
 export default function BillingPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilter, setShowFilter] = useState(false);
@@ -275,7 +277,14 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Billing Management</h2>

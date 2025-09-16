@@ -179,6 +179,9 @@ const systemToItem = (s: System): Item => ({
   lastMaintenance: undefined,
 });
  
+
+const backgroundImage = '/finance2.jpg';
+
 export default function SystemsPage() {
   const [items, setItems] = useState<System[]>([]);
   const [loading, setLoading] = useState(true);
@@ -276,7 +279,14 @@ export default function SystemsPage() {
   }
  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+     <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <BackButton />
  

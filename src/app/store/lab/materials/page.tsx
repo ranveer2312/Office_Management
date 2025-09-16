@@ -18,6 +18,9 @@ interface LabMaterial {
 }
  
 const API_BASE_URL = APIURL +`/store/lab/materials`;
+
+const backgroundImage = '/finance2.jpg';
+
  
 export default function LabMaterialsPage() {
   const [materials, setMaterials] = useState<LabMaterial[]>([]);
@@ -185,7 +188,14 @@ export default function LabMaterialsPage() {
   };
  
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      className="min-h-screen p-6"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Toaster position="top-right" />
       <BackButton />
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
