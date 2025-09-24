@@ -300,8 +300,8 @@ const LeaveManagementSystem = () => {
   const pendingCount = leaveData.pending.length;
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 bg-gray-100">
-      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-2xl p-4 sm:p-8">
+    <div className="min-h-screen p-4 sm:p-6 bg-transparent">
+      <div className="max-w-7xl mx-auto bg-white\80 rounded-3xl shadow-2xl p-4 sm:p-8">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-10 pb-4 sm:pb-6 border-b-4 border-gray-200">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-2 sm:mb-4 drop-shadow-lg">

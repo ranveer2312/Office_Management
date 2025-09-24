@@ -2,9 +2,10 @@
 
 import { useState,useEffect, useCallback } from 'react';
 import AdminStore from '@/app/components/AdminStore';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeftIcon, ShoppingBagIcon } from '@heroicons/react/24/outline'; // Replaced lucide-react ArrowLeft with Heroicons and added ShoppingBagIcon for theme consistency
 import Link from 'next/link';
 import { APIURL } from '@/constants/api';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface OfficeSuppliesItem {
   id: string;
@@ -28,13 +29,11 @@ interface ApiOfficeSuppliesItem {
   lastUpdated: [number, number, number]; // [year, month, day]
 }
 
-
-
 const API_BASE_URL = APIURL +'/store/stationary/regular';
 
 export default function RegularStationaryPage() {
   const [items, setItems] = useState<OfficeSuppliesItem[]>([]);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
 
   const categories = ['Paper', 'Writing', 'Desk Accessories', 'Binders', 'Seating', 'Other'];
@@ -54,7 +53,6 @@ export default function RegularStationaryPage() {
     };
   };
 
-
   // Fetch all items
   const fetchItems = useCallback(async () => {
     try {
@@ -72,6 +70,7 @@ export default function RegularStationaryPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch items');
       console.error('Error fetching items:', err);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -82,19 +81,51 @@ export default function RegularStationaryPage() {
     fetchItems();
   }, [fetchItems]);
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div>
-        <Link href="/admin/store" className="flex items-center text-gray-600 hover:text-gray-900">
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Dashboard
-        </Link>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading regular stationary items...</div>
       </div>
-      <AdminStore
-        title="Regular Office Supplies Items"
-        items={items}
-        categories={categories}
-      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-transparent">
+      <Toaster position="top-right" />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700 rounded-2xl p-6 mb-8">
+          <Link href="/admin/store" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+            <ArrowLeftIcon className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </Link>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                <ShoppingBagIcon className="h-10 w-10 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Regular Office Supplies </h1>
+                <p className="text-base text-gray-600 dark:text-gray-300 mt-1">View and manage day-to-day office supplies</p>
+              </div>
+            </div>
+            <div className="hidden md:flex items-center space-x-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{items.length}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Total Items</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AdminStore Component - now aligned with the header */}
+        <AdminStore
+          title="Regular Office Supplies Items"
+          items={items}
+          categories={categories}
+        />
+      </div>
     </div>
   );
-} 
+}

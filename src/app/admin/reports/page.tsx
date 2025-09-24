@@ -1,20 +1,26 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { 
-  FileText, 
-  Building,
-  Users,
-  Map,
-  Target,
-  Award,
-  Calendar,
-  Eye, // Added Eye icon for View button
-  X // Added X icon for clear button
-} from 'lucide-react';
+  ArrowLeftIcon,
+  DocumentTextIcon,
+  BuildingOffice2Icon,
+  UsersIcon,
+  MapPinIcon,
+  AcademicCapIcon,
+  BellIcon,
+  CalendarDaysIcon,
+  CheckBadgeIcon,
+  PencilSquareIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
+import { EyeIcon, XIcon } from 'lucide-react';
+import Link from 'next/link'; 
 import axios from 'axios';
 import { APIURL } from '@/constants/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface Report {
   id: number;
@@ -79,29 +85,29 @@ export default function ReportsPage() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
   const reportTypes = [
-    { id: 'employee', label: 'Employee Report', icon: <FileText className="w-5 h-5" /> },
-    { id: 'visit', label: 'Visit Report', icon: <Map className="w-5 h-5" /> },
-    { id: 'oem', label: 'OEM Report', icon: <Building className="w-5 h-5" /> },
-    { id: 'customer', label: 'Customer Report', icon: <Users className="w-5 h-5" /> },
-    { id: 'blueprint', label: 'Blueprint Report', icon: <FileText className="w-5 h-5" /> },
-    { id: 'projection', label: 'Projection Report', icon: <Target className="w-5 h-5" /> },
-    { id: 'achievement', label: 'Achievement Report', icon: <Award className="w-5 h-5" /> },
-    { id: 'Visit Inquiries', label: 'Visit Inquiries', icon: <Award className="w-5 h-5" /> },
-    { id: 'BQ quotations', label: 'BQ quotations', icon: <Award className="w-5 h-5" /> }
+    { id: 'employee', label: 'Employee Report', icon: <DocumentTextIcon className="w-5 h-5" /> },
+    { id: 'visit', label: 'Visit Report', icon: <MapPinIcon className="w-5 h-5" /> },
+    { id: 'oem', label: 'OEM Report', icon: <BuildingOffice2Icon className="w-5 h-5" /> },
+    { id: 'customer', label: 'Customer Report', icon: <UsersIcon className="w-5 h-5" /> },
+    { id: 'blueprint', label: 'Blueprint Report', icon: <DocumentTextIcon className="w-5 h-5" /> },
+    { id: 'projection', label: 'Projection Report', icon: <BellIcon className="w-5 h-5" /> },
+    { id: 'achievement', label: 'Achievement Report', icon: <CheckBadgeIcon className="w-5 h-5" /> },
+    { id: 'Visit Inquiries', label: 'Visit Inquiries', icon: <CheckBadgeIcon className="w-5 h-5" /> },
+    { id: 'BQ quotations', label: 'BQ quotations', icon: <CheckBadgeIcon className="w-5 h-5" /> }
   ];
 
   const employeeSubtypes = [
-    { id: 'daily', label: 'Daily Report', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'weekly', label: 'Weekly Report', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'monthly', label: 'Monthly Report', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'Quaterly', label: 'Quaterly Report', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'half', label: 'half Report', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'yearly', label: 'Yearly Report', icon: <Calendar className="w-5 h-5" /> }
+    { id: 'daily', label: 'Daily Report', icon: <CalendarDaysIcon className="w-5 h-5" /> },
+    { id: 'weekly', label: 'Weekly Report', icon: <CalendarDaysIcon className="w-5 h-5" /> },
+    { id: 'monthly', label: 'Monthly Report', icon: <CalendarDaysIcon className="w-5 h-5" /> },
+    { id: 'Quaterly', label: 'Quarterly Report', icon: <CalendarDaysIcon className="w-5 h-5" /> },
+    { id: 'half', label: 'Half-yearly Report', icon: <CalendarDaysIcon className="w-5 h-5" /> },
+    { id: 'yearly', label: 'Yearly Report', icon: <CalendarDaysIcon className="w-5 h-5" /> }
   ];
 
   const getReportIcon = (type: string) => {
     const reportType = reportTypes.find(t => t.id === type);
-    return reportType?.icon || <FileText className="w-5 h-5" />;
+    return reportType?.icon || <DocumentTextIcon className="w-5 h-5" />;
   };
 
   const getStatusColor = (status: string) => {
@@ -319,22 +325,60 @@ export default function ReportsPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  // New function to handle file viewing
+  const handleViewFile = async (reportId: number) => {
+    toast.promise(
+      axios.get(`${APIURL}/api/reports/${reportId}/view`, { responseType: 'blob' }),
+      {
+        loading: 'Preparing to open file...',
+        success: (response) => {
+          const blob = new Blob([response.data], { type: response.data.type });
+          const fileURL = URL.createObjectURL(blob);
+          window.open(fileURL, '_blank');
+          return 'File is ready.';
+        },
+        error: 'Failed to open file. Please try again.',
+      }
+    );
+  };
 
+  return (
+    <div className="min-h-screen bg-transparent">
+      <Toaster />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="bg-white/70 shadow-xl border-b border-blue-200 dark:border-indigo-700 rounded-2xl p-6 mb-8">
+          {/* <Link href="/admin/dashboard" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+            <ArrowLeftIcon className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </Link> */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <DocumentTextIcon className="h-10 w-10 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Reports & Analytics </h1>
+                <p className="text-base text-gray-600 dark:text-gray-300 mt-1">View and filter all company reports</p>
+              </div>
+            </div>
+            <div className="hidden md:flex items-center space-x-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{reports.length}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Total Reports</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg">
             {error}
           </div>
         )}
 
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-4">
+          <div className="bg-white/70 rounded-lg shadow-sm border border-gray-200 p-4 space-y-4">
             <div className="relative">
               <input
                 type="text"
@@ -384,7 +428,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="bg-white/70 rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
@@ -408,7 +452,7 @@ export default function ReportsPage() {
                     selectedType === type.id ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  {type.icon}
+                  {getReportIcon(type.id)}
                   <span>{type.label}</span>
                 </button>
               ))}
@@ -416,7 +460,7 @@ export default function ReportsPage() {
           </div>
 
           {selectedType === 'employee' && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white/70 rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedSubtype('all')}
@@ -443,7 +487,7 @@ export default function ReportsPage() {
           )}
 
           {selectedType === 'oem' && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white/70 rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedSubtype('all')}
@@ -453,11 +497,23 @@ export default function ReportsPage() {
                 >
                   All OEM Reports
                 </button>
+                {['orders', 'competitor_analysis', 'open_tenders', 'bugetary_submits', 'lost_tenders', 'holding_projects'].map(subtype => (
+                  <button
+                    key={subtype}
+                    onClick={() => setSelectedSubtype(subtype)}
+                    className={`px-3 py-1 rounded-lg flex items-center space-x-2 ${
+                      selectedSubtype === subtype ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <DocumentTextIcon className="w-5 h-5" />
+                    <span>{subtype.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white/70 rounded-lg shadow-sm border border-gray-200 p-6">
             {filteredReports.some(r => r.type === 'customer') && (
               <div className="mb-6 max-w-xs">
                 <div className="relative group">
@@ -485,11 +541,11 @@ export default function ReportsPage() {
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none bg-white rounded-full p-1 shadow-sm"
                       tabIndex={-1}
                     >
-                      <X className="w-4 h-4" />
+                      <XIcon className="w-4 h-4" />
                     </button>
                   )}
                   {showSearchDropdown && (
-                    <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-2xl mt-2 shadow-xl animate-fadeIn overflow-hidden">
+                    <ul className="absolute z-20 w-full bg-white/70 border border-gray-200 rounded-2xl mt-2 shadow-xl animate-fadeIn overflow-hidden">
                       {divisionOptions.filter(opt =>
                         typeof opt === 'string' && opt.toLowerCase().includes(searchOption.toLowerCase())
                       ).map(opt => (
@@ -606,7 +662,7 @@ export default function ReportsPage() {
                   </button>
                 </div>
                 <table className="min-w-full border text-center">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-white/70">
                     <tr>
                       <th className="px-4 py-2 font-bold border">Visited Engineer</th>
                       <th className="px-4 py-2 font-bold border">DATE</th>
@@ -616,13 +672,13 @@ export default function ReportsPage() {
                       <th className="px-4 py-2 font-bold border">EMAIL ID</th>
                       <th className="px-4 py-2 font-bold border">REMARKS</th>
                       <th className="px-4 py-2 font-bold border">Product or Requirements</th>
-                      <th className="px-4 py-2 font-bold border">Department</th>
-                      <th className="px-4 py-2 font-bold border">View</th> {/* Changed header */}
+                      <th className="px-4 py-2 font-bold border">Division</th>
+                      <th className="px-4 py-2 font-bold border">View</th> 
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="bg-white/70">
                     {filteredReports.filter(r => r.type === 'customer' && (!searchOption || r.division === searchOption || r.company === searchOption)).map(report => (
-                      <tr key={report.id} className="border-b hover:bg-gray-50">
+                      <tr key={report.id} className="border-b hover:bg-gray-50/70 transition-colors duration-200">
                         <td className="px-4 py-2 border">{report.employeeName || '-'}</td>
                         <td className="px-4 py-2 border">{new Date(report.date).toLocaleDateString()}</td>
                         <td className="px-4 py-2 border">{report.customerName || '-'}</td>
@@ -635,11 +691,11 @@ export default function ReportsPage() {
                         <td className="px-4 py-2 border">
                           {report.attachments && report.attachments.length > 0 && (
                             <button 
-                              onClick={() => window.open(`${APIURL}/api/reports/${report.id}/view`, '_blank')} // Changed endpoint to /view if available
+                              onClick={() => handleViewFile(report.id)} 
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
                               title="View Report"
                             >
-                              <Eye className="w-5 h-5" />
+                              <EyeIcon className="w-5 h-5" />
                             </button>
                           )}
                         </td>
@@ -659,45 +715,45 @@ export default function ReportsPage() {
                     <div className="flex justify-end gap-2 mb-2">
                       <button
                         onClick={() => exportOEMToCSV(filteredReports.filter(r => r.type === 'oem' && r.subtype === subtype), subtype)}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                       >
                         Export CSV
                       </button>
                       <button
                         onClick={() => exportOEMToPDF(filteredReports.filter(r => r.type === 'oem' && r.subtype === subtype), subtype)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
                       >
                         Download PDF
                       </button>
                     </div>
-                    <div className="overflow-x-auto rounded-2xl shadow border border-gray-200 bg-white">
+                    <div className="overflow-x-auto rounded-2xl shadow border border-gray-200 bg-white/70">
                       <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-white/70">
                           <tr>
                             {oemHeaders[subtype as keyof typeof oemHeaders].map((h, idx) => (
                               <th key={h} className={`px-4 py-2 min-w-[120px] text-xs font-bold text-gray-700 uppercase tracking-wider text-left align-middle border-r border-gray-200 ${idx === oemHeaders[subtype as keyof typeof oemHeaders].length - 1 ? 'last:border-r-0' : ''}`}>{h}</th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-100">
+                        <tbody className="bg-white/70 divide-y divide-gray-100">
                           {filteredReports.filter(r => r.type === 'oem' && r.subtype === subtype).length === 0 ? (
                             <tr>
                               <td colSpan={oemHeaders[subtype as keyof typeof oemHeaders].length} className="px-4 py-2 text-center text-gray-400 align-middle">No reports found</td>
                             </tr>
                           ) : (
                             filteredReports.filter(r => r.type === 'oem' && r.subtype === subtype).map((report, rowIdx) => (
-                              <tr key={report.id} className={`${rowIdx === 0 ? 'border-b-2 border-gray-400' : ''} ${rowIdx % 2 === 1 ? 'even:bg-gray-50' : ''}`}> 
+                              <tr key={report.id} className={`${rowIdx % 2 === 1 ? 'even:bg-gray-50/70' : ''} hover:bg-gray-100/70 transition-colors duration-200`}> 
                                 {getOEMRow(report, subtype).map((cell, i) => (
                                   <td key={i} className={`px-4 py-2 min-w-[120px] align-middle border-r border-gray-200 ${typeof cell === 'number' || (typeof cell === 'string' && /\d{4}-\d{2}-\d{2}/.test(cell)) ? 'text-center' : 'text-left'}`}>{cell}</td>
                                 ))}
                                 <td className="px-4 py-2 min-w-[120px] align-middle text-center">
                                   {report.attachments && report.attachments.length > 0 && (
                                     <button 
-                                      onClick={() => window.open(`${APIURL}/api/reports/${report.id}/view`, '_blank')} // Changed endpoint to /view if available
+                                      onClick={() => handleViewFile(report.id)} 
                                       className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
                                       title="View Report"
                                     >
-                                      <Eye className="w-5 h-5" />
+                                      <EyeIcon className="w-5 h-5" />
                                     </button>
                                   )}
                                 </td>
@@ -719,7 +775,7 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 filteredReports.filter(r => r.type !== 'customer' && r.type !== 'oem').map(report => (
-                  <div key={report.id} className="border rounded-lg p-4">
+                  <div key={report.id} className="border rounded-lg p-4 bg-white/70 hover:bg-gray-50/70 transition-colors duration-200">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4">
                         <div className="p-2 bg-blue-100 rounded-lg">
@@ -748,11 +804,11 @@ export default function ReportsPage() {
                         </span>
                         {report.attachments && report.attachments.length > 0 && (
                           <button 
-                            onClick={() => window.open(`${APIURL}/api/reports/${report.id}/view`, '_blank')} // Changed endpoint to /view if available
+                            onClick={() => handleViewFile(report.id)} 
                             className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
                             title="View Report"
                           >
-                            <Eye className="w-5 h-5" />
+                            <EyeIcon className="w-5 h-5" />
                           </button>
                         )}
                       </div>

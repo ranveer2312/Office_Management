@@ -1,28 +1,32 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { 
-    Users, 
-    CheckCircle, 
-    TrendingUp, 
-    Award, 
-    UserPlus, 
-    LucideIcon,
+import {
+    Users,
+    TrendingUp,
     Building,
-    GraduationCap,
     Briefcase,
     Search,
-    Edit,
-    Trash2,
-    Eye,
     Mail,
-    Phone,
+    Award,
+    CheckCircle,
+    UserPlus,
+    GraduationCap,
 } from 'lucide-react';
-import { Employee } from './types';
-import { APIURL } from '@/constants/api';
-import Link from 'next/link';
+
+interface Employee {
+    id: string | number;
+    employeeName?: string;
+    email?: string;
+    phoneNumber?: string;
+    position?: string;
+    department?: string;
+    status?: string;
+    joinDate?: string;
+    profilePhotoUrl?: string;
+}
 
 interface StatCardProps {
-    icon: LucideIcon;
+    icon: React.ComponentType<{ className?: string }>;
     title: string;
     value: string;
     trend?: string;
@@ -31,13 +35,13 @@ interface StatCardProps {
 }
 
 interface Activity {
-    icon: LucideIcon;
+    icon: string;
     title: string;
     time: string;
     status: 'completed' | 'pending' | 'rejected';
 }
 
-const iconMap: { [key: string]: LucideIcon } = {
+const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
     Users,
     CheckCircle,
     TrendingUp,
@@ -52,86 +56,86 @@ export default function HRDashboard() {
     const [totalWorkforce, setTotalWorkforce] = useState<number | null>(null);
     const [departments, setDepartments] = useState<string[]>([]);
     const [newHires, setNewHires] = useState<number | null>(null);
-    const [openPositions, setOpenPositions] = useState<number | null>(null);
-    const [loadingStats, setLoadingStats] = useState(true);
+    const [loadingStats, setLoadingStats] = useState(false);
     const [errorStats, setErrorStats] = useState<string | null>(null);
     const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loadingEmployees, setLoadingEmployees] = useState(true);
+    const [loadingEmployees, setLoadingEmployees] = useState(false);
+    const [errorEmployees, setErrorEmployees] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDepartment, setSelectedDepartment] = useState('all');
-
     const [activities, setActivities] = useState<Activity[]>([]);
-    const [loadingActivities, setLoadingActivities] = useState(true);
+    const [loadingActivities, setLoadingActivities] = useState(false);
     const [errorActivities, setErrorActivities] = useState<string | null>(null);
 
     useEffect(() => {
-        setLoadingStats(true);
-        setLoadingEmployees(true);
-        setErrorStats(null);
-        
-        fetch(APIURL + '/api/employees')
-            .then(async res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const text = await res.text();
-                return text ? JSON.parse(text) : [];
-            })
-            .then((data: Employee[]) => {
-                setEmployees(data);
-                setTotalWorkforce(data.length);
-                const uniqueDepartments = Array.from(new Set(data.map((e) => (e as { department?: string }).department ?? '')));
-                setDepartments(uniqueDepartments);
+        const fetchDashboardData = async () => {
+            setLoadingStats(true);
+            setLoadingEmployees(true);
+            try {
+                const employeesResponse = await fetch('http://localhost:8080/api/employees');
+                if (!employeesResponse.ok) {
+                    throw new Error('Failed to fetch employees');
+                }
+                const employeesData = await employeesResponse.json();
                 
-                const now = new Date();
-                const hires = data.filter((e) => {
-                    if (!e.joinDate) return false;
-                    const joinDate = new Date(e.joinDate);
-                    return (now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24) <= 30;
-                });
-                setNewHires(hires.length);
-                setOpenPositions(5); // Mock data
-            })
-            .catch(() => setErrorStats('Failed to fetch employee data'))
-            .finally(() => {
+                if (Array.isArray(employeesData)) {
+                    setEmployees(employeesData);
+                    setTotalWorkforce(employeesData.length);
+                    const uniqueDepartments = Array.from(new Set(employeesData.map((e: Employee) => e.department || 'Unassigned')));
+                    setDepartments(uniqueDepartments);
+                    
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                    setNewHires(employeesData.filter((e: Employee) => e.joinDate && new Date(e.joinDate) > oneMonthAgo).length);
+                } else {
+                    throw new Error("Invalid data format from API.");
+                }
+            } catch (error: any) {
+                console.error("Failed to fetch dashboard data:", error);
+                setErrorStats("Failed to load dashboard statistics.");
+                setErrorEmployees("Failed to load employee directory.");
+            } finally {
                 setLoadingStats(false);
                 setLoadingEmployees(false);
-            });
-    }, []);
+            }
+        };
 
-    useEffect(() => {
-        setLoadingActivities(true);
-        setErrorActivities(null);
-        fetch(APIURL + '/api/activities')
-            .then(async res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const text = await res.text();
-                return text ? JSON.parse(text) : [];
-            })
-            .then((data: Activity[]) => {
-                const mapped = data.slice(0, 5).map(activity => ({
-                    ...activity,
-                    icon: iconMap[(activity.icon as unknown as string)] || Users,
-                }));
-                setActivities(mapped);
-            })
-            .catch(() => setErrorActivities('Failed to fetch activities'))
-            .finally(() => setLoadingActivities(false));
+        const fetchActivities = async () => {
+            setLoadingActivities(true);
+            try {
+                const activitiesResponse = await fetch('http://localhost:8080/api/activities');
+                if (!activitiesResponse.ok) {
+                    throw new Error('Failed to fetch activities');
+                }
+                const activitiesData = await activitiesResponse.json();
+                setActivities(activitiesData);
+            } catch (error: any) {
+                console.error("Failed to fetch activities:", error);
+                setErrorActivities("Failed to load recent activities.");
+            } finally {
+                setLoadingActivities(false);
+            }
+        };
+
+        fetchDashboardData();
+        fetchActivities();
     }, []);
 
     const filteredEmployees = employees.filter(employee => {
-        const matchesSearch = employee.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            employee.id?.toString().includes(searchTerm.toLowerCase()) ||
-                            employee.email?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesDepartment = selectedDepartment === 'all' || 
-                                 (employee as { department?: string }).department === selectedDepartment;
+        const matchesSearch = employee.employeeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            employee.id?.toString().includes(searchTerm.toLowerCase()) ||
+            employee.email?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDepartment = selectedDepartment === 'all' ||
+            employee.department === selectedDepartment;
         return matchesSearch && matchesDepartment;
     });
 
     const StatCard = ({ icon: Icon, title, value, trend, color = 'slate', bgColor = 'bg-slate-50' }: StatCardProps) => (
-        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md">
+        <div className="bg-white/90 rounded-xl p-6 border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-gray-200">
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
-                    <p className="text-2xl font-semibold text-gray-900">{value}</p>
+                    <p className="text-3xl font-bold text-gray-900">{value}</p>
                     {trend && (
                         <p className="text-sm text-green-600 flex items-center mt-2">
                             <TrendingUp className="w-4 h-4 mr-1" />
@@ -139,190 +143,218 @@ export default function HRDashboard() {
                         </p>
                     )}
                 </div>
-                <div className={`p-3 rounded-lg ${bgColor} border border-gray-100`}>
-                    <Icon className={`w-6 h-6 text-${color}-600`} />
+                <div className={`p-4 rounded-xl ${bgColor} border border-gray-50`}>
+                    <Icon className={`w-7 h-7 text-${color}-600`} />
                 </div>
             </div>
         </div>
     );
 
     return (
-        <div className="max-w-7xl mx-auto px-6 py-8 bg-gray-50 min-h-screen">
-            {/* Header */}
-            <div className="mb-8">
-                <div className="border-b border-gray-200 pb-6">
-                    <h1 className="text-3xl font-semibold text-gray-900 mb-2">Human Resources Dashboard</h1>
-                    <p className="text-gray-600">Comprehensive workforce management and analytics overview</p>
+        <div className="min-h-screen bg-transparent">
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-8">
+                    <div className="border-b border-gray-200 pb-6 text-center">
+                        <h1 className="text-4xl font-bold text-gray-900 mb-2">Human Resources Dashboard</h1>
+                        <p className="text-lg text-gray-600">Comprehensive workforce management and analytics overview</p>
+                    </div>
                 </div>
-            </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <StatCard
-                    icon={Users}
-                    title="Total Employees"
-                    value={loadingStats ? '...' : errorStats ? '!' : totalWorkforce?.toString() || '0'}
-                    trend="+12% from last month"
-                    color="blue"
-                    bgColor="bg-blue-50"
-                />
-                <StatCard
-                    icon={Building}
-                    title="Departments"
-                    value={loadingStats ? '...' : errorStats ? '!' : departments.length.toString()}
-                    color="slate"
-                    bgColor="bg-slate-50"
-                />
-                <StatCard
-                    icon={Briefcase}
-                    title="New Hires"
-                    value={loadingStats ? '...' : errorStats ? '!' : newHires?.toString() || '0'}
-                    trend="Last 30 days"
-                    color="emerald"
-                    bgColor="bg-emerald-50"
-                />
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {loadingStats ? (
+                        <div className="md:col-span-3 text-center py-8">Loading stats...</div>
+                    ) : errorStats ? (
+                        <div className="md:col-span-3 text-center py-8 text-red-500">{errorStats}</div>
+                    ) : (
+                        <>
+                            <StatCard
+                                icon={Users}
+                                title="Total Employees"
+                                value={totalWorkforce?.toString() || '0'}
+                                trend="+17% from last month"
+                                color="blue"
+                                bgColor="bg-blue-50"
+                            />
+                            <StatCard
+                                icon={Building}
+                                title="Departments"
+                                value={departments.length.toString()}
+                                color="purple"
+                                bgColor="bg-purple-50"
+                            />
+                            <StatCard
+                                icon={UserPlus}
+                                title="New Hires"
+                                value={newHires?.toString() || '0'}
+                                trend="Last 30 days"
+                                color="emerald"
+                                bgColor="bg-emerald-50"
+                            />
+                        </>
+                    )}
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Employee List */}
-                <div className="lg:col-span-2">
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                        {/* Header */}
-                        <div className="border-b border-gray-200 p-6">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
-                                <h2 className="text-lg font-semibold text-gray-900">Employee Directory</h2>
-                                <div className="flex items-center space-x-3">
-                                    <div className="relative">
-                                        <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search employees..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
-                                        />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2">
+                        <div className="bg-white/90 rounded-xl border border-gray-100 shadow-sm">
+                            <div className="border-b border-gray-100 p-6 bg-gradient-to-r from-gray-50 to-white rounded-t-xl">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                                    <h2 className="text-xl font-bold text-gray-900">Employee Directory</h2>
+                                    <div className="flex items-center space-x-3">
+                                        <div className="relative">
+                                            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search employees..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64 transition-all"
+                                            />
+                                        </div>
+                                        <select
+                                            value={selectedDepartment}
+                                            onChange={(e) => setSelectedDepartment(e.target.value)}
+                                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        >
+                                            <option value="all">All Departments</option>
+                                            {departments.map(dept => (
+                                                <option key={dept} value={dept}>{dept}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <select
-                                        value={selectedDepartment}
-                                        onChange={(e) => setSelectedDepartment(e.target.value)}
-                                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                        <option value="all">All Departments</option>
-                                        {departments.map(dept => (
-                                            <option key={dept} value={dept}>{dept}</option>
-                                        ))}
-                                    </select>
                                 </div>
+                            </div>
+                            <div className="p-12">
+                                {loadingEmployees ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <Users className="w-12 h-12 mx-auto mb-4 text-gray-300 animate-pulse" />
+                                        Loading employees...
+                                    </div>
+                                ) : errorEmployees ? (
+                                    <div className="text-center py-12 text-red-500">{errorEmployees}</div>
+                                ) : (
+                                    <div className="max-h-96 overflow-y-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-gray-100">
+                                                    <th className="text-left py-4 px-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">Employee</th>
+                                                    <th className="text-left py-4 px-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">Email</th>
+                                                    <th className="text-left py-4 px-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">Department</th>
+                                                    <th className="text-left py-4 px-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {filteredEmployees.map((employee) => (
+                                                    <tr key={employee.id} className="hover:bg-gray-25 transition-colors group">
+                                                        <td className="py-4 px-2">
+                                                            <div className="flex items-center space-x-4">
+                                                                {employee.profilePhotoUrl ? (
+                                                                    <img src={employee.profilePhotoUrl} alt={employee.employeeName} className="w-12 h-12 rounded-full flex-shrink-0 object-cover" />
+                                                                ) : (
+                                                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-300 transition-all">
+                                                                        <Users className="w-6 h-6 text-blue-600" />
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <h3 className="font-semibold text-gray-900 text-base">{employee.employeeName}</h3>
+                                                                    <p className="text-sm text-gray-600">{employee.position || 'N/A'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-2">
+                                                            <div className="flex items-center space-x-2">
+                                                                <Mail className="w-4 h-4 text-gray-400" />
+                                                                <span className="text-sm text-gray-700">{employee.email}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-2">
+                                                            <div className="flex items-center space-x-2">
+                                                                <Building className="w-4 h-4 text-gray-400" />
+                                                                <span className="text-sm font-medium text-gray-700">{employee.department || 'Unassigned'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-2">
+                                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                                employee.status === 'Active'
+                                                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                                                    : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                                            }`}>
+                                                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                                                    employee.status === 'Active' ? 'bg-green-400' : 'bg-gray-400'
+                                                                }`} />
+                                                                {employee.status || 'Active'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        <div className="bg-white/90 rounded-xl border border-gray-100 shadow-sm">
+                            <div className="border-b border-gray-100 p-4 bg-gradient-to-r from-gray-50 to-white rounded-t-xl">
+                                <h3 className="font-bold text-gray-900">Recent Activities</h3>
+                            </div>
+                            <div className="p-1">
+                                {loadingActivities ? (
+                                    <div className="text-center text-gray-500">Loading...</div>
+                                ) : errorActivities ? (
+                                    <div className="text-center text-red-500">{errorActivities}</div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {activities.map((activity, idx) => {
+                                            const Icon = iconMap[activity.icon] || Users;
+                                            return (
+                                                <div key={idx} className="flex items-start space-x-3 p-3 border border-gray-50 rounded-lg hover:bg-gray-25 transition-colors">
+                                                    <div className="p-2 bg-gray-50 rounded-lg flex-shrink-0">
+                                                        <Icon className="w-4 h-4 text-gray-600" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-gray-900 truncate">{activity.title}</p>
+                                                        <p className="text-xs text-gray-500">{activity.time}</p>
+                                                    </div>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                                        activity.status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                                            activity.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                                                                'bg-red-50 text-red-700 border border-red-200'
+                                                    }`}>
+                                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                                            activity.status === 'completed' ? 'bg-green-400' : 'bg-gray-400'
+                                                        }`} />
+                                                        {activity.status}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Content */}
-                        <div className="p-6">
-                            {loadingEmployees ? (
-                                <div className="text-center py-8 text-gray-500">Loading employees...</div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {filteredEmployees.slice(0, 10).map((employee) => (
-                                        <div key={employee.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                                            <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                    <Users className="w-5 h-5 text-gray-600" />
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-medium text-gray-900">{employee.name}</h3>
-                                                    <p className="text-sm text-gray-600">{employee.position || 'N/A'}</p>
-                                                    <div className="flex flex-wrap items-center space-x-4 mt-1">
-                                                        <span className="text-xs text-gray-500 flex items-center">
-                                                            <Mail className="w-3 h-3 mr-1 text-gray-400" />
-                                                            {employee.email}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500 flex items-center">
-                                                            <Phone className="w-3 h-3 mr-1 text-gray-400" />
-                                                            {employee.phone}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                    employee.status === 'Active' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-gray-100 text-gray-800 border border-gray-200'
-                                                }`}>
-                                                    {employee.status || 'Active'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {filteredEmployees.length > 10 && (
-                                        <div className="text-center pt-4 border-t border-gray-100">
-                                            <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                                View All {filteredEmployees.length} Employees
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Sidebar */}
-                <div className="space-y-8">
-                    {/* Recent Activities */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <div className="border-b border-gray-200 p-4">
-                            <h3 className="font-semibold text-gray-900">Recent Activities</h3>
-                        </div>
-                        <div className="p-4">
-                            {loadingActivities ? (
-                                <div className="text-gray-500">Loading...</div>
-                            ) : errorActivities ? (
-                                <div className="text-red-600">{errorActivities}</div>
-                            ) : activities.length === 0 ? (
-                                <div className="text-gray-500">No recent activities.</div>
-                            ) : (
+                        <div className="bg-white/90 rounded-xl border border-gray-100 shadow-sm">
+                            <div className="border-b border-gray-100 p-4 bg-gradient-to-r from-gray-50 to-white rounded-t-xl">
+                                <h3 className="font-bold text-gray-900">Department Overview</h3>
+                            </div>
+                            <div className="p-4">
                                 <div className="space-y-3">
-                                    {activities.map((activity, idx) => (
-                                        <div key={idx} className="flex items-start space-x-3 p-3 border border-gray-100 rounded-lg">
-                                            <div className="p-2 bg-gray-50 rounded-lg flex-shrink-0">
-                                                <activity.icon className="w-4 h-4 text-gray-600" />
+                                    {departments.map((dept, idx) => {
+                                        const deptEmployees = employees.filter(emp => emp.department === dept);
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between p-3 border border-gray-50 rounded-lg hover:bg-gray-25 transition-colors">
+                                                <div className="flex items-center space-x-3">
+                                                    <Building className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                                                    <span className="text-sm font-medium text-gray-900">{dept || 'Unassigned'}</span>
+                                                </div>
+                                                <span className="text-sm text-gray-600 font-semibold bg-gray-50 px-2 py-1 rounded">{deptEmployees.length}</span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 truncate">{activity.title}</p>
-                                                <p className="text-xs text-gray-500">{activity.time}</p>
-                                            </div>
-                                            <span className={`px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${
-                                                activity.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                activity.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                'bg-red-100 text-red-800'
-                                            }`}>
-                                                {activity.status}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Department Overview */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <div className="border-b border-gray-200 p-4">
-                            <h3 className="font-semibold text-gray-900">Department Overview</h3>
-                        </div>
-                        <div className="p-4">
-                            <div className="space-y-3">
-                                {departments.slice(0, 5).map((dept, idx) => {
-                                    const deptEmployees = employees.filter(emp => (emp as { department?: string }).department === dept);
-                                    return (
-                                        <div key={idx} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
-                                            <div className="flex items-center space-x-3">
-                                                <Building className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                                                <span className="text-sm font-medium text-gray-900">{dept || 'Unassigned'}</span>
-                                            </div>
-                                            <span className="text-sm text-gray-600 font-medium">{deptEmployees.length}</span>
-                                        </div>
-                                    );
-                                })}
                             </div>
                         </div>
                     </div>

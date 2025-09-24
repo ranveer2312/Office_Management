@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { DocumentTextIcon, UsersIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
-import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
+
+// The API URL is defined for fetching data.
+const APIURL = 'http://localhost:8080';
 
 interface SalaryExpense {
   id: number;
@@ -27,10 +28,10 @@ export default function AdminSalariesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const res = await fetch(APIURL + '/api/salaries');
+      const res = await fetch(`${APIURL}/api/salaries`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      setExpenses(Array.isArray(data) ? data : []);
+      setExpenses(Array.isArray(data.content) ? data.content : []);
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Failed to fetch salary records');
@@ -40,24 +41,47 @@ export default function AdminSalariesPage() {
     }
   };
 
+  const formatDate = (dateString: unknown) => {
+    if (!dateString) return 'N/A';
+    const dateStr = String(dateString).trim();
+    if (!dateStr || dateStr === 'null' || dateStr === 'undefined') return 'N/A';
+    
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${month}/${day}/${year}`;
+    }
+    
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-lg text-gray-600">Loading salary records...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950">
+    <div className="min-h-screen bg-transparent">
       <Toaster position="top-right" />
       
-      <div className="bg-gradient-to-r from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link href="/admin/finance-manager/dashboard" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700 rounded-2xl p-6">
+          <button onClick={() => window.history.back()} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 dark:text-gray-400 dark:hover:text-gray-200">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Back to Finance Dashboard
-          </Link>
+          </button>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
@@ -76,10 +100,9 @@ export default function AdminSalariesPage() {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:via-slate-800/50 dark:to-indigo-900/30 rounded-2xl shadow-2xl border border-blue-200/50 dark:border-indigo-700/50 backdrop-blur-sm">
+        {/* Expenses List */}
+        <div className="mt-8 bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:via-slate-800/50 dark:to-indigo-900/30 rounded-2xl shadow-2xl border border-blue-200/50 dark:border-indigo-700/50 backdrop-blur-sm">
           <div className="px-8 py-6 border-b border-blue-200/50 dark:border-indigo-700/50 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-800/50 dark:to-indigo-900/50 rounded-t-2xl">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-lg">
@@ -110,33 +133,14 @@ export default function AdminSalariesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-300">{expense.empName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{expense.empId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{expense.reimbursement}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">₹{(expense.amount || 0).toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">₹{new Intl.NumberFormat('en-IN').format(expense.amount || 0)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{new Date(expense.date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{expense.remarks}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       {expense.documentPath ? (
                         <button
                           onClick={() => {
-                            try {
-                              if (!expense.documentPath) {
-                                toast.error('No document path found');
-                                return;
-                              }
-                              
-                              let url;
-                              if (expense.documentPath.startsWith('http')) {
-                                url = expense.documentPath;
-                              } else if (expense.documentPath.startsWith('/uploads/')) {
-                                url = `${APIURL}${expense.documentPath}`;
-                              } else {
-                                const filename = expense.documentPath.includes('/') ? expense.documentPath.split('/').pop() : expense.documentPath;
-                                url = `${APIURL}/uploads/${filename}`;
-                              }
-                              
-                              window.open(url, '_blank');
-                            } catch {
-                              toast.error('Error opening document');
-                            }
+                            window.open(expense.documentPath, '_blank');
                           }}
                           className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline"
                         >

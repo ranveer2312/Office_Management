@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { DocumentTextIcon, WifiIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
-import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
+
+// The API URL should now point to your local backend server.
+const APIURL = 'http://localhost:8080';
 
 interface InternetBillExpense {
   id: number;
@@ -14,7 +15,7 @@ interface InternetBillExpense {
   month: string;
   payment: number;
   remarks: string;
-  documentPath?: string;
+  documentUrl?: string; // Corresponds to the URL from the database
   date: string;
 }
 
@@ -28,9 +29,10 @@ export default function AdminInternetBillsPage() {
 
   const fetchExpenses = async () => {
     try {
-      const res = await fetch(APIURL + '/api/internet-bills');
+      const res = await fetch(`${APIURL}/api/internet-bills`); 
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
+      
       setExpenses(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Fetch error:', error);
@@ -65,22 +67,23 @@ export default function AdminInternetBillsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-lg text-gray-600">Loading internet bills...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950">
+    <div className="min-h-screen bg-transparent">
       <Toaster position="top-right" />
       
-      <div className="bg-gradient-to-r from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link href="/admin/finance-manager/dashboard" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700 rounded-2xl p-6">
+          <button onClick={() => window.history.back()} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Back to Finance Dashboard
-          </Link>
+          </button>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
@@ -99,10 +102,9 @@ export default function AdminInternetBillsPage() {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:via-slate-800/50 dark:to-indigo-900/30 rounded-2xl shadow-2xl border border-blue-200/50 dark:border-indigo-700/50 backdrop-blur-sm">
+        {/* Expenses List */}
+        <div className="mt-8 bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-gray-800 dark:via-slate-800/50 dark:to-indigo-900/30 rounded-2xl shadow-2xl border border-blue-200/50 dark:border-indigo-700/50 backdrop-blur-sm">
           <div className="px-8 py-6 border-b border-blue-200/50 dark:border-indigo-700/50 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-800/50 dark:to-indigo-900/50 rounded-t-2xl">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-lg">
@@ -141,21 +143,15 @@ export default function AdminInternetBillsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{expense.month}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">₹{expense.payment.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      {expense.documentPath ? (
-                        <button
-                          onClick={() => {
-                            try {
-                              const filename = expense.documentPath?.includes('/') ? expense.documentPath.split('/').pop() : expense.documentPath;
-                              const url = `${APIURL}/files/${encodeURIComponent(filename || '')}`;
-                              window.open(url, '_blank');
-                            } catch {
-                              toast.error('Error opening document');
-                            }
-                          }}
+                      {expense.documentUrl ? (
+                        <a
+                          href={expense.documentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
                         >
                           📄 View
-                        </button>
+                        </a>
                       ) : (
                         <span className="text-gray-400">No document</span>
                       )}

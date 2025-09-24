@@ -10,7 +10,6 @@ import {
   Search,
   Menu,
   RefreshCw,
-
   Sun,
   CloudSun,
   Moon,
@@ -24,8 +23,15 @@ import {
   X,
   User,
   ChevronRight,
+  ChevronDown,
   LayoutDashboard,
   Clock,
+  Home,
+  FileText,
+  Laptop,
+  Calendar,
+  Award,
+  UserPlus,
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 
@@ -36,6 +42,14 @@ interface Notification {
   message: string;
   read: boolean;
   createdAt?: string;
+}
+
+interface MenuItem {
+  icon?: React.ReactNode;
+  label: string;
+  href?: string;
+  subItems?: MenuItem[];
+  type?: 'divider';
 }
 
 const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -61,7 +75,7 @@ const motivationalThoughts = [
   'Success is a journey, not a destination.',
   'Innovation distinguishes between a leader and a follower.',
   'The strength of the team is each individual member.',
-  'Believe you can and you’re halfway there.',
+  "Believe you can and you're halfway there.",
   'Hard work beats talent when talent fails to work hard.',
   'The future depends on what you do today.',
   'Great things are done by a series of small things brought together.',
@@ -80,27 +94,69 @@ type NavItemProps = {
   href?: string;
   active?: boolean;
   onClick?: () => void;
+  isSubItem?: boolean;
+  hasSubItems?: boolean;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 };
 
-const NavItem = ({ icon, label, href = '#', active = false, onClick }: NavItemProps) => (
-  <Link
-    href={href}
-    onClick={onClick}
-    className={`group flex items-center justify-between px-4 py-3.5 text-sm font-medium rounded-2xl cursor-pointer transition-all duration-300 ${
-      active
+// Refactored NavItem for hydration safety
+const NavItem = ({
+  icon,
+  label,
+  href = '#',
+  active = false,
+  onClick,
+  isSubItem = false,
+  hasSubItems = false,
+  isExpanded = false,
+  onToggle
+}: NavItemProps) => {
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (hasSubItems) {
+      e.preventDefault();
+      if (onToggle) {
+        onToggle();
+      }
+    } else {
+      if (onClick) {
+        onClick();
+      }
+    }
+  };
+
+  const commonClasses = `group flex items-center justify-between px-4 py-3.5 text-sm font-medium rounded-2xl cursor-pointer transition-all duration-300 ${
+    isSubItem
+      ? active
+        ? 'bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 text-white shadow-lg ml-6'
+        : 'text-slate-600 hover:bg-gradient-to-r hover:from-slate-50 hover:via-blue-25 hover:to-slate-50 hover:text-slate-800 ml-6'
+      : active
         ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 text-white shadow-xl scale-105 border border-blue-400/50'
         : 'text-slate-600 hover:bg-gradient-to-r hover:from-slate-100 hover:via-blue-50 hover:to-slate-100 hover:text-slate-800 hover:scale-102 hover:border hover:border-slate-200'
-    }`}
-  >
-    <div className="flex items-center">
-      <div className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'} transition-colors`}>
-        {icon}
+  }`;
+
+  return (
+    <Link href={href} className={commonClasses} onClick={handleClick}>
+      <div className="flex items-center">
+        <div className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'} transition-colors`}>
+          {icon}
+        </div>
+        <span className="ml-3 font-medium">{label}</span>
       </div>
-      <span className="ml-3 font-medium">{label}</span>
-    </div>
-    {!active && <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />}
-  </Link>
-);
+      {hasSubItems ? (
+        <ChevronDown
+          size={16}
+          className={`text-slate-400 group-hover:text-blue-500 transition-all duration-300 ${
+            isExpanded ? 'rotate-180' : ''
+          }`}
+        />
+      ) : (
+        !active && <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+      )}
+    </Link>
+  );
+};
 
 // AdminSidebar component
 interface AdminSidebarProps {
@@ -111,12 +167,40 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) => {
   const pathname = usePathname();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const userName = 'Admin';
   const profilePhotoUrl = '';
 
+  useEffect(() => {
+    if (pathname.startsWith('/admin/hr')) {
+      setExpandedMenus(prev => prev.includes('employee-management') ? prev : [...prev, 'employee-management']);
+    }
+  }, [pathname]);
+
+  const toggleMenu = (menuId: string) => {
+    setExpandedMenus(prev =>
+      prev.includes(menuId)
+        ? prev.filter(id => id !== menuId)
+        : [...prev, menuId]
+    );
+  };
+
   const adminSidebarItems = useMemo(() => ([
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', href: '/admin' },
-    { icon: <Users size={20} />, label: 'Employee Management', href: '/admin/hr' },
+    {
+      icon: <Users size={20} />,
+      label: 'Employee Management',
+      href: '/admin/hr',
+      subItems: [
+        { icon: <Home size={18} />, label: 'Overview', href: '/admin/hr' },
+        { icon: <FileText size={18} />, label: 'Employee Documents', href: '/admin/hr/documents' },
+        { icon: <Laptop size={18} />, label: 'Asset Management', href: '/admin/hr/assets' },
+        { icon: <Calendar size={18} />, label: 'Leave Management', href: '/admin/hr/leaves' },
+        { icon: <Award size={18} />, label: 'Performance', href: '/admin/hr/performance' },
+        { icon: <UserPlus size={18} />, label: 'Joining/Relieving', href: '/admin/hr/joining' },
+        { icon: <Clock size={18} />, label: 'Weekly Activities', href: '/admin/hr/activities' }
+      ]
+    },
     { icon: <Clock size={20} />, label: 'Attendance', href: '/admin/attendence' },
     { icon: <DollarSign size={20} />, label: 'Finance', href: '/admin/finance-manager/dashboard' },
     { icon: <Package size={20} />, label: 'Inventory', href: '/admin/store' },
@@ -125,6 +209,51 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
     { icon: <Database size={20} />, label: 'Data Management', href: '/admin/data-manager' },
     { icon: <StickyNote size={20} />, label: 'Memos', href: '/admin/memos' },
   ]), []);
+
+  const renderMenuItem = (item: MenuItem, index: number) => {
+    if (item.type === 'divider') {
+      return (
+        <div key={`divider-${index}`} className="py-3">
+          <hr className="border-slate-200" />
+        </div>
+      );
+    }
+
+    const menuId = item.label.toLowerCase().replace(/\s+/g, '-');
+    const hasSubItems = item.subItems && item.subItems.length > 0;
+    const isExpanded = expandedMenus.includes(menuId);
+    const isActive = pathname === item.href;
+
+    return (
+      <div key={item.label}>
+        <NavItem
+          icon={item.icon!}
+          label={item.label}
+          href={item.href}
+          active={isActive}
+          onClick={onClose}
+          hasSubItems={hasSubItems}
+          isExpanded={isExpanded}
+          onToggle={() => toggleMenu(menuId)}
+        />
+        {hasSubItems && isExpanded && (
+          <div className="mt-2 space-y-1">
+            {item.subItems!.map((subItem) => (
+              <NavItem
+                key={subItem.label}
+                icon={subItem.icon!}
+                label={subItem.label}
+                href={subItem.href}
+                active={pathname === subItem.href}
+                onClick={onClose}
+                isSubItem={true}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -154,22 +283,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
           </button>
         </div>
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-          {adminSidebarItems.map((link, index) =>
-            link.type === 'divider' ? (
-              <div key={`divider-${index}`} className="py-3">
-                <hr className="border-slate-200" />
-              </div>
-            ) : (
-              <NavItem
-                key={link.label}
-                icon={link.icon!}
-                label={link.label!}
-                href={link.href}
-                active={pathname === link.href}
-                onClick={onClose}
-              />
-            )
-          )}
+          {adminSidebarItems.map(renderMenuItem)}
         </nav>
         <div className="p-6 border-t border-slate-200/60 bg-white/50 backdrop-blur-sm">
           <div className="flex items-center space-x-3 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-200 backdrop-blur-sm">

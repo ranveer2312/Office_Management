@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { File, Upload, Search, Filter,  Download,  X,  User, FileText, CreditCard, Briefcase, GraduationCap, LucideIcon, Eye } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { File, Upload, Search, Filter, Download, X, User, FileText, CreditCard, Briefcase, GraduationCap, LucideIcon, Eye, Edit } from 'lucide-react';
 import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -33,7 +33,7 @@ interface ApiDocument {
   originalFileName?: string;
 }
 
-// Helper: marks subcategory ids (move to top-level scope)
+// Helper: marks subcategory ids (moved to top-level scope)
 const marksSubcategories: { id: string; name: string }[] = [
   { id: 'marks_10th', name: '10th Marks Card' },
   { id: 'marks_pu', name: 'PU Marks Card' },
@@ -41,17 +41,50 @@ const marksSubcategories: { id: string; name: string }[] = [
   { id: 'marks_pg', name: 'PG Marks Card' },
 ];
 
+const documentTypes: DocumentType[] = [
+  { id: 'resume', name: 'Resume', icon: FileText, color: 'blue' },
+  ...marksSubcategories.map(sub => ({ ...sub, icon: GraduationCap, color: 'green' as 'green' })),
+  { id: 'marks_card', name: 'Marks Card', icon: GraduationCap, color: 'green' }, // Parent category
+  { id: 'id_adhar', name: 'Aadhar Card', icon: CreditCard, color: 'purple' },
+  { id: 'id_pan', name: 'PAN Card', icon: CreditCard, color: 'purple' },
+  { id: 'offer', name: 'Offer Letter', icon: Briefcase, color: 'orange' },
+  { id: 'account', name: 'Account Details', icon: CreditCard, color: 'blue' },
+  { id: 'payslip', name: 'Payslip', icon: FileText, color: 'orange' },
+  { id: 'experience', name: 'Experience Letter', icon: Briefcase, color: 'green' },
+  { id: 'photo', name: 'Photo', icon: User, color: 'purple' },
+  { id: 'relieving', name: 'Relieving Letter', icon: Briefcase, color: 'blue' },
+];
+
+const getDocumentIcon = (type: string): LucideIcon => {
+  if (!type) return File;
+  const docType = documentTypes.find(dt => dt.id.toLowerCase() === type.toLowerCase());
+  return docType ? docType.icon : File;
+};
+
+const getDocumentColorClasses = (type: string) => {
+  if (!type) return { bg: 'bg-gray-100', text: 'text-gray-600' };
+  const docType = documentTypes.find(dt => dt.id.toLowerCase() === type.toLowerCase());
+  if (!docType) return { bg: 'bg-gray-100', text: 'text-gray-600' };
+  
+  const colorMap: Record<DocumentType['color'], { bg: string; text: string }> = {
+    blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
+    green: { bg: 'bg-green-100', text: 'text-green-600' },
+    purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
+    orange: { bg: 'bg-orange-100', text: 'text-orange-600' }
+  };
+  
+  return colorMap[docType.color] || { bg: 'bg-gray-100', text: 'text-gray-600' };
+};
+
 export default function DocumentsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('');
   const [employeeId, setEmployeeId] = useState('');
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [viewingDocument, ] = useState<Document | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
-  const [, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -68,41 +101,30 @@ export default function DocumentsPage() {
     employeeId: '',
     documentType: '',
   });
- 
-  // Add state to control filter bar visibility
-  // const [showCategories, setShowCategories] = useState(false); // Removed
-  // Add state to control sidebar expansion
   const [showAllCategories, setShowAllCategories] = useState(false);
-  // Add state for marks card subcategory expansion
   const [showMarksSubcategories, setShowMarksSubcategories] = useState(false);
 
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
+  // Use useCallback to memoize the fetchDocuments function
+  const fetchDocuments = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(APIURL +'/api/hr/documents');
+      const response = await fetch(APIURL + '/api/hr/documents');
       
       if (!response.ok) {
         throw new Error('Failed to fetch documents');
       }
 
-      const data = await response.json();
+      const data: ApiDocument[] = await response.json();
       
-      // Transform API response to match our Document interface
-      const transformedDocuments: Document[] = (data as ApiDocument[]).map((doc) => ({
+      const transformedDocuments: Document[] = data.map((doc) => ({
         id: doc.id,
         employeeId: doc.employeeId,
-        documentType: doc.documentType ? doc.documentType.toLowerCase() : '',
+        documentType: doc.documentType?.toLowerCase() || '',
         fileName: doc.fileName || '',
         fileDownloadUri: doc.fileDownloadUri || '',
         fileType: doc.fileType || '',
         size: doc.size || 0,
-        status: 'approved', // Default status since it's not provided by API
         originalFileName: doc.originalFileName,
       }));
 
@@ -112,85 +134,51 @@ export default function DocumentsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // Empty dependency array means this function is created once
 
-  // 1. Expand documentTypes array
-  const documentTypes: DocumentType[] = [
-    { id: 'resume', name: 'Resume', icon: FileText, color: 'blue' },
-    { id: 'marks_10th', name: '10th Marks Card', icon: GraduationCap, color: 'green' },
-    { id: 'marks_pu', name: 'PU Marks Card', icon: GraduationCap, color: 'green' },
-    { id: 'marks_degree', name: 'Degree Marks Card', icon: GraduationCap, color: 'green' },
-    { id: 'marks_pg', name: 'PG Marks Card', icon: GraduationCap, color: 'green' },
-    { id: 'id_adhar', name: 'Aadhar Card', icon: CreditCard, color: 'purple' },
-    { id: 'id_pan', name: 'PAN Card', icon: CreditCard, color: 'purple' },
-    { id: 'offer', name: 'Offer Letter', icon: Briefcase, color: 'orange' },
-    { id: 'account', name: 'Account Details', icon: CreditCard, color: 'blue' },
-    { id: 'payslip', name: 'Payslip', icon: FileText, color: 'orange' },
-    { id: 'experience', name: 'Experience Letter', icon: Briefcase, color: 'green' },
-    { id: 'photo', name: 'Photo', icon: User, color: 'purple' },
-    { id: 'relieving', name: 'Relieving Letter', icon: Briefcase, color: 'blue' },
-    { id: 'marks_card', name: 'Marks Card', icon: GraduationCap, color: 'green' },
-  ];
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]); // Call the memoized function
 
-  // 2. Update getDocumentIcon and getDocumentColorClasses to support new types (already works)
-  const getDocumentIcon = (type: string): LucideIcon => {
-    if (!type) return File;
-    const docType = documentTypes.find(dt => dt.id === type.toLowerCase());
-    return docType ? docType.icon : File;
-  };
-
-  const getDocumentColorClasses = (type: string) => {
-    if (!type) return { bg: 'bg-gray-100', text: 'text-gray-600' };
-    const docType = documentTypes.find(dt => dt.id === type.toLowerCase());
-    if (!docType) return { bg: 'bg-gray-100', text: 'text-gray-600' };
-    
-    const colorMap: Record<DocumentType['color'], { bg: string; text: string }> = {
-      blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
-      green: { bg: 'bg-green-100', text: 'text-green-600' },
-      purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
-      orange: { bg: 'bg-orange-100', text: 'text-orange-600' }
-    };
-    
-    return colorMap[docType.color] || { bg: 'bg-gray-100', text: 'text-gray-600' };
-  };
-
-
-
-  // 3. Update filter bar to be modern, scrollable, and flat
   const filteredDocuments = documents.filter(doc => {
     if (!doc) return false;
     const matchesCategory = selectedCategory === 'all' || 
       (doc.documentType && doc.documentType.toLowerCase() === selectedCategory);
     const matchesSearch = 
-      (doc.fileName && doc.fileName.toLowerCase().includes(searchTerm.toLowerCase())) || 
+      (doc.originalFileName && doc.originalFileName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (doc.employeeId && doc.employeeId.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    setSelectedFiles(files && files.length > 0 ? files : null);
+    setSelectedFiles(files);
   };
 
   const handleUploadSubmit = async () => {
     setUploadError(null);
     if (!selectedFiles || selectedFiles.length === 0 || !selectedDocType || !employeeId) {
       setUploadError('All fields are required.');
+      toast.error('All fields are required.');
       return;
     }
+    
     setIsUploading(true);
     try {
-      for (let i = 0; i < selectedFiles.length; i++) {
+      // Loop through each selected file and upload individually
+      for (const file of Array.from(selectedFiles)) {
         const formData = new FormData();
-        formData.append('file', selectedFiles[i]);
-        const response = await fetch(APIURL +`/api/hr/upload/${selectedDocType.toUpperCase()}/${employeeId}`, {
+        formData.append('file', file);
+        const response = await fetch(APIURL + `/api/hr/upload/${selectedDocType.toUpperCase()}/${employeeId}`, {
           method: 'POST',
           body: formData,
         });
+
         if (!response.ok) {
-          throw new Error('Failed to upload document: ' + selectedFiles[i].name);
+          throw new Error(`Failed to upload document: ${file.name}`);
         }
       }
+      
       await fetchDocuments();
       setShowUploadModal(false);
       setSelectedDocType('');
@@ -207,51 +195,30 @@ export default function DocumentsPage() {
 
   const handleDownloadDocument = async (document: Document) => {
     try {
-      // Construct the download URL using the correct format
-      const downloadUrl = APIURL +`/api/hr/download/${document.employeeId}/${document.documentType.toUpperCase()}`;
-      
-      // Fetch the file from the backend
-      const response = await fetch(downloadUrl);
-      
+      const response = await fetch(document.fileDownloadUri);
       if (!response.ok) {
         throw new Error('Failed to download document');
       }
-
-      // Get the blob from the response
       const blob = await response.blob();
-      
-      // Create a URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element
       const link = window.document.createElement('a');
       link.href = url;
-      link.download = document.fileName;
-      
-      // Append to body, click and remove
+      link.download = document.originalFileName || document.fileName;
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
-      
-      // Clean up the URL object
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading document:', error);
-      alert('Failed to download document. Please try again.');
       toast.error('Failed to download document. Please try again.');
     }
   };
 
   const handleViewDocument = (document: Document) => {
-    try {
-      // Construct the view URL using the uploads endpoint
-      const viewUrl = APIURL + `/uploads/${document.fileName}`;
-      
-      // Open in new tab for viewing
-      window.open(viewUrl, '_blank');
-    } catch (error) {
-      console.error('Error viewing document:', error);
-      toast.error('Failed to view document. Please try again.');
+    if (document.fileDownloadUri) {
+      window.open(document.fileDownloadUri, '_blank');
+    } else {
+      toast.error('Document URL is not available.');
     }
   };
 
@@ -263,15 +230,13 @@ export default function DocumentsPage() {
   const confirmDelete = async () => {
     if (documentToDelete) {
       try {
-        const response = await fetch(APIURL +`/api/hr/documents/${documentToDelete.id}`, {
+        const response = await fetch(APIURL + `/api/hr/documents/${documentToDelete.id}`, {
           method: 'DELETE',
         });
-
         if (!response.ok) {
           throw new Error('Failed to delete document');
         }
-
-        await fetchDocuments(); // Refresh the documents list
+        await fetchDocuments();
         setShowDeleteModal(false);
         setDocumentToDelete(null);
         toast.success('Document deleted successfully');
@@ -307,51 +272,27 @@ export default function DocumentsPage() {
 
   const handleEditSubmit = async () => {
     setEditError(null);
-    if (!editingDocument || !editForm.employeeId || !editForm.documentType) {
-      setEditError('Employee ID and Document Type are required.');
+    // You can't update metadata without a file on the current backend.
+    // The `editFile` must exist for the PUT request to be valid.
+    if (!editingDocument || !editFile || !editForm.employeeId || !editForm.documentType) {
+      setEditError('To edit, you must select a new file and provide an Employee ID and Document Type.');
+      toast.error('To edit, you must select a new file and provide an Employee ID and Document Type.');
       return;
     }
     
     setIsEditing(true);
     try {
-      if (editFile) {
-        // Upload new file with new document type
-        const formData = new FormData();
-        formData.append('file', editFile);
-        const response = await fetch(
-          APIURL + `/api/hr/upload/${editForm.documentType.toUpperCase()}/${editForm.employeeId}`,
-          {
-            method: 'PUT',
-            body: formData,
-          }
-        );
-        if (!response.ok) {
-          throw new Error('Failed to update document');
+      const formData = new FormData();
+      formData.append('file', editFile);
+      const response = await fetch(
+        APIURL + `/api/hr/upload/${editForm.documentType.toUpperCase()}/${editForm.employeeId}`,
+        {
+          method: 'PUT',
+          body: formData,
         }
-      } else {
-        // Update document metadata only
-        const updateData = {
-          employeeId: editForm.employeeId,
-          documentType: editForm.documentType.toUpperCase(),
-          fileName: editForm.fileName,
-          originalFileName: editForm.originalFileName,
-          fileDownloadUri: editingDocument.fileDownloadUri,
-          fileType: editingDocument.fileType,
-          size: editingDocument.size
-        };
-        const response = await fetch(
-          APIURL + `/api/hr/documents/${editingDocument.id}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(updateData),
-          }
-        );
-        if (!response.ok) {
-          throw new Error('Failed to update document metadata');
-        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to update document file');
       }
       
       await fetchDocuments();
@@ -368,17 +309,12 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div 
-  className="flex min-h-screen bg-cover bg-center" 
-  style={{ backgroundImage: "url('/dash.jpg')" }}
->
-      {/* Sidebar */}
-      <aside className="w-64 bg-white/60 border-r border-gray-200 flex-shrink-0 hidden md:flex flex-col">
+    <div className="flex min-h-screen bg-gray-50">
+      <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden md:flex flex-col">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900">Documents</h2>
         </div>
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-          {/* All Documents button always visible */}
           <button
             onClick={() => {
               setSelectedCategory('all');
@@ -395,13 +331,14 @@ export default function DocumentsPage() {
             <span>All Documents</span>
             <span className="ml-auto">{showAllCategories ? '▲' : '▼'}</span>
           </button>
-          {/* Show all categories if toggled by All Documents */}
           {showAllCategories && (
             <>
-              {documentTypes.map((type) => {
-                if (["marks_10th","marks_pu","marks_degree","marks_pg"].includes(type.id)) return null;
+              {documentTypes.filter(dt => !['marks_10th', 'marks_pu', 'marks_degree', 'marks_pg'].includes(dt.id)).map((type) => {
+                const Icon = type.icon;
+                const count = documents.filter(doc => doc.documentType === type.id).length;
+                const colorClasses = getDocumentColorClasses(type.id);
+                
                 if (type.id === 'marks_card') {
-                  // Render Marks Card parent button
                   return (
                     <div key={type.id}>
                       <button
@@ -416,11 +353,10 @@ export default function DocumentsPage() {
                         <span>Marks Card</span>
                         <span className="ml-auto">{showMarksSubcategories ? '▲' : '▼'}</span>
                       </button>
-                      {/* Show Marks Card subcategories if toggled by Marks Card */}
                       {showMarksSubcategories && (
                         <div className="pl-8 space-y-1">
                           {marksSubcategories.map((sub: { id: string; name: string }) => {
-                            const count = documents.filter(doc => doc.documentType === sub.id).length;
+                            const subCount = documents.filter(doc => doc.documentType === sub.id).length;
                             return (
                               <button
                                 key={sub.id}
@@ -433,7 +369,7 @@ export default function DocumentsPage() {
                               >
                                 <GraduationCap className="w-4 h-4" />
                                 <span>{sub.name}</span>
-                                <span className="ml-auto text-xs font-semibold">{count}</span>
+                                <span className="ml-auto text-xs font-semibold">{subCount}</span>
                               </button>
                             );
                           })}
@@ -442,10 +378,7 @@ export default function DocumentsPage() {
                     </div>
                   );
                 }
-                // Render all other categories
-                const Icon = type.icon;
-                const count = documents.filter(doc => doc.documentType === type.id).length;
-                const colorClasses = getDocumentColorClasses(type.id);
+                
                 return (
                   <button
                     key={type.id}
@@ -466,15 +399,10 @@ export default function DocumentsPage() {
           )}
         </nav>
       </aside>
-      {/* Mobile Sidebar Toggle */}
-      <div className="md:hidden fixed top-0 left-0 z-40">
-        {/* You can add a sidebar toggle button here for mobile if desired */}
-      </div>
-      {/* Main Content */}
       <main className="flex-1 flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Toaster position="top-right" />
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <h1 className="text-4xl font-bold text-gray-100">HR Document Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">HR Document Management</h1>
           <button 
             onClick={() => setShowUploadModal(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow"
@@ -488,7 +416,6 @@ export default function DocumentsPage() {
             {error}
           </div>
         )}
-        {/* Search Bar */}
         <div className="bg-white rounded-lg shadow p-4 mb-6 flex items-center space-x-4">
           <div className="flex-1 relative">
             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -500,19 +427,22 @@ export default function DocumentsPage() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-         {/*<button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Filter className="w-5 h-5" />
             <span>Filter</span>
-          </button>*/}
+          </button>
         </div>
-        {/* Documents Grid */}
         <div className="flex-1">
-          <div className="bg-white/60 rounded-lg shadow p-4">
-            {filteredDocuments.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-4">
+            {isLoading ? (
+              <div className="text-center py-12 text-gray-500">
+                <p>Loading documents...</p>
+              </div>
+            ) : filteredDocuments.length === 0 ? (
               <div className="text-center py-12">
                 <File className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No documents found</h3>
-                <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -562,7 +492,7 @@ export default function DocumentsPage() {
                           onClick={() => openEditModal(doc)}
                           className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors shadow-sm"
                         >
-                          <Upload className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                           <span>Edit</span>
                         </button>
                         <button 
@@ -580,8 +510,6 @@ export default function DocumentsPage() {
             )}
           </div>
         </div>
-        {/* Modals remain unchanged */}
-        {/* Upload Modal */}
         {showUploadModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -594,7 +522,6 @@ export default function DocumentsPage() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -625,7 +552,6 @@ export default function DocumentsPage() {
                     ))}
                   </select>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Choose File
@@ -659,14 +585,12 @@ export default function DocumentsPage() {
                     Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB)
                   </p>
                 </div>
-
                 {uploadError && (
                   <div className="text-red-600 text-sm mt-2">
                     {uploadError}
                   </div>
                 )}
               </div>
-              
               <div className="flex space-x-3 mt-6">
                 <button
                   onClick={() => {
@@ -691,62 +615,6 @@ export default function DocumentsPage() {
             </div>
           </div>
         )}
-
-        {/* View Document Modal */}
-        {showViewModal && viewingDocument && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">View Document</h2>
-                <button 
-                  onClick={() => setShowViewModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500">Document Preview</p>
-              </div>
-              
-              <div className="mt-4 space-y-2">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Name:</span> {viewingDocument.fileName}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Type:</span> {documentTypes.find(t => t.id === viewingDocument.documentType)?.name}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Size:</span> {(viewingDocument.size / 1024).toFixed(1)} KB
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Uploaded by:</span> {viewingDocument.employeeId}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Date:</span> {new Date(viewingDocument.fileDownloadUri.split('/')[4]).toLocaleDateString()}
-                </p>
-              </div>
-              
-              <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={() => handleDownloadDocument(viewingDocument)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Download
-                </button>
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Document Modal */}
         {showEditModal && editingDocument && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -790,24 +658,13 @@ export default function DocumentsPage() {
                     ))}
                   </select>
                 </div>
-               
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Original File Name
+                    New File
                   </label>
-                  <input
-                    type="text"
-                    name="originalFileName"
-                    value={editForm.originalFileName}
-                    onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    disabled={isEditing}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New File (optional)
-                  </label>
+                  <p className="text-xs text-red-500 mb-2">
+                    Note: A new file is required to update a document.
+                  </p>
                   <div className="flex items-center space-x-3">
                     <input
                       id="edit-file-input"
@@ -836,7 +693,7 @@ export default function DocumentsPage() {
                 <button
                   onClick={handleEditSubmit}
                   className="w-full bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
-                  disabled={isEditing || !editForm.fileName || !editForm.employeeId || !editForm.documentType}
+                  disabled={isEditing || !editFile || !editForm.employeeId || !editForm.documentType}
                 >
                   {isEditing ? 'Updating...' : 'Update Document'}
                 </button>
@@ -844,16 +701,13 @@ export default function DocumentsPage() {
             </div>
           </div>
         )}
-
-        {/* Delete Confirmation Modal */}
         {showDeleteModal && documentToDelete && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Document</h3>
               <p className="text-gray-600 mb-6">
-Are you sure you want to delete &quot;{documentToDelete.fileName}&quot;? This action cannot be undone.
-</p>
-
+                Are you sure you want to delete &quot;{documentToDelete.originalFileName || documentToDelete.fileName}&quot;? This action cannot be undone.
+              </p>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => {

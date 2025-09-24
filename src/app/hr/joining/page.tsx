@@ -512,15 +512,11 @@ export default function JoiningPage() {
   }
   
   return (
-      <div 
-      className="min-h-screen bg-cover bg-center" 
-      style={{ backgroundImage: "url('/dash.jpg')" }}
-    >
-
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Toaster position="top-right" />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold text-gray-100">Employee Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
           <button
             onClick={() => openModal('add')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
@@ -574,7 +570,7 @@ export default function JoiningPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-6">
           {filteredEmployees.map((employee) => {
             return (
-              <div key={employee.id} className="bg-white/80 rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 flex flex-col">
+              <div key={employee.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 flex flex-col">
                 <div className="flex items-center mb-4">
                   {employee.profilePhotoUrl ? (
                     <div className="w-16 h-16 mr-4 shrink-0 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">

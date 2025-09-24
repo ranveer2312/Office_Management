@@ -20,15 +20,15 @@ interface MenuItem {
   path: string;
 }
 
-const menuItems: MenuItem[] = [
-  { id: 'overview', label: 'Overview', icon: Home, path: '/admin/hr' },
-  { id: 'documents', label: 'Employee Documents', icon: FileText, path: '/admin/hr/documents' },
-  { id: 'assets', label: 'Asset Management', icon: Laptop, path: '/admin/hr/assets' },
-  { id: 'leaves', label: 'Leave Management', icon: Calendar, path: '/admin/hr/leaves' },
-  { id: 'performance', label: 'Performance', icon: Award, path: '/admin/hr/performance' },
-  { id: 'joining', label: 'Joining/Relieving', icon: UserPlus, path: '/admin/hr/joining' },
-  { id: 'activities', label: 'Weekly Activities', icon: Clock, path: '/admin/hr/activities' }
-];
+// const menuItems: MenuItem[] = [
+//   { id: 'overview', label: 'Overview', icon: Home, path: '/admin/hr' },
+//   { id: 'documents', label: 'Employee Documents', icon: FileText, path: '/admin/hr/documents' },
+//   { id: 'assets', label: 'Asset Management', icon: Laptop, path: '/admin/hr/assets' },
+//   { id: 'leaves', label: 'Leave Management', icon: Calendar, path: '/admin/hr/leaves' },
+//   { id: 'performance', label: 'Performance', icon: Award, path: '/admin/hr/performance' },
+//   { id: 'joining', label: 'Joining/Relieving', icon: UserPlus, path: '/admin/hr/joining' },
+//   { id: 'activities', label: 'Weekly Activities', icon: Clock, path: '/admin/hr/activities' }
+// ];
 
 export default function HRLayout({
   children,
@@ -42,7 +42,7 @@ export default function HRLayout({
         {/* Navigation Tabs */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 overflow-x-auto">
+            {/* <nav className="-mb-px flex space-x-8 overflow-x-auto">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.path;
@@ -61,7 +61,7 @@ export default function HRLayout({
                   </a>
                 );
               })}
-            </nav>
+            </nav> */}
           </div>
         </div>
 

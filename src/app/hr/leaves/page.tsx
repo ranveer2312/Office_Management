@@ -667,12 +667,9 @@ const LeaveManagementSystem = () => {
   const pendingCount = leaveData.pending.length;
  
   return (
-<div 
-      className="min-h-screen bg-cover bg-center" 
-      style={{ backgroundImage: "url('/dash.jpg')" }}
-    >
+    <div className="min-h-screen p-6">
       <Toaster position="top-right" />
-      <div className="max-w-7xl mx-auto bg-white/50 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
+      <div className="max-w-7xl mx-auto bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
         {/* Header with Notification Icon */}
         <div className="flex items-center justify-between mb-10 pb-6 border-b-4 border-blue-500">
           <div>
@@ -720,7 +717,7 @@ const LeaveManagementSystem = () => {
  
  
   {/* Unified Leave Requests Section */}
-        <div className="mb-10 bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-l-8 border-blue-400">
+        <div className="mb-10 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-l-8 border-blue-400">
           <div className="flex items-center mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-300 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mr-5 shadow-lg">
               📝
@@ -829,7 +826,7 @@ const LeaveManagementSystem = () => {
           )}
         </div>
         {/* Approved Leaves Section */}
-        <div className="mb-10 bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-l-8 border-green-400">
+        <div className="mb-10 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-l-8 border-green-400">
           <div className="flex items-center mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-300 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mr-5 shadow-lg">
               ✓
@@ -938,7 +935,7 @@ const LeaveManagementSystem = () => {
           )}
         </div>
         {/* Rejected Leaves Section */}
-        <div className="mb-10 bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-l-8 border-red-400">
+        <div className="mb-10 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl p-8 border-l-8 border-red-400">
           <div className="flex items-center mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-300 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mr-5 shadow-lg">
               ✗
@@ -1048,7 +1045,7 @@ const LeaveManagementSystem = () => {
         </div>
  
             {/* Holiday Leaves Section */}
-            <div className="mb-10 bg-white/90 rounded-2xl shadow-lg p-6 border-l-8 border-orange-500">
+            <div className="mb-10 bg-white rounded-2xl shadow-lg p-6 border-l-8 border-orange-500">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">
@@ -1140,7 +1137,7 @@ const LeaveManagementSystem = () => {
         {/* Add Holiday Modal */}
         {showAddHolidayModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white/90 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all">
+            <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-gray-800">Add New Holiday</h3>
                 <button

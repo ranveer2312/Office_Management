@@ -255,7 +255,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center text-slate-500">
-        Loading...
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+        <p className="ml-4">Loading...</p>
       </div>
     );
   }
@@ -278,8 +279,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           onMenuClick={() => setIsSidebarOpen(true)}
         />
         <main className="flex-1 p-4 sm:p-6 overflow-y-auto relative bg-[url('/hrdash.png')] bg-cover bg-center bg-no-repeat">
-          <div className="absolute inset-0 bg-white/2" />
-          <div className="">
+          <div className="absolute inset-0 bg-white/50 z-0" /> {/* Corrected transparency layer */}
+          <div className="relative z-10"> {/* Ensure content is above the background */}
             {children}
           </div>
         </main>

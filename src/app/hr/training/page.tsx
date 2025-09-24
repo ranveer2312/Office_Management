@@ -213,16 +213,12 @@ export default function HRTrainingPage() {
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 
   return (
-   <div 
-      className="min-h-screen bg-cover bg-center" 
-      style={{ backgroundImage: "url('/dash.jpg')" }}
-    >
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Toaster position="top-right" />
       
-      
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-100">Training & Development</h1>
-        <p className="text-gray-100 ">Manage training programs and skill requests</p>
+        <h1 className="text-2xl font-bold text-gray-900">Training & Development</h1>
+        <p className="text-gray-600">Manage training programs and skill requests</p>
       </div>
 
       <div className="flex space-x-1 mb-6">
@@ -249,7 +245,7 @@ export default function HRTrainingPage() {
       {activeTab === 'calendar' && (
         <div>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-100">Training Programs</h2>
+            <h2 className="text-xl font-semibold">Training Programs</h2>
             <button
               onClick={() => { setModalType('training'); setShowModal(true); }}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -261,7 +257,7 @@ export default function HRTrainingPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {trainings.map((training) => (
-              <div key={training.id} className="bg-white/80 rounded-lg shadow-sm border p-6">
+              <div key={training.id} className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex items-center justify-between mb-4">
                   <BookOpen className="w-6 h-6 text-blue-600" />
                   <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">

@@ -351,10 +351,10 @@ export default function ModernHRDashboard() {
     return req.status === 'approved' && req.startDate <= today && req.endDate >= today;
   }).length;
 
-  // No longer needed: const pendingReviews = 8; 
+  // No longer needed: const pendingReviews = 8;
   
   return (
-    <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('dash.jpg')" }}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Key Metrics */}
@@ -400,7 +400,7 @@ export default function ModernHRDashboard() {
         {/* Quick Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* added responsive */}
-          <div className="bg-white/80 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xl sm:text-2xl font-bold text-slate-900">{loading ? "..." : onLeaveToday}</div>
@@ -416,7 +416,7 @@ export default function ModernHRDashboard() {
         {/* Analytics Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Department Distribution */}
-          <div className="lg:col-span-1 bg-white/80 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+          <div className="lg:col-span-1 bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900">Department Distribution</h3>
@@ -428,7 +428,7 @@ export default function ModernHRDashboard() {
           </div>
 
           {/* Attendance Trends */}
-          <div className="lg:col-span-2 bg-white/80 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+          <div className="lg:col-span-2 bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900">Attendance Trends</h3>
@@ -461,7 +461,7 @@ export default function ModernHRDashboard() {
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Quick Actions */}
-          <div className="bg-white/80 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <h3 className="text-base sm:text-lg font-bold text-slate-900">Quick Actions</h3>
               <Settings className="w-5 h-5 text-slate-400" />
@@ -502,7 +502,7 @@ export default function ModernHRDashboard() {
           </div>
 
           {/* Recent Activity */}
-          <div className="lg:col-span-2 bg-white/80 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+          <div className="lg:col-span-2 bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <h3 className="text-base sm:text-lg font-bold text-slate-900">Recent Activity</h3>
               <button className="text-blue-600 text-sm hover:text-blue-700 font-medium transition-colors">

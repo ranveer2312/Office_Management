@@ -2,26 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search,
-  
   X,
- 
   Eye,
   User,
   Mail,
   Phone,
- 
   Calendar,
   Briefcase,
   EyeOff
 } from 'lucide-react';
 import { APIURL } from '@/constants/api';
 
+// Step 1: Update the Employee interface to include a profile photo URL
 interface Employee {
   id: string;
   employeeId: string;
   employeeName: string;
   email: string;
-  password:string;
+  password: string;
   phoneNumber: string;
   bloodGroup: string;
   currentAddress: string;
@@ -31,8 +29,10 @@ interface Employee {
   joiningDate: string; // YYYY-MM-DD
   status: 'Active' | 'Inactive' | 'On Leave';
   notes?: string;
+  profilePhotoUrl?: string; // New field for profile photo
 }
 
+// Step 2: Update API-related interfaces to match the new Employee structure
 interface ApiEmployeeResponse extends Omit<Employee, 'joiningDate' | 'status'> {
   joiningDate: string;
   status: string;
@@ -43,11 +43,12 @@ interface ApiEmployeeRequest extends Omit<Employee, 'id' | 'joiningDate' | 'stat
   status: string;
 }
 
+// Update transformation functions to handle the new field
 const transformEmployeeToApiRequest = (employee: Omit<Employee, 'id'>): ApiEmployeeRequest => ({
   employeeId: employee.employeeId,
   employeeName: employee.employeeName,
   email: employee.email,
-  password:employee.password,
+  password: employee.password,
   phoneNumber: employee.phoneNumber,
   bloodGroup: employee.bloodGroup,
   currentAddress: employee.currentAddress,
@@ -57,6 +58,7 @@ const transformEmployeeToApiRequest = (employee: Omit<Employee, 'id'>): ApiEmplo
   joiningDate: employee.joiningDate,
   status: employee.status,
   notes: employee.notes,
+  profilePhotoUrl: employee.profilePhotoUrl, // Include new field
 });
 
 const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Employee => ({
@@ -64,7 +66,7 @@ const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Emp
   employeeId: apiEmployee.employeeId,
   employeeName: apiEmployee.employeeName,
   email: apiEmployee.email,
-  password:apiEmployee.password,
+  password: apiEmployee.password,
   phoneNumber: apiEmployee.phoneNumber,
   bloodGroup: apiEmployee.bloodGroup,
   currentAddress: apiEmployee.currentAddress,
@@ -74,9 +76,10 @@ const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Emp
   joiningDate: apiEmployee.joiningDate,
   status: apiEmployee.status as Employee['status'],
   notes: apiEmployee.notes,
+  profilePhotoUrl: apiEmployee.profilePhotoUrl, // Include new field
 });
 
-const API_BASE_URL =APIURL + '/api/employees';
+const API_BASE_URL = APIURL + '/api/employees';
 
 const employeesAPI = {
   getAll: async (): Promise<Employee[]> => {
@@ -133,7 +136,6 @@ export default function JoiningPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-
   const isViewMode = modalType === 'view';
 
   useEffect(() => {
@@ -162,7 +164,7 @@ export default function JoiningPage() {
         employeeId: '',
         employeeName: '',
         email: '',
-        password:'',
+        password: '',
         phoneNumber: '',
         bloodGroup: '',
         currentAddress: '',
@@ -171,7 +173,8 @@ export default function JoiningPage() {
         department: '',
         joiningDate: '',
         status: 'Active',
-        notes: ''
+        notes: '',
+        profilePhotoUrl: '', // Initialize new field
       });
     } else if (employee) {
       setFormData({ ...employee });
@@ -197,7 +200,7 @@ export default function JoiningPage() {
         setEmployees([...employees, newEmployee]);
       } else if (modalType === 'edit' && selectedEmployee) {
         const updatedEmployee = await employeesAPI.update(selectedEmployee.id, formData as Omit<Employee, 'id'>);
-        setEmployees(employees.map(employee => 
+        setEmployees(employees.map(employee =>
           employee.id === selectedEmployee.id ? updatedEmployee : employee
         ));
       }
@@ -207,8 +210,6 @@ export default function JoiningPage() {
       alert(error instanceof Error ? error.message : 'Failed to save employee');
     }
   };
-
- 
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -244,7 +245,6 @@ export default function JoiningPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
-      
       </div>
 
       {/* Search and Filter Bar */}
@@ -288,9 +288,17 @@ export default function JoiningPage() {
       </div>
 
       {/* Employees Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEmployees.map((employee) => (
           <div key={employee.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 flex flex-col">
+            {/* Step 3a: Add the profile photo to the grid card */}
+            <div className="flex justify-center mb-4">
+              <img
+                src={employee.profilePhotoUrl || 'https://via.placeholder.com/150'}
+                alt={`${employee.employeeName}'s profile`}
+                className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+              />
+            </div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{employee.employeeName}</h3>
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${employee.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
@@ -322,14 +330,13 @@ export default function JoiningPage() {
             </div>
 
             <div className="flex space-x-2 mt-auto pt-4 border-t border-gray-100">
-              <button 
+              <button
                 onClick={() => openModal('view', employee)}
                 className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
               >
                 <Eye className="w-4 h-4" />
                 <span>View</span>
               </button>
-             
             </div>
           </div>
         ))}
@@ -342,10 +349,9 @@ export default function JoiningPage() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">
-                 
-                  {modalType === 'view' && 'Employee Details'}
+                  {modalType === 'view' ? 'Employee Details' : (modalType === 'add' ? 'Add Employee' : 'Edit Employee')}
                 </h2>
-                <button 
+                <button
                   onClick={closeModal}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
@@ -356,7 +362,17 @@ export default function JoiningPage() {
 
             <div className="p-6">
               {isViewMode ? (
+                // Step 3b: Add the profile photo to the view modal
                 <div className="space-y-4">
+                  <div className="flex flex-col items-center mb-6">
+                    <img
+                      src={selectedEmployee?.profilePhotoUrl || 'https://via.placeholder.com/150'}
+                      alt={`${selectedEmployee?.employeeName}'s profile`}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                    />
+                    <h3 className="mt-4 text-xl font-bold">{selectedEmployee?.employeeName}</h3>
+                    <p className="text-gray-500">{selectedEmployee?.position}</p>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Employee ID</p>
@@ -370,7 +386,7 @@ export default function JoiningPage() {
                       <p className="text-sm text-gray-600">Email</p>
                       <p className="font-medium">{selectedEmployee?.email}</p>
                     </div>
-                    
+
                     <div>
                       <p className="text-sm text-gray-600">Password</p>
                       <div className="flex items-center space-x-2">
@@ -426,6 +442,7 @@ export default function JoiningPage() {
                   )}
                 </div>
               ) : (
+                // Step 3c: Add the profile photo URL input field to the form
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -435,7 +452,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.employeeId || ''}
-                        onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                       />
                     </div>
                     <div>
@@ -445,7 +462,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.employeeName || ''}
-                        onChange={(e) => setFormData({...formData, employeeName: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, employeeName: e.target.value })}
                       />
                     </div>
                     <div>
@@ -455,7 +472,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.email || ''}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       />
                     </div>
                     <div>
@@ -466,7 +483,7 @@ export default function JoiningPage() {
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           value={formData.password || ''}
-                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         />
                         <button
                           type="button"
@@ -484,7 +501,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.phoneNumber || ''}
-                        onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                       />
                     </div>
                     <div>
@@ -494,7 +511,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.position || ''}
-                        onChange={(e) => setFormData({...formData, position: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                       />
                     </div>
                     <div>
@@ -504,7 +521,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.department || ''}
-                        onChange={(e) => setFormData({...formData, department: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                       />
                     </div>
                     <div>
@@ -514,7 +531,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.joiningDate || ''}
-                        onChange={(e) => setFormData({...formData, joiningDate: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
                       />
                     </div>
                     <div>
@@ -523,7 +540,7 @@ export default function JoiningPage() {
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.status || 'Active'}
-                        onChange={(e) => setFormData({...formData, status: e.target.value as Employee['status']})}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as Employee['status'] })}
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -536,7 +553,17 @@ export default function JoiningPage() {
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.bloodGroup || ''}
-                        onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo URL</label>
+                      <input
+                        type="url"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.profilePhotoUrl || ''}
+                        onChange={(e) => setFormData({ ...formData, profilePhotoUrl: e.target.value })}
+                        placeholder="e.g., https://example.com/photo.jpg"
                       />
                     </div>
                   </div>
@@ -547,7 +574,7 @@ export default function JoiningPage() {
                       rows={2}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={formData.currentAddress || ''}
-                      onChange={(e) => setFormData({...formData, currentAddress: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, currentAddress: e.target.value })}
                     />
                   </div>
                   <div>
@@ -556,7 +583,7 @@ export default function JoiningPage() {
                       rows={2}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={formData.permanentAddress || ''}
-                      onChange={(e) => setFormData({...formData, permanentAddress: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, permanentAddress: e.target.value })}
                     />
                   </div>
                   <div>
@@ -565,7 +592,7 @@ export default function JoiningPage() {
                       rows={2}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={formData.notes || ''}
-                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                       placeholder="Add any additional notes..."
                     />
                   </div>
@@ -594,4 +621,4 @@ export default function JoiningPage() {
       )}
     </div>
   );
-} 
+}
