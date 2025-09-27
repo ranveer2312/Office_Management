@@ -44,7 +44,7 @@ interface TodayAttendance {
 const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 // Work Hours Progress Ring Component - Compact Version
-const WorkHoursRing = ({ hours = 0, targetHours = 8 }: { hours?: number; targetHours?: number }) => {
+const WorkHoursRing = ({ hours = 0, targetHours = 9 }: { hours?: number; targetHours?: number }) => {
     const percentage = Math.min((hours / targetHours) * 100, 100);
     const circumference = 2 * Math.PI * 50;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -395,7 +395,7 @@ export default function MainDashboardPage() {
                             </div>
                             <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wide">Efficiency</p>
                             <p className="text-sm font-bold text-emerald-800">
-                                {Math.min(Math.round((effectiveWorkHours / 8) * 100), 100)}%
+                                {Math.min(Math.round((effectiveWorkHours / 9) * 100), 100)}%
                             </p>
                         </div>
                     </div>

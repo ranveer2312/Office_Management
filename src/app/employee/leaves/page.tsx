@@ -37,8 +37,8 @@ interface Holiday {
   id: number;
   holidayName: string;
   day: string;
-  startDate: [number, number, number];
-  endDate: [number, number, number];
+  startDate: string; // Changed from [number, number, number] to string
+  endDate: string;   // Changed from [number, number, number] to string
   type: string;
   coverage: string;
 }
@@ -48,8 +48,8 @@ interface HolidayApiResponse {
   holidayName?: string;
   employeeName?: string;
   day?: string;
-  startDate?: [number, number, number];
-  endDate?: [number, number, number];
+  startDate?: [number, number, number] | string;
+  endDate?: [number, number, number] | string;
   type?: string;
   coverage?: string;
 }
@@ -108,13 +108,14 @@ export default function LeavesPage() {
         id: h.id,
         holidayName: h.holidayName || h.employeeName || 'Holiday',
         day: h.day || '',
-        startDate: Array.isArray(h.startDate) ? h.startDate : [0, 0, 0],
-        endDate: Array.isArray(h.endDate) ? h.endDate : [0, 0, 0],
+        startDate: normalizeDate(h.startDate), // Use normalizeDate function
+        endDate: normalizeDate(h.endDate),     // Use normalizeDate function
         type: h.type || 'General',
         coverage: h.coverage || 'All'
       }));
       setHolidays(mapped);
-    } catch {
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
       // keep holidays empty silently
     }
   }, []);
@@ -170,12 +171,19 @@ export default function LeavesPage() {
 
   const formatDateForDisplay = (dateString?: string): string => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   };
 
   const getLeaveIcon = (type: string) => {
@@ -374,28 +382,35 @@ export default function LeavesPage() {
                   </div>
                   <div className="p-4 sm:p-6">
                     <div className="space-y-4">
-                      {holidays.map((holiday, index) => (
-                        <div key={holiday.id} className={`border-l-4 pl-4 py-3 rounded-r-lg transition-all duration-200 hover:bg-gray-50/90 ${
-                          index === 0 ? 'border-emerald-400 bg-emerald-50/90' :
-                          index === 1 ? 'border-blue-400 bg-blue-50/90' :
-                          'border-purple-400 bg-purple-50/90'
-                        }`}>
-                          <h3 className="text-base font-semibold text-gray-900 mb-1">{holiday.holidayName}</h3>
-                          <p className="text-sm text-gray-600 mb-1">
-                            {formatDateForDisplay(`${holiday.startDate[0]}-${holiday.startDate[1]}-${holiday.startDate[2]}`)}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">{holiday.day}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              index === 0 ? 'bg-emerald-200/90 text-emerald-800' :
-                              index === 1 ? 'bg-blue-200/90 text-blue-800' :
-                              'bg-purple-200/90 text-purple-800'
-                            }`}>
-                              {holiday.type}
-                            </span>
+                      {holidays.length > 0 ? (
+                        holidays.map((holiday, index) => (
+                          <div key={holiday.id} className={`border-l-4 pl-4 py-3 rounded-r-lg transition-all duration-200 hover:bg-gray-50/90 ${
+                            index === 0 ? 'border-emerald-400 bg-emerald-50/90' :
+                            index === 1 ? 'border-blue-400 bg-blue-50/90' :
+                            'border-purple-400 bg-purple-50/90'
+                          }`}>
+                            <h3 className="text-base font-semibold text-gray-900 mb-1">{holiday.holidayName}</h3>
+                            <p className="text-sm text-gray-600 mb-1">
+                              {formatDateForDisplay(holiday.startDate)}
+                              {holiday.startDate !== holiday.endDate && ` - ${formatDateForDisplay(holiday.endDate)}`}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">{holiday.day}</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                index === 0 ? 'bg-emerald-200/90 text-emerald-800' :
+                                index === 1 ? 'bg-blue-200/90 text-blue-800' :
+                                'bg-purple-200/90 text-purple-800'
+                              }`}>
+                                {holiday.type}
+                              </span>
+                            </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No holidays found</p>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>

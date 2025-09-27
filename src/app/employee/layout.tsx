@@ -97,17 +97,20 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
 
             <aside className={`fixed top-0 left-0 w-80 h-full bg-white flex flex-col shrink-0 shadow-2xl border-r border-slate-200/60 z-50 transition-transform duration-300 ${isSidebarOpen ? 'transform translate-x-0' : 'transform -translate-x-full'} lg:translate-x-0`}>
                 <div className="h-24 flex items-center justify-between px-6 border-b border-slate-200/60 bg-gradient-to-r from-white to-slate-50">
+                    
+                    {/* START: Replaced the original logo block with the Image component */}
                     <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/25">
-                            <Briefcase size={24} className="text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 bg-clip-text text-transparent">
-                                EMPLOYEE 
-                            </h1>
-                            <p className="text-xs text-slate-500 font-medium">HUB</p>
-                        </div>
+                        <Image
+                            src="/HR.jpg"
+                            alt="HR Logo"
+                            width={200}
+                            height={50}
+                            className="h-20 w-auto"
+                            priority
+                        />
                     </div>
+                    {/* END: Replaced logo block */}
+                    
                     <button onClick={onClose} className="p-2 lg:hidden text-slate-500 hover:text-slate-800 transition-colors">
                         <X size={24} />
                     </button>
@@ -154,6 +157,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
                                 width={48}
                                 height={48}
                                 className="w-12 h-12 rounded-full object-cover border-2 border-blue-400/60 shadow-lg"
+                                unoptimized // Use unoptimized if the image is coming from a non-Next.js domain like APIURL
                             />
                         ) : (
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">

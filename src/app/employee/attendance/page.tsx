@@ -42,7 +42,7 @@ interface AttendanceRecord {
 }
 
 // Constants for work hours and locations
-const WORK_TARGET_HOURS = 8;
+const WORK_TARGET_HOURS = 9;
 const WORK_LOCATIONS = [
   { value: 'head_office', label: 'Head Office' },
   { value: 'branch_office', label: 'Branch Office' },

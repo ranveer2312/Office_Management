@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "HRepo",
   description: "Created by Ranveer and Team ",
 };
-
+ 
 export default function RootLayout({
   children,
 }: Readonly<{

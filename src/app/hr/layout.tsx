@@ -98,7 +98,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
               alt="HR Logo"
               width={180}
               height={50}
-              className="h-12 w-auto"
+              className="h-20 w-auto"
               priority
             />
           </div>
