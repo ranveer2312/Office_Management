@@ -200,21 +200,21 @@ export default function HRDashboard() {
                             <div className="border-b border-gray-100 p-6 bg-gradient-to-r from-gray-50 to-white rounded-t-xl">
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                                     <h2 className="text-xl font-bold text-gray-900">Employee Directory</h2>
-                                    <div className="flex items-center space-x-3">
-                                        <div className="relative">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+                                        <div className="relative w-full">
                                             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                                             <input
                                                 type="text"
                                                 placeholder="Search employees..."
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64 transition-all"
+                                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full transition-all"
                                             />
                                         </div>
                                         <select
                                             value={selectedDepartment}
                                             onChange={(e) => setSelectedDepartment(e.target.value)}
-                                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all w-full sm:w-auto"
                                         >
                                             <option value="all">All Departments</option>
                                             {departments.map(dept => (
@@ -233,8 +233,8 @@ export default function HRDashboard() {
                                 ) : errorEmployees ? (
                                     <div className="text-center py-12 text-red-500">{errorEmployees}</div>
                                 ) : (
-                                    <div className="max-h-96 overflow-y-auto">
-                                        <table className="w-full">
+                                    <div className="max-h-96 overflow-x-auto">
+                                        <table className="min-w-full table-auto">
                                             <thead>
                                                 <tr className="border-b border-gray-100">
                                                     <th className="text-left py-4 px-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">Employee</th>
@@ -255,16 +255,16 @@ export default function HRDashboard() {
                                                                         <Users className="w-6 h-6 text-blue-600" />
                                                                     </div>
                                                                 )}
-                                                                <div>
-                                                                    <h3 className="font-semibold text-gray-900 text-base">{employee.employeeName}</h3>
-                                                                    <p className="text-sm text-gray-600">{employee.position || 'N/A'}</p>
+                                                                <div className="min-w-0">
+                                                                    <h3 className="font-semibold text-gray-900 text-base truncate">{employee.employeeName}</h3>
+                                                                    <p className="text-sm text-gray-600 truncate">{employee.position || 'N/A'}</p>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="py-4 px-2">
                                                             <div className="flex items-center space-x-2">
                                                                 <Mail className="w-4 h-4 text-gray-400" />
-                                                                <span className="text-sm text-gray-700">{employee.email}</span>
+                                                                <span className="text-sm text-gray-700 truncate">{employee.email}</span>
                                                             </div>
                                                         </td>
                                                         <td className="py-4 px-2">
@@ -278,7 +278,7 @@ export default function HRDashboard() {
                                                                 employee.status === 'Active'
                                                                     ? 'bg-green-50 text-green-700 border border-green-200'
                                                                     : 'bg-gray-50 text-gray-700 border border-gray-200'
-                                                            }`}>
+                                                                }`}>
                                                                 <div className={`w-2 h-2 rounded-full mr-2 ${
                                                                     employee.status === 'Active' ? 'bg-green-400' : 'bg-gray-400'
                                                                 }`} />
@@ -320,8 +320,8 @@ export default function HRDashboard() {
                                                     </div>
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
                                                         activity.status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
-                                                            activity.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                                                                'bg-red-50 text-red-700 border border-red-200'
+                                                        activity.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                                                        'bg-red-50 text-red-700 border border-red-200'
                                                     }`}>
                                                         <div className={`w-2 h-2 rounded-full mr-2 ${
                                                             activity.status === 'completed' ? 'bg-green-400' : 'bg-gray-400'

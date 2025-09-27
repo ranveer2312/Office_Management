@@ -2,6 +2,19 @@
 
 import { APIURL } from '@/constants/api';
 import React, { useState, useEffect } from 'react';
+import {
+  Users,
+  TrendingUp,
+  Building,
+  Briefcase,
+  Search,
+  Mail,
+  Award,
+  CheckCircle,
+  UserPlus,
+  GraduationCap,
+  Calendar,
+} from 'lucide-react';
 
 interface Leave {
   id: string;
@@ -223,75 +236,138 @@ const LeaveManagementSystem = () => {
   };
 
   const LeaveTable = ({ leaves, isHoliday = false }: LeaveTableProps) => (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[700px] bg-white rounded-lg shadow-lg overflow-hidden">
-        <thead className="bg-gray-200 text-gray-700">
-          <tr>
-            {isHoliday ? (
-              <>
-                <th className="px-4 py-3 text-left font-semibold">Holiday Name</th>
-                <th className="px-4 py-3 text-left font-semibold">Date</th>
-                <th className="px-4 py-3 text-left font-semibold">Day</th>
-                <th className="px-4 py-3 text-left font-semibold">Type</th>
-                <th className="px-4 py-3 text-left font-semibold">Status</th>
-                <th className="px-4 py-3 text-left font-semibold">Coverage</th>
-              </>
-            ) : (
-              <>
-                <th className="px-4 py-3 text-left font-semibold">Employee ID</th>
-                <th className="px-4 py-3 text-left font-semibold">Employee Name</th>
-                <th className="px-4 py-3 text-left font-semibold">Leave Type</th>
-                <th className="px-4 py-3 text-left font-semibold">Start Date</th>
-                <th className="px-4 py-3 text-left font-semibold">End Date</th>
-                <th className="px-4 py-3 text-left font-semibold">Days</th>
-                <th className="px-4 py-3 text-left font-semibold">Status</th>
-                <th className="px-4 py-3 text-left font-semibold">Actions</th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {isHoliday
-            ? (leaves as Holiday[]).map((holiday, index) => (
-                <tr
-                  key={holiday.id || index}
-                  className="hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100"
-                >
-                  <td className="px-4 py-3">{holiday.name}</td>
-                  <td className="px-4 py-3">{holiday.date}</td>
-                  <td className="px-4 py-3">{holiday.day}</td>
-                  <td className="px-4 py-3">{holiday.type}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status="holiday" />
-                  </td>
-                  <td className="px-4 py-3">{holiday.coverage}</td>
-                </tr>
-              ))
-            : (leaves as Leave[]).map((leave) => (
-                <tr
-                  key={leave.id}
-                  className="hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100"
-                >
-                  <td className="px-4 py-3 font-medium">{leave.employeeId || leave.id}</td>
-                  <td className="px-4 py-3">{leave.name}</td>
-                  <td className="px-4 py-3">{leave.type}</td>
-                  <td className="px-4 py-3">{leave.startDate}</td>
-                  <td className="px-4 py-3">{leave.endDate}</td>
-                  <td className="px-4 py-3">{leave.days}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={leave.status} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <ActionButton variant="view" onClick={() => viewDetails(leave.id)}>
-                        View
-                      </ActionButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-        </tbody>
-      </table>
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full min-w-[700px]">
+          <thead className="bg-gray-200 text-gray-700">
+            <tr>
+              {isHoliday ? (
+                <>
+                  <th className="px-4 py-3 text-left font-semibold">Holiday Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Date</th>
+                  <th className="px-4 py-3 text-left font-semibold">Day</th>
+                  <th className="px-4 py-3 text-left font-semibold">Type</th>
+                  <th className="px-4 py-3 text-left font-semibold">Status</th>
+                  <th className="px-4 py-3 text-left font-semibold">Coverage</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-4 py-3 text-left font-semibold">Employee ID</th>
+                  <th className="px-4 py-3 text-left font-semibold">Employee Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Leave Type</th>
+                  <th className="px-4 py-3 text-left font-semibold">Start Date</th>
+                  <th className="px-4 py-3 text-left font-semibold">End Date</th>
+                  <th className="px-4 py-3 text-left font-semibold">Days</th>
+                  <th className="px-4 py-3 text-left font-semibold">Status</th>
+                  <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {isHoliday
+              ? (leaves as Holiday[]).map((holiday, index) => (
+                  <tr
+                    key={holiday.id || index}
+                    className="hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100"
+                  >
+                    <td className="px-4 py-3">{holiday.name}</td>
+                    <td className="px-4 py-3">{holiday.date}</td>
+                    <td className="px-4 py-3">{holiday.day}</td>
+                    <td className="px-4 py-3">{holiday.type}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status="holiday" />
+                    </td>
+                    <td className="px-4 py-3">{holiday.coverage}</td>
+                  </tr>
+                ))
+              : (leaves as Leave[]).map((leave) => (
+                  <tr
+                    key={leave.id}
+                    className="hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100"
+                  >
+                    <td className="px-4 py-3 font-medium">{leave.employeeId || leave.id}</td>
+                    <td className="px-4 py-3">{leave.name}</td>
+                    <td className="px-4 py-3">{leave.type}</td>
+                    <td className="px-4 py-3">{leave.startDate}</td>
+                    <td className="px-4 py-3">{leave.endDate}</td>
+                    <td className="px-4 py-3">{leave.days}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={leave.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <ActionButton variant="view" onClick={() => viewDetails(leave.id)}>
+                          View
+                        </ActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="sm:hidden space-y-4 p-4">
+        {isHoliday
+          ? (leaves as Holiday[]).map((holiday, index) => (
+              <div
+                key={holiday.id || index}
+                className="bg-white rounded-lg shadow p-4 border border-gray-200"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold text-gray-900">{holiday.name}</h4>
+                  <StatusBadge status="holiday" />
+                </div>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>
+                    <span className="font-medium">Date:</span> {holiday.date}
+                  </p>
+                  <p>
+                    <span className="font-medium">Day:</span> {holiday.day}
+                  </p>
+                  <p>
+                    <span className="font-medium">Type:</span> {holiday.type}
+                  </p>
+                  <p>
+                    <span className="font-medium">Coverage:</span> {holiday.coverage}
+                  </p>
+                </div>
+              </div>
+            ))
+          : (leaves as Leave[]).map((leave) => (
+              <div
+                key={leave.id}
+                className="bg-white rounded-lg shadow p-4 border border-gray-200"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold text-gray-900">{leave.name}</h4>
+                  <StatusBadge status={leave.status} />
+                </div>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>
+                    <span className="font-medium">ID:</span> {leave.employeeId || leave.id}
+                  </p>
+                  <p>
+                    <span className="font-medium">Type:</span> {leave.type}
+                  </p>
+                  <p>
+                    <span className="font-medium">Dates:</span> {leave.startDate} to {leave.endDate}
+                  </p>
+                  <p>
+                    <span className="font-medium">Days:</span> {leave.days}
+                  </p>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <ActionButton variant="view" onClick={() => viewDetails(leave.id)}>
+                    View Details
+                  </ActionButton>
+                </div>
+              </div>
+            ))}
+      </div>
     </div>
   );
 
@@ -301,7 +377,7 @@ const LeaveManagementSystem = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 bg-transparent">
-      <div className="max-w-7xl mx-auto bg-white\80 rounded-3xl shadow-2xl p-4 sm:p-8">
+      <div className="max-w-7xl mx-auto bg-white/80 rounded-3xl shadow-2xl p-4 sm:p-8">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-10 pb-4 sm:pb-6 border-b-4 border-gray-200">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-2 sm:mb-4 drop-shadow-lg">

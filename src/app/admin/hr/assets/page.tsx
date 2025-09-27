@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, X, Laptop, Package, Plus, Trash2 } from 'lucide-react';
+import { Search, Filter, Eye, X, Laptop, Package } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 // API URL is declared here to make the component self-contained
@@ -33,6 +33,8 @@ export default function AssetManagement() {
         assetcondition: 'New',
         assignedTo: ''
     });
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [assetToDelete, setAssetToDelete] = useState<number | null>(null);
 
     // Fetch all assets
     const fetchAssets = async () => {
@@ -112,93 +114,6 @@ export default function AssetManagement() {
         setFormData({});
     };
 
-    const handleSubmit = async () => {
-        try {
-            // Basic validation
-            if (!formData.assetName || !formData.category || !formData.serialNumber ||
-                !formData.status || !formData.assetcondition) {
-                toast.error('Please fill in all required fields');
-                return;
-            }
-
-            // Create the asset data with required fields
-            const assetData = {
-                assetName: formData.assetName,
-                category: formData.category,
-                serialNumber: formData.serialNumber,
-                status: formData.status,
-                assetcondition: formData.assetcondition,
-                assignedTo: formData.assignedTo || null
-            };
-
-            if (modalType === 'add') {
-                const response = await fetch(`${API_BASE_URL}/assets`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(assetData),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to add asset');
-                }
-
-                const newAsset = await response.json();
-                setAssets(prev => [...prev, newAsset]);
-                toast.success('Asset added successfully!');
-            } else if (modalType === 'edit' && selectedAsset?.id) {
-                const response = await fetch(`${API_BASE_URL}/assets/${selectedAsset.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        ...assetData,
-                        id: selectedAsset.id
-                    }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to update asset');
-                }
-
-                const updatedAsset = await response.json();
-                setAssets(prev => prev.map(asset =>
-                    asset.id === selectedAsset.id ? updatedAsset : asset
-                ));
-                toast.success('Asset updated successfully!');
-            }
-
-            closeModal();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-            toast.error('Failed to save asset. Please try again.');
-        }
-    };
-
-    const handleDelete = async (assetId: number) => {
-        if (!window.confirm("Are you sure you want to delete this asset?")) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete asset');
-            }
-
-            setAssets(prev => prev.filter(asset => asset.id !== assetId));
-            toast.success('Asset deleted successfully!');
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-            toast.error('Failed to delete asset. Please try again.');
-        }
-    };
-
     const filteredAssets = assets.filter(asset =>
         (asset.assetName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (asset.category?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
@@ -224,17 +139,17 @@ export default function AssetManagement() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto bg-white\80 rounded-3xl shadow-2xl p-4 sm:p-8">
+        <div className="max-w-7xl mx-auto bg-white/80 rounded-3xl shadow-2xl p-4 sm:p-8">
             <Toaster position="top-right" />
             <div className="max-w-7xl mx-auto space-y-8">
-                <div className="flex justify-center items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Asset Management</h1>
+                <div className="flex justify-between items-center mb-6 flex-col sm:flex-row">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Asset Management</h1>
                 </div>
 
                 {/* Search and Filter Bar */}
                 <div className="bg-white/70 bg-opacity-70 backdrop-blur-lg rounded-xl shadow-2xl p-6 space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <div className="flex-1 relative">
+                    <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                        <div className="flex-1 w-full relative">
                             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                             <input
                                 type="text"
@@ -257,7 +172,7 @@ export default function AssetManagement() {
                             <div className="text-center py-12 col-span-full">
                                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                 <h3 className="text-lg font-medium text-gray-900 mb-2">No assets found</h3>
-                                <p className="text-gray-500">Try adjusting your search or add a new asset</p>
+                                <p className="text-gray-500">Try adjusting your search</p>
                             </div>
                         ) : (
                             filteredAssets.map((asset) => (
@@ -290,27 +205,13 @@ export default function AssetManagement() {
                                             </p>
                                         )}
                                     </div>
-                                    <div className="mt-4 flex space-x-2">
+                                    <div className="mt-4 flex space-x-3">
                                         <button
                                             onClick={() => openModal('view', asset)}
-                                            className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
+                                            className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1 w-full"
                                         >
                                             <Eye className="w-4 h-4" />
                                             <span>View</span>
-                                        </button>
-                                        <button
-                                            onClick={() => openModal('edit', asset)}
-                                            className="flex-1 bg-yellow-50 text-yellow-600 px-3 py-2 rounded-lg hover:bg-yellow-100 transition-colors flex items-center justify-center space-x-1"
-                                        >
-                                            <Eye className="w-4 h-4" />
-                                            <span>Edit</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(asset.id!)}
-                                            className="flex-1 bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center space-x-1"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                            <span>Delete</span>
                                         </button>
                                     </div>
                                 </div>
@@ -319,16 +220,13 @@ export default function AssetManagement() {
                     </div>
                 </div>
             </div>
-            {/* Modal */}
+            {/* Modal for View */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-gray-200">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-gray-900">
-                                    {modalType === 'edit' && 'Edit Asset'}
-                                    {modalType === 'view' && 'Asset Details'}
-                                </h2>
+                                <h2 className="text-xl font-bold text-gray-900">Asset Details</h2>
                                 <button
                                     onClick={closeModal}
                                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -339,139 +237,54 @@ export default function AssetManagement() {
                         </div>
 
                         <div className="p-6">
-                            {modalType === 'view' ? (
-                                <div className="py-2">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Asset Name with Icon */}
-                                        <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
-                                            <div className="flex items-center mb-2">
-                                                <Package className="w-6 h-6 text-blue-500 mr-2" />
-                                                <span className="text-lg font-semibold text-gray-800">{selectedAsset?.assetName}</span>
-                                            </div>
-                                            <span className="text-xs text-gray-500">Asset Name</span>
+                            <div className="py-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Asset Name with Icon */}
+                                    <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
+                                        <div className="flex items-center mb-2">
+                                            <Package className="w-6 h-6 text-blue-500 mr-2" />
+                                            <span className="text-lg font-semibold text-gray-800">{selectedAsset?.assetName}</span>
                                         </div>
-                                        {/* Category */}
-                                        <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
-                                            <span className="text-lg font-semibold text-gray-800 mb-1">{selectedAsset?.category}</span>
-                                            <span className="text-xs text-gray-500">Category</span>
-                                        </div>
-                                        {/* Serial Number */}
-                                        <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
-                                            <span className="text-lg font-semibold text-gray-800 mb-1">{selectedAsset?.serialNumber}</span>
-                                            <span className="text-xs text-gray-500">Serial Number</span>
-                                        </div>
-                                        {/* Status */}
-                                        <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
-                                            <span className={`text-lg font-semibold mb-1 ${getStatusColor(selectedAsset?.status || '')}`}>{selectedAsset?.status}</span>
-                                            <span className="text-xs text-gray-500">Status</span>
-                                        </div>
-                                        {/* Condition */}
-                                        <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
-                                            <span className={`text-lg font-semibold mb-1 ${getConditionColor(selectedAsset?.assetcondition || '')}`}>{selectedAsset?.assetcondition}</span>
-                                            <span className="text-xs text-gray-500">Condition</span>
-                                        </div>
-                                        {/* Assigned To */}
-                                        {selectedAsset?.assignedTo && (
-                                            <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
-                                                <span className="text-lg font-semibold text-gray-800 mb-1">{selectedAsset.assignedTo}</span>
-                                                <span className="text-xs text-gray-500">Assigned To</span>
-                                            </div>
-                                        )}
+                                        <span className="text-xs text-gray-500">Asset Name</span>
                                     </div>
+                                    {/* Category */}
+                                    <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
+                                        <span className="text-lg font-semibold text-gray-800 mb-1">{selectedAsset?.category}</span>
+                                        <span className="text-xs text-gray-500">Category</span>
+                                    </div>
+                                    {/* Serial Number */}
+                                    <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
+                                        <span className="text-lg font-semibold text-gray-800 mb-1">{selectedAsset?.serialNumber}</span>
+                                        <span className="text-xs text-gray-500">Serial Number</span>
+                                    </div>
+                                    {/* Status */}
+                                    <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
+                                        <span className={`text-lg font-semibold mb-1 ${getStatusColor(selectedAsset?.status || '')}`}>{selectedAsset?.status}</span>
+                                        <span className="text-xs text-gray-500">Status</span>
+                                    </div>
+                                    {/* Condition */}
+                                    <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
+                                        <span className={`text-lg font-semibold mb-1 ${getConditionColor(selectedAsset?.assetcondition || '')}`}>{selectedAsset?.assetcondition}</span>
+                                        <span className="text-xs text-gray-500">Condition</span>
+                                    </div>
+                                    {/* Assigned To */}
+                                    {selectedAsset?.assignedTo && (
+                                        <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-start h-full">
+                                            <span className="text-lg font-semibold text-gray-800 mb-1">{selectedAsset.assignedTo}</span>
+                                            <span className="text-xs text-gray-500">Assigned To</span>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Asset Name</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={formData.assetName || ''}
-                                                onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={formData.category || ''}
-                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Serial Number</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={formData.serialNumber || ''}
-                                                onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                            <select
-                                                required
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={formData.status || ''}
-                                                onChange={(e) => setFormData({ ...formData, status: e.target.value as Asset['status'] })}
-                                            >
-                                                <option value="">Select Status</option>
-                                                <option value="Available">Available</option>
-                                                <option value="Assigned">Assigned</option>
-                                                <option value="Under Maintenance">Under Maintenance</option>
-                                                <option value="Retired">Retired</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
-                                            <select
-                                                required
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={formData.assetcondition || ''}
-                                                onChange={(e) => setFormData({ ...formData, assetcondition: e.target.value as Asset['assetcondition'] })}
-                                            >
-                                                <option value="">Select Condition</option>
-                                                <option value="New">New</option>
-                                                <option value="Good">Good</option>
-                                                <option value="Fair">Fair</option>
-                                                <option value="Poor">Poor</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Assigned To</label>
-                                            <input
-                                                type="text"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={formData.assignedTo || ''}
-                                                onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                                                placeholder="Leave empty if not assigned"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex space-x-3 pt-4">
-                                        <button
-                                            type="button"
-                                            onClick={handleSubmit}
-                                            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                                        >
-                                            {modalType === 'add' ? 'Add Asset' : 'Update Asset'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={closeModal}
-                                            className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            </div>
+                            <div className="flex space-x-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -79,8 +79,6 @@ const getStatusColor = (status: Document['status']) => {
 export default function DocumentsPage() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [showViewModal, setShowViewModal] = useState(false);
-    const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [documents, setDocuments] = useState<Document[]>([]);
@@ -120,34 +118,8 @@ export default function DocumentsPage() {
         }
     };
 
-    const handleDownloadDocument = async (document: Document) => {
-        try {
-            const downloadUrl = APIURL + `/api/hr/download/${document.employeeId}/${document.documentType.toUpperCase()}`;
-            const response = await fetch(downloadUrl);
-
-            if (!response.ok) {
-                throw new Error('Failed to download document');
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = window.document.createElement('a');
-            link.href = url;
-            link.download = document.fileName;
-            window.document.body.appendChild(link);
-            link.click();
-            window.document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            toast.success('Document downloaded successfully!');
-        } catch (error) {
-            console.error('Error downloading document:', error);
-            toast.error('Failed to download document. Please try again.');
-        }
-    };
-
     const handleViewDocument = (document: Document) => {
-        setViewingDocument(document);
-        setShowViewModal(true);
+        window.open(document.fileDownloadUri, '_blank');
     };
 
     const filteredDocuments = documents.filter(doc => {
@@ -158,7 +130,7 @@ export default function DocumentsPage() {
     });
 
     return (
-        <div className="min-h-screen bg-transpatent">
+        <div className="min-h-screen bg-transparent">
             <Toaster position="top-right" />
             <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex justify-center items-center">
@@ -212,8 +184,9 @@ export default function DocumentsPage() {
 
                     <div className="border-b border-gray-200 mb-6"></div>
 
-                    <div className="flex items-center space-x-4">
-                        <div className="flex-1 relative">
+                    {/* Updated Search and Filter section for better mobile responsiveness */}
+                    <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                        <div className="flex-1 w-full relative">
                             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                             <input
                                 type="text"
@@ -223,7 +196,7 @@ export default function DocumentsPage() {
                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white bg-opacity-50"
                             />
                         </div>
-                        <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+                        <button className="flex items-center justify-center sm:justify-start w-full sm:w-auto space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
                             <Filter className="w-5 h-5" />
                             <span>Filter</span>
                         </button>
@@ -273,21 +246,14 @@ export default function DocumentsPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center space-x-3">
+                                            <div className="flex items-center">
                                                 <button
                                                     onClick={() => handleViewDocument(doc)}
-                                                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                    className="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                                     title="View Document"
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                     <span>View</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDownloadDocument(doc)}
-                                                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                                                >
-                                                    <Download className="w-4 h-4" />
-                                                    <span>Download</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -298,68 +264,6 @@ export default function DocumentsPage() {
                     </div>
                 </div>
             </div>
-
-            {/* View Document Modal */}
-            {showViewModal && viewingDocument && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl p-8 w-full max-w-4xl relative">
-                        <button
-                            onClick={() => {
-                                setShowViewModal(false);
-                                setViewingDocument(null);
-                            }}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Document Preview</h2>
-
-                        <div className="mb-6">
-                            {/* Check for valid file types for preview */}
-                            {viewingDocument.fileType && ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'].includes(viewingDocument.fileType) ? (
-                                <iframe
-                                    src={APIURL + viewingDocument.fileDownloadUri}
-                                    className="w-full h-[60vh] rounded-lg border border-gray-300"
-                                    title="Document Preview"
-                                    style={{ minHeight: '400px' }}
-                                ></iframe>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center w-full h-[60vh] bg-gray-100 rounded-lg border border-gray-300 text-gray-500">
-                                    <File className="w-16 h-16 mb-4" />
-                                    <p className="text-center text-lg font-medium">No preview available for this file type.</p>
-                                    <p className="text-sm">Please download the document to view it.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                            <p><span className="font-semibold text-gray-800">File Name:</span> {viewingDocument.originalFileName}</p>
-                            <p><span className="font-semibold text-gray-800">Document Type:</span> {documentTypes.find(t => t.id === viewingDocument.documentType)?.name || 'Unknown'}</p>
-                            <p><span className="font-semibold text-gray-800">Size:</span> {(viewingDocument.size / 1024).toFixed(1)} KB</p>
-                            <p><span className="font-semibold text-gray-800">Employee ID:</span> {viewingDocument.employeeId}</p>
-                        </div>
-
-                        <div className="flex space-x-3 mt-8">
-                            <button
-                                onClick={() => handleDownloadDocument(viewingDocument)}
-                                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                            >
-                                Download
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowViewModal(false);
-                                    setViewingDocument(null);
-                                }}
-                                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

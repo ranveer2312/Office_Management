@@ -322,8 +322,8 @@ export default function AdminDashboard() {
                   <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                     New Hires
                   </p>
-                  <p className="text-3xl font-bold text-emerald-600 mt-2">0</p>
-                  <p className="text-sm text-slate-600 font-medium mt-2">Any new hires</p>
+                  <p className="text-3xl font-bold text-emerald-600 mt-2">{metricsLoading ? '...' : metrics.newEmployees}</p>
+                  <p className="text-sm text-slate-600 font-medium mt-2">In the last 30 days</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg">
                   <Zap className="w-7 h-7 text-white" />
@@ -362,22 +362,22 @@ export default function AdminDashboard() {
           </div>
 
           {/* Bottom Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8 items-stretch">
             {/* Recent Activities */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8 flex flex-col">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold text-slate-900">Recent Activities</h3>
                 <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full w-16"></div>
               </div>
               {activitiesLoading ? (
-                <div className="text-center py-12">
+                <div className="text-center py-12 flex-grow">
                   <div className="inline-flex items-center px-4 py-2 text-slate-600 bg-slate-100 rounded-full">
                     <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin mr-2"></div>
                     Loading activities...
                   </div>
                 </div>
               ) : recentActivities.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-4 flex-grow">
                   {recentActivities.map((activity) => (
                     <div
                       key={activity.id}
@@ -393,14 +393,14 @@ export default function AdminDashboard() {
                         <p className="text-sm text-slate-600 mt-1 leading-relaxed">
                           {activity.description}
                         </p>
-                        <div className="flex items-center mt-3 space-x-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center mt-3 space-x-0 sm:space-x-4">
                           <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-2 sm:mb-0 ${
                               activity.status === 'completed'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : activity.status === 'pending'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-blue-100 text-blue-800'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-800'
                             }`}
                           >
                             {activity.status}
@@ -414,7 +414,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
+                <div className="text-center py-12 flex-grow">
                   <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                   <p className="text-slate-500 font-medium">No recent activities</p>
                 </div>
@@ -422,12 +422,12 @@ export default function AdminDashboard() {
             </div>
 
             {/* System Overview */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8 flex flex-col">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold text-slate-900">System Overview</h3>
                 <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full w-16"></div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 flex-grow">
                 <div className="flex items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200 hover:shadow-md transition-all duration-200">
                   <div className="flex items-center space-x-4">
                     <div className="p-2 bg-blue-500 rounded-lg">
@@ -465,7 +465,8 @@ export default function AdminDashboard() {
                     {metricsLoading ? '...' : metrics.tasksCompleted}
                   </span>
                 </div>
-                <div className="flex items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-violet-200 hover:shadow-md transition-all duration-200">
+                {/* Updated card with improved responsiveness */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-violet-200 hover:shadow-md transition-all duration-200">
                   <div className="flex items-center space-x-4">
                     <div className="p-2 bg-violet-500 rounded-lg">
                       <Zap className="w-5 h-5 text-white" />
@@ -474,7 +475,7 @@ export default function AdminDashboard() {
                       System Status
                     </span>
                   </div>
-                  <span className="text-lg font-bold text-emerald-600">Healthy</span>
+                  <span className="text-lg font-bold text-emerald-600 mt-2 sm:mt-0">Healthy</span>
                 </div>
               </div>
             </div>

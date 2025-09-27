@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import {
-  ArrowLeftIcon, // Replaced lucide-react ArrowLeft with Heroicons
+  ArrowLeftIcon,
   BuildingOfficeIcon,
   TagIcon,
   ChartBarIcon,

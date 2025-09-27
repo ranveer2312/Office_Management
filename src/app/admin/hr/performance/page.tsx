@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Award,  Star, Search, Filter,  Eye,  X, User, Building } from 'lucide-react';
+import { Award, Star, Search, Filter, Eye, X, User, Building, Plus } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 import { APIURL } from '@/constants/api';
 
 interface Employee {
@@ -167,7 +168,7 @@ export default function PerformanceManagement() {
       if (!formData.employee?.employeeId || !formData.employee?.employeeName || 
           !formData.employee?.position || !formData.employee?.department || 
           !formData.rating || !formData.reviewStatus) {
-        alert('Please fill in all required fields');
+        toast.error('Please fill in all required fields');
         return;
       }
 
@@ -196,6 +197,7 @@ export default function PerformanceManagement() {
 
         const newReview = await response.json();
         setReviews([...reviews, newReview]);
+        toast.success('Review added successfully!');
       } else if (modalType === 'edit' && selectedReview) {
         const response = await fetch(`${API_BASE_URL}/performance-reviews/${selectedReview.id}`, {
           method: 'PUT',
@@ -213,16 +215,15 @@ export default function PerformanceManagement() {
         setReviews(reviews.map(review => 
           review.id === selectedReview.id ? updatedReview : review
         ));
+        toast.success('Review updated successfully!');
       }
       
       closeModal();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      alert('Failed to save review. Please try again.');
+      toast.error('Failed to save review. Please try again.');
     }
   };
-
-
 
   const filteredReviews = reviews.filter(review =>
     (review.employee?.employeeName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
@@ -232,7 +233,7 @@ export default function PerformanceManagement() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center min-h-screen">
         <div className="text-lg text-gray-600">Loading performance reviews...</div>
       </div>
     );
@@ -249,357 +250,369 @@ export default function PerformanceManagement() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-center items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Performance Management</h1>
-                </div>
-
-      {/* Search and Filter Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
-        <div className="flex items-center space-x-4">
-          <div className="flex-1 relative">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search performance reviews..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <Filter className="w-5 h-5 text-gray-600" />
-          </button>
+    <div className="p-4 sm:p-6 bg-transparent">
+      <Toaster position="top-right" />
+      <div className="max-w-7xl mx-auto bg-white/80 rounded-3xl shadow-2xl p-4 sm:p-8">
+        <div className="flex justify-between items-center mb-6 flex-col sm:flex-row">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Performance Management</h1>
         </div>
-      </div>
 
-      {/* Performance Reviews Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredReviews.map((review) => (
-          <div key={review.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-blue-50">
-                <Award className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(review.reviewStatus)}`}>
-                {getStatusText(review.reviewStatus)}
-              </span>
+        {/* Search and Filter Bar */}
+        <div className="bg-white/70 bg-opacity-70 backdrop-blur-lg rounded-xl shadow-2xl p-6 mb-6">
+          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="flex-1 w-full relative">
+              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search performance reviews..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{review.employee.employeeName}</h3>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Employee ID:</span> {review.employee.employeeId}
-              </p>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Position:</span> {review.employee.position}
-              </p>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Department:</span> {review.employee.department}
-              </p>
-              <div className="flex items-center space-x-1">
-                <span className="text-sm font-medium text-gray-600">Rating:</span>
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.floor(review.rating)
-                          ? getRatingColor(review.rating)
-                          : 'text-gray-300'
-                      }`}
-                      fill={i < Math.floor(review.rating) ? 'currentColor' : 'none'}
-                    />
-                  ))}
-                  <span className={`ml-2 text-sm font-medium ${getRatingColor(review.rating)}`}>
-                    {review.rating}
+            <button className="flex items-center justify-center sm:justify-start w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+              <Filter className="w-5 h-5 text-gray-600 mr-2" />
+              <span>Filter</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Performance Reviews Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredReviews.length === 0 ? (
+            <div className="text-center py-12 col-span-full">
+              <Award className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No performance reviews found</h3>
+              <p className="text-gray-500">Try adjusting your search or add a new review</p>
+            </div>
+          ) : (
+            filteredReviews.map((review) => (
+              <div key={review.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-3 rounded-lg bg-blue-50">
+                    <Award className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(review.reviewStatus)}`}>
+                    {getStatusText(review.reviewStatus)}
                   </span>
                 </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Last Review:</span> {review.lastReviewDate}
-              </p>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Next Review:</span> {review.nextReviewDate}
-              </p>
-            </div>
-            <div className="mt-4 flex space-x-2">
-              <button 
-                onClick={() => openModal('view', review)}
-                className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
-              >
-                <Eye className="w-4 h-4" />
-                <span>View</span>
-              </button>
-             
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">
-                 
-                  {modalType === 'view' && 'Performance Review Details'}
-                </h2>
-                <button 
-                  onClick={closeModal}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              {modalType === 'view' ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-3">
-                      <User className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Employee ID</p>
-                        <p className="font-medium">{selectedReview?.employee.employeeId}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <User className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Employee Name</p>
-                        <p className="font-medium">{selectedReview?.employee.employeeName}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Building className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Department</p>
-                        <p className="font-medium">{selectedReview?.employee.department}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Position</p>
-                      <p className="font-medium">{selectedReview?.employee.position}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Status</p>
-                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedReview?.reviewStatus)}`}>
-                        {getStatusText(selectedReview?.reviewStatus)}
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">{review.employee.employeeName}</h3>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Employee ID:</span> {review.employee.employeeId}
+                  </p>
+                  <p className="text-sm text-gray-600 truncate">
+                    <span className="font-medium">Position:</span> {review.employee.position}
+                  </p>
+                  <p className="text-sm text-gray-600 truncate">
+                    <span className="font-medium">Department:</span> {review.employee.department}
+                  </p>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-sm font-medium text-gray-600">Rating:</span>
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < Math.floor(review.rating)
+                              ? getRatingColor(review.rating)
+                              : 'text-gray-300'
+                          }`}
+                          fill={i < Math.floor(review.rating) ? 'currentColor' : 'none'}
+                        />
+                      ))}
+                      <span className={`ml-2 text-sm font-medium ${getRatingColor(review.rating)}`}>
+                        {review.rating}
                       </span>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Rating</p>
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-4 h-4 ${
-                                i < Math.floor(selectedReview?.rating || 0)
-                                  ? getRatingColor(selectedReview?.rating || 0)
-                                  : 'text-gray-300'
-                              }`}
-                              fill={i < Math.floor(selectedReview?.rating || 0) ? 'currentColor' : 'none'}
-                            />
-                          ))}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Last Review:</span> {review.lastReviewDate}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Next Review:</span> {review.nextReviewDate}
+                  </p>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <button 
+                    onClick={() => openModal('view', review)}
+                    className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>View</span>
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {modalType === 'add' && 'Add New Review'}
+                    {modalType === 'edit' && 'Edit Performance Review'}
+                    {modalType === 'view' && 'Performance Review Details'}
+                  </h2>
+                  <button 
+                    onClick={closeModal}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {modalType === 'view' ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-3">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Employee ID</p>
+                          <p className="font-medium">{selectedReview?.employee.employeeId}</p>
                         </div>
-                        <span className="font-medium">{selectedReview?.rating}</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Employee Name</p>
+                          <p className="font-medium">{selectedReview?.employee.employeeName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Building className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Department</p>
+                          <p className="font-medium">{selectedReview?.employee.department}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Position</p>
+                        <p className="font-medium">{selectedReview?.employee.position}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Status</p>
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedReview?.reviewStatus)}`}>
+                          {getStatusText(selectedReview?.reviewStatus)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Rating</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < Math.floor(selectedReview?.rating || 0)
+                                    ? getRatingColor(selectedReview?.rating || 0)
+                                    : 'text-gray-300'
+                                }`}
+                                fill={i < Math.floor(selectedReview?.rating || 0) ? 'currentColor' : 'none'}
+                              />
+                            ))}
+                          </div>
+                          <span className="font-medium">{selectedReview?.rating}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Last Review</p>
-                      <p className="font-medium">{selectedReview?.lastReviewDate}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Last Review</p>
+                        <p className="font-medium">{selectedReview?.lastReviewDate}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Next Review</p>
+                        <p className="font-medium">{selectedReview?.nextReviewDate}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Next Review</p>
-                      <p className="font-medium">{selectedReview?.nextReviewDate}</p>
-                    </div>
-                  </div>
 
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">Goals</p>
-                    <p className="bg-gray-50 p-3 rounded-lg">{selectedReview?.goals || 'No goals specified'}</p>
-                  </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Goals</p>
+                      <p className="bg-gray-50 p-3 rounded-lg">{selectedReview?.goals || 'No goals specified'}</p>
+                    </div>
 
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">Feedback</p>
-                    <p className="bg-gray-50 p-3 rounded-lg">{selectedReview?.feedback || 'No feedback provided'}</p>
-                  </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Feedback</p>
+                      <p className="bg-gray-50 p-3 rounded-lg">{selectedReview?.feedback || 'No feedback provided'}</p>
+                    </div>
 
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">Achievements</p>
-                    <p className="bg-gray-50 p-3 rounded-lg">{selectedReview?.achievements || 'No achievements recorded'}</p>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Achievements</p>
+                      <p className="bg-gray-50 p-3 rounded-lg">{selectedReview?.achievements || 'No achievements recorded'}</p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.employee?.employeeId || ''}
+                          onChange={(e) => updateEmployeeField('employeeId', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Employee Name</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.employee?.employeeName || ''}
+                          onChange={(e) => updateEmployeeField('employeeName', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.employee?.position || ''}
+                          onChange={(e) => updateEmployeeField('position', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.employee?.department || ''}
+                          onChange={(e) => updateEmployeeField('department', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                        <select
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.rating || ''}
+                          onChange={(e) => setFormData({...formData, rating: parseFloat(e.target.value)})}
+                        >
+                          <option value="">Select Rating</option>
+                          <option value="1">1.0</option>
+                          <option value="1.5">1.5</option>
+                          <option value="2">2.0</option>
+                          <option value="2.5">2.5</option>
+                          <option value="3">3.0</option>
+                          <option value="3.5">3.5</option>
+                          <option value="4">4.0</option>
+                          <option value="4.5">4.5</option>
+                          <option value="5">5.0</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.reviewStatus || ''}
+                          onChange={(e) => setFormData({...formData, reviewStatus: e.target.value as "pending" | "completed"})}
+                        >
+                          <option value="">Select Status</option>
+                          <option value="pending">Pending</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Last Review Date</label>
+                        <input
+                          type="date"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.lastReviewDate || ''}
+                          onChange={(e) => setFormData({...formData, lastReviewDate: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Next Review Date</label>
+                        <input
+                          type="date"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.nextReviewDate || ''}
+                          onChange={(e) => setFormData({...formData, nextReviewDate: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Reviewer</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.reviewer || ''}
+                          onChange={(e) => setFormData({...formData, reviewer: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
-                      <input
-                        type="text"
-                        required
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Goals</label>
+                      <textarea
+                        rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.employee?.employeeId || ''}
-                        onChange={(e) => updateEmployeeField('employeeId', e.target.value)}
+                        value={formData.goals || ''}
+                        onChange={(e) => setFormData({...formData, goals: e.target.value})}
+                        placeholder="Enter performance goals..."
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Employee Name</label>
-                      <input
-                        type="text"
-                        required
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
+                      <textarea
+                        rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.employee?.employeeName || ''}
-                        onChange={(e) => updateEmployeeField('employeeName', e.target.value)}
+                        value={formData.feedback || ''}
+                        onChange={(e) => setFormData({...formData, feedback: e.target.value})}
+                        placeholder="Enter feedback..."
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
-                      <input
-                        type="text"
-                        required
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Achievements</label>
+                      <textarea
+                        rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.employee?.position || ''}
-                        onChange={(e) => updateEmployeeField('position', e.target.value)}
+                        value={formData.achievements || ''}
+                        onChange={(e) => setFormData({...formData, achievements: e.target.value})}
+                        placeholder="Enter achievements..."
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.employee?.department || ''}
-                        onChange={(e) => updateEmployeeField('department', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
-                      <select
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.rating || ''}
-                        onChange={(e) => setFormData({...formData, rating: parseFloat(e.target.value)})}
+
+                    <div className="flex space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                       >
-                        <option value="">Select Rating</option>
-                        <option value="1">1.0</option>
-                        <option value="1.5">1.5</option>
-                        <option value="2">2.0</option>
-                        <option value="2.5">2.5</option>
-                        <option value="3">3.0</option>
-                        <option value="3.5">3.5</option>
-                        <option value="4">4.0</option>
-                        <option value="4.5">4.5</option>
-                        <option value="5">5.0</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                      <select
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.employee?.status || ''}
-                        onChange={(e) => setFormData({...formData, employee: {...formData.employee, status: e.target.value}})}
+                        {modalType === 'add' ? 'Add Review' : 'Update Review'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeModal}
+                        className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
                       >
-                        <option value="">Select Status</option>
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Review Date</label>
-                      <input
-                        type="date"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.lastReviewDate || ''}
-                        onChange={(e) => setFormData({...formData, lastReviewDate: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Next Review Date</label>
-                      <input
-                        type="date"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.nextReviewDate || ''}
-                        onChange={(e) => setFormData({...formData, nextReviewDate: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Reviewer</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.reviewer || ''}
-                        onChange={(e) => setFormData({...formData, reviewer: e.target.value})}
-                      />
+                        Cancel
+                      </button>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Goals</label>
-                    <textarea
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.goals || ''}
-                      onChange={(e) => setFormData({...formData, goals: e.target.value})}
-                      placeholder="Enter performance goals..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
-                    <textarea
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.feedback || ''}
-                      onChange={(e) => setFormData({...formData, feedback: e.target.value})}
-                      placeholder="Enter feedback..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Achievements</label>
-                    <textarea
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.achievements || ''}
-                      onChange={(e) => setFormData({...formData, achievements: e.target.value})}
-                      placeholder="Enter achievements..."
-                    />
-                  </div>
-
-                  <div className="flex space-x-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      {modalType === 'add' ? 'Add Review' : 'Update Review'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
