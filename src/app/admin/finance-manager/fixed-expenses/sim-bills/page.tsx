@@ -6,8 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 
 // The API URL is defined but the fetch call is temporarily mocked to handle the "Failed to fetch" error.
-// FIX: Removed the unused APIURL declaration
-// const APIURL = 'http://localhost:8080';
+const APIURL = 'http://localhost:8080';
 
 interface SimBillExpense {
     id: number;
@@ -35,7 +34,7 @@ export default function AdminSimBillsPage() {
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             // Mock data with a documentPath to demonstrate functionality
-            const mockData: SimBillExpense[] = [ // Added type annotation to mockData for safety
+            const mockData = [
                 {
                     "id": 2,
                     "accountNo": "7500002",
