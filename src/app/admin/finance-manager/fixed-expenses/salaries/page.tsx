@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 
 // The API URL is defined for fetching data.
-const APIURL = 'https://tirangaidms.com';
+const APIURL = 'https://dev.tirangaidms.com';
 
 interface SalaryExpense {
     id: number;

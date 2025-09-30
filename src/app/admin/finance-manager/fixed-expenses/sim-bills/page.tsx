@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 
 // The API URL is defined but the fetch call is temporarily mocked to handle the "Failed to fetch" error.
-const APIURL = 'https://tirangaidms.com';
+const APIURL = 'https://dev.tirangaidms.com';
 
 interface SimBillExpense {
     id: number;

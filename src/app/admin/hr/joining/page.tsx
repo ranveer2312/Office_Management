@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-const APIURL = 'https://tirangaidms.com';
+const APIURL = 'https://dev.tirangaidms.com';
 const API_BASE_URL = APIURL + '/api/employees';
 
 // Step 1: Update the Employee interface to include a profile photo URL

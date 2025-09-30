@@ -49,7 +49,7 @@ interface ApiResponse<T> {
 }
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://tirangaidms.com/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com/api';
 
 // ----------------------------------------------------------------------
 // API Service: Handles fetching and saving data via multipart/form-data
