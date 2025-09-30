@@ -52,7 +52,7 @@ const transformActivityFromApiResponse = (apiActivity: ApiActivityResponse): Act
   notes: apiActivity.notes,
 });
 
-const API_BASE_URL = 'http://localhost:8080/api/activities';
+const API_BASE_URL = 'https://tirangaidms.com/api/activities';
 
 const activitiesAPI = {
   getAll: async (): Promise<Activity[]> => {
