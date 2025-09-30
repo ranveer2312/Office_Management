@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeftIcon, BeakerIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { APIURL } from '@/constants/api';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast'; // FIX: Removed 'toast' as it was unused
 
 interface LabMaterial {
   id: string;
@@ -66,7 +66,7 @@ export default function LabMaterialsPage() {
     };
 
     fetchMaterials();
-  }, []);
+  }, [API_BASE_URL]); // Added API_BASE_URL dependency for robustness, although it is constant
 
   if (isLoading) {
     return (

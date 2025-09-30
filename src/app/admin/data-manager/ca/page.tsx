@@ -1,6 +1,8 @@
+// ./src/app/admin/data-manager/ca/page.tsx
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react'; // FIX: Removed 'useCallback'
 import { 
   ArrowLeftIcon, 
   CalculatorIcon,

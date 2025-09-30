@@ -1,5 +1,6 @@
 'use client';
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -35,6 +36,7 @@ import {
 } from 'lucide-react';
 import { Poppins } from 'next/font/google';
 
+
 // Type definitions
 interface Notification {
   id: number;
@@ -44,21 +46,48 @@ interface Notification {
   createdAt?: string;
 }
 
-interface MenuItem {
-  icon?: React.ReactNode;
-  label: string;
-  href?: string;
-  subItems?: MenuItem[];
-  type?: 'divider';
-}
 
-const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// interface MenuItem {
+//   icon?: React.ReactNode;
+//   label: string;
+//   href?: string;
+//   subItems?: MenuItem[];
+//   type?: 'divider';
+// }
+
+
+type MenuItem =
+  | {
+      type: "divider";
+      icon?: never;
+      label?: never;
+      href?: never;
+      subItems?: never;
+    }
+  | {
+      icon: React.ReactNode;
+      label: string;
+      href: string;
+      subItems?: {
+        icon: React.ReactNode;
+        label: string;
+        href: string;
+      }[];
+      type?: undefined;
+    };
+
+
+
+
+const APIURL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com';
+
 
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-poppins',
 });
+
 
 // Helper function to get the current greeting based on the time of day
 const getGreeting = () => {
@@ -67,6 +96,7 @@ const getGreeting = () => {
   if (hour < 17) return { text: 'Good Afternoon', icon: <CloudSun size={32} className="text-sky-500" /> };
   return { text: 'Good Evening', icon: <Moon size={32} className="text-indigo-500" /> };
 };
+
 
 // Motivational thoughts for the header
 const motivationalThoughts = [
@@ -82,10 +112,12 @@ const motivationalThoughts = [
   'The only way to do great work is to love what you do.'
 ];
 
+
 const getRandomThought = () => {
   const randomIndex = Math.floor(Math.random() * motivationalThoughts.length);
   return motivationalThoughts[randomIndex];
 };
+
 
 // NavItem component for a consistent look for all sidebar links
 type NavItemProps = {
@@ -100,6 +132,7 @@ type NavItemProps = {
   onToggle?: () => void;
 };
 
+
 // Refactored NavItem for hydration safety
 const NavItem = ({
   icon,
@@ -112,6 +145,7 @@ const NavItem = ({
   isExpanded = false,
   onToggle
 }: NavItemProps) => {
+
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (hasSubItems) {
@@ -126,6 +160,7 @@ const NavItem = ({
     }
   };
 
+
   const commonClasses = `group flex items-center justify-between px-4 py-3.5 text-sm font-medium rounded-2xl cursor-pointer transition-all duration-300 ${
     isSubItem
       ? active
@@ -135,6 +170,7 @@ const NavItem = ({
         ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 text-white shadow-xl scale-105 border border-blue-400/50'
         : 'text-slate-600 hover:bg-gradient-to-r hover:from-slate-100 hover:via-blue-50 hover:to-slate-100 hover:text-slate-800 hover:scale-102 hover:border hover:border-slate-200'
   }`;
+
 
   return (
     <Link href={href} className={commonClasses} onClick={handleClick}>
@@ -158,6 +194,7 @@ const NavItem = ({
   );
 };
 
+
 // AdminSidebar component
 interface AdminSidebarProps {
   onLogout: () => void;
@@ -165,17 +202,20 @@ interface AdminSidebarProps {
   onClose: () => void;
 }
 
+
 const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) => {
   const pathname = usePathname();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const userName = 'Admin';
   const profilePhotoUrl = '';
 
+
   useEffect(() => {
     if (pathname.startsWith('/admin/hr')) {
       setExpandedMenus(prev => prev.includes('employee-management') ? prev : [...prev, 'employee-management']);
     }
   }, [pathname]);
+
 
   const toggleMenu = (menuId: string) => {
     setExpandedMenus(prev =>
@@ -184,6 +224,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
         : [...prev, menuId]
     );
   };
+
 
   const adminSidebarItems = useMemo(() => ([
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', href: '/admin' },
@@ -210,6 +251,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
     { icon: <StickyNote size={20} />, label: 'Memos', href: '/admin/memos' },
   ]), []);
 
+
   const renderMenuItem = (item: MenuItem, index: number) => {
     if (item.type === 'divider') {
       return (
@@ -219,10 +261,12 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
       );
     }
 
+
     const menuId = item.label.toLowerCase().replace(/\s+/g, '-');
     const hasSubItems = item.subItems && item.subItems.length > 0;
     const isExpanded = expandedMenus.includes(menuId);
     const isActive = pathname === item.href;
+
 
     return (
       <div key={item.label}>
@@ -255,6 +299,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
     );
   };
 
+
   return (
     <>
       <div
@@ -263,6 +308,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
         }`}
         onClick={onClose}
       />
+
 
       <aside
         className={`fixed top-0 left-0 w-80 h-full bg-white flex flex-col shrink-0 shadow-2xl border-r border-slate-200/60 z-50 transition-transform duration-300 ${
@@ -312,6 +358,7 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
   );
 };
 
+
 // Skeleton loader component to show a loading state
 const SkeletonLoader = () => (
   <div className="flex h-screen overflow-hidden bg-slate-100">
@@ -337,6 +384,7 @@ const SkeletonLoader = () => (
   </div>
 );
 
+
 // Main AdminLayout component that wraps all child pages
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -348,8 +396,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [error, setError] = useState<string | null>(null);
   const [refreshLoading, setRefreshLoading] = useState(false);
 
+
   const greeting = getGreeting();
   const motivationalThought = useMemo(() => getRandomThought(), []);
+
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -364,6 +414,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       'Content-Type': 'application/json',
     };
 
+
     try {
       const notifResponse = await axios.get(`${APIURL}/api/notifications`, { headers });
       setNotifications(Array.isArray(notifResponse.data) ? notifResponse.data : []);
@@ -375,14 +426,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [router]);
 
+
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     router.replace('/login');
   };
+
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -391,6 +445,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setSearchQuery('');
     }
   };
+
 
   const markAsRead = async (id: number) => {
     try {
@@ -408,17 +463,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
+
   const handleRefresh = async () => {
     setRefreshLoading(true);
     await fetchNotifications();
     setTimeout(() => setRefreshLoading(false), 1000);
   };
 
+
   const unreadCount = notifications.filter((n) => !n.read).length;
+
 
   if (loading) {
     return <SkeletonLoader />;
   }
+
 
   if (error) {
     return (
@@ -439,6 +498,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
+
 
   return (
     <div className={`${poppins.variable} font-sans h-screen relative`}>
@@ -486,6 +546,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </span>
                   )}
                 </button>
+
 
                 {notificationOpen && (
                   <div className="absolute right-0 mt-2 w-full sm:w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
@@ -537,6 +598,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </header>
 
+
           <main
             className="flex-1 p-4 sm:p-6 overflow-y-auto bg-gray-50 bg-cover bg-center"
             style={{ backgroundImage: `url('/admindash.png')` }}
@@ -550,3 +612,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
+
+   

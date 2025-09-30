@@ -1,3 +1,5 @@
+// ./src/app/admin/data-manager/finance/page.tsx
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +8,7 @@ import {
   ChartPieIcon,
   DocumentTextIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
+  // Removed FunnelIcon 
   ArrowDownTrayIcon,
   EyeIcon,
 } from '@heroicons/react/24/outline'; // Replaced lucide-react icons with Heroicons
@@ -38,7 +40,7 @@ const viewFields: ViewField[] = [
 
 export default function FinancePage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilter, setShowFilter] = useState(false); // This state isn't currently used in the UI for filtering
+  // Removed unused state: const [showFilter, setShowFilter] = useState(false);
 
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<FinanceReport | null>(null);
@@ -190,10 +192,7 @@ export default function FinancePage() {
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
             </div>
-            {/* The filter button and dropdown were not functional in the original code,
-                so they have been removed to simplify the UI and reduce unnecessary complexity. 
-                A single search bar is more effective for this data set.
-             */}
+            {/* Filter button and dropdown intentionally removed here to fix linting errors */}
           </div>
 
           {loading ? (

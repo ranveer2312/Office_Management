@@ -17,7 +17,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { APIURL } from '@/constants/api';
+// Assuming '@/constants/api' is correct based on your snippet
+import { APIURL } from '@/constants/api'; 
 import toast, { Toaster } from 'react-hot-toast';
 
 interface Report {
@@ -484,6 +485,7 @@ export default function ReportsPage() {
   const renderNewReportForm = () => {
     if (!showNewReportForm) return null;
     
+    // OEM Report Form
     if (newReport.type === 'oem') {
       return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -782,6 +784,7 @@ export default function ReportsPage() {
       );
     }
     
+    // Customer Report Form
     if (newReport.type === 'customer') {
       const maxWords = 1000;
       const wordCount = customerReport.content?.trim().split(/\s+/).filter((word) => word.length > 0).length || 0;
@@ -1064,22 +1067,24 @@ export default function ReportsPage() {
       );
     }
 
-    // Regular employee/other reports form
+    // Regular employee/other reports form (PROFESSIONALLY STYLED)
     const maxWords = 1000;
     const wordCount = newReport.content?.trim().split(/\s+/).filter((word) => word.length > 0).length || 0;
     const remainingWords = maxWords - wordCount;
 
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-        <div className="bg-white/90 rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn">
-          <div className="flex justify-between items-center mb-8">
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+        <div className="bg-white rounded-xl p-8 w-full max-w-2xl shadow-2xl transform transition-all animate-slideIn border border-gray-100">
+          
+          {/* Header Section */}
+          <div className="flex justify-between items-start pb-6 border-b border-gray-200 mb-6">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-50/90 rounded-xl">
+              <div className="p-3 bg-blue-50 rounded-xl">
                 <FilePlus className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-semibold text-gray-900">Create New Report</h2>
-                <p className="text-sm text-gray-500 mt-1">Fill in the details below to create your report</p>
+                <h2 className="text-2xl font-extrabold text-gray-900">Create New Report</h2>
+                <p className="text-sm text-gray-500 mt-1">Submit your {reportTypes.find(t => t.id === newReport.type)?.label || 'General'} report details below.</p>
               </div>
             </div>
             <button
@@ -1095,18 +1100,22 @@ export default function ReportsPage() {
                 setUploadedFiles([]);
                 setError(null);
               }}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/90 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Close form"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 -mr-2"> {/* Scrollable Content */}
+            
+            {/* Report Type & Subtype Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Report Type</label>
+                <label className="block text-sm font-medium text-gray-700" htmlFor="report-type-select">Report Type</label>
                 <div className="relative">
                   <select
+                    id="report-type-select"
                     value={newReport.type}
                     onChange={(e) => {
                       const type = e.target.value as Report['type'];
@@ -1116,7 +1125,7 @@ export default function ReportsPage() {
                         subtype: type === 'employee' ? newReport.subtype : undefined,
                       });
                     }}
-                    className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500/90 focus:ring-blue-500/90 transition-colors appearance-none bg-white/90 pr-10 py-2.5"
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors appearance-none bg-white py-2.5 pr-10"
                   >
                     {reportTypes.map((type) => (
                       <option key={type.id} value={type.id}>
@@ -1134,12 +1143,13 @@ export default function ReportsPage() {
 
               {newReport.type === 'employee' && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Report Subtype</label>
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="report-subtype-select">Report Subtype</label>
                   <div className="relative">
                     <select
+                      id="report-subtype-select"
                       value={newReport.subtype || 'daily'}
                       onChange={(e) => setNewReport({ ...newReport, subtype: e.target.value as Report['subtype'] })}
-                      className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500/90 focus:ring-blue-500/90 transition-colors appearance-none bg-white/90 pr-10 py-2.5"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors appearance-none bg-white py-2.5 pr-10"
                     >
                       {employeeSubtypes.map((subtype) => (
                         <option key={subtype.id} value={subtype.id}>
@@ -1156,18 +1166,20 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
-
+            
+            {/* Content Section */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-gray-700">Content *</label>
+                <label className="block text-sm font-medium text-gray-700" htmlFor="report-content">Content <span className="text-red-500">*</span></label>
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">{wordCount} words</span>
-                  <span className={`text-sm ${remainingWords < 100 ? 'text-red-500' : 'text-gray-500'}`}>
+                  <span className="text-xs text-gray-500 font-mono">{wordCount} words</span>
+                  <span className={`text-xs font-mono ${remainingWords < 100 ? 'text-red-500 font-semibold' : 'text-gray-500'}`}>
                     ({remainingWords} remaining)
                   </span>
                 </div>
               </div>
               <textarea
+                id="report-content"
                 value={newReport.content ?? ''}
                 onChange={(e) => {
                   const text = e.target.value;
@@ -1177,14 +1189,15 @@ export default function ReportsPage() {
                   }
                 }}
                 rows={8}
-                placeholder="Write your report content here (max 1000 words)"
-                className="w-full rounded-xl border-gray-200/90 shadow-sm focus:border-blue-500/90 focus:ring-blue-500/90 transition-colors resize-none py-2.5 bg-white/90"
+                placeholder={`Write your ${reportTypes.find(t => t.id === newReport.type)?.label.toLowerCase() || 'report'} content here (max 1000 words)`}
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors resize-none py-2.5 px-3 bg-white"
               />
             </div>
 
-            <div className="space-y-2">
+            {/* Attachments Section */}
+            <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">Attachments</label>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                 <input
                   type="file"
                   multiple
@@ -1195,25 +1208,31 @@ export default function ReportsPage() {
                 />
                 <label
                   htmlFor="file-upload-employee"
-                  className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-colors"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200"
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload Files
+                  Select Files
                 </label>
-                <span className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX up to 10MB each</span>
+                <span className="text-xs text-gray-500">Allowed: PDF, DOC(X), XLS(X). Max: 10MB each.</span>
               </div>
+              
+              {/* Display Uploaded Files */}
               {uploadedFiles.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Uploaded Files:</p>
+                <div className="mt-4 space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                  <p className="text-sm font-semibold text-gray-700">Selected Files:</p>
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50/90 p-2 rounded-lg">
-                      <span className="text-sm text-gray-700">{file.name}</span>
+                    <div key={index} className="flex items-center justify-between p-2 rounded-md bg-white border border-gray-100 shadow-sm">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-800 truncate">{file.name}</span>
+                      </div>
                       <button
                         onClick={() => {
                           const newFiles = uploadedFiles.filter((_, i) => i !== index);
                           setUploadedFiles(newFiles);
                         }}
-                        className="text-red-500 hover:text-red-700"
+                        className="p-1 text-red-500 hover:text-red-700 rounded-full hover:bg-red-50 transition-colors"
+                        aria-label={`Remove file ${file.name}`}
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -1223,47 +1242,49 @@ export default function ReportsPage() {
               )}
             </div>
 
+            {/* Loading/Error Messages */}
             {uploading && (
-              <div className="flex items-center justify-center py-4">
-                <div className="text-blue-600">Uploading files...</div>
-              </div>
+                <div className="flex items-center justify-center py-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-blue-600 font-medium">Uploading files...</div>
+                </div>
             )}
             
             {error && (
-              <div className="bg-red-50/90 border border-red-200/90 rounded-lg p-3">
+              <div className="bg-red-50 border border-red-300 rounded-lg p-3 mt-4">
                 <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                  <div className="text-red-700 text-sm whitespace-pre-line">{error}</div>
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mr-3" />
+                  <div className="text-red-700 text-sm whitespace-pre-line font-medium">{error}</div>
                 </div>
               </div>
             )}
-            
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200/90">
-              <button
-                onClick={() => {
-                  setShowNewReportForm(false);
-                  setNewReport({
-                    type: 'employee',
-                    subtype: 'daily',
-                    title: '',
-                    content: '',
-                    status: 'draft',
-                  });
-                  setUploadedFiles([]);
-                  setError(null);
-                }}
-                className="px-6 py-2.5 text-gray-700 bg-gray-100/90 rounded-xl hover:bg-gray-200/90 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitReport}
-                disabled={!newReport.content || wordCount === 0 || uploading}
-                className="px-6 py-2.5 text-white bg-blue-600/90 rounded-xl hover:bg-blue-700/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2"
-              >
-                {uploading ? 'Uploading...' : 'Submit Report'}
-              </button>
-            </div>
+          </div>
+          
+          {/* Footer and Actions */}
+          <div className="flex justify-end space-x-4 pt-6 mt-6 border-t border-gray-200">
+            <button
+              onClick={() => {
+                setShowNewReportForm(false);
+                setNewReport({
+                  type: 'employee',
+                  subtype: 'daily',
+                  title: '',
+                  content: '',
+                  status: 'draft',
+                });
+                setUploadedFiles([]);
+                setError(null);
+              }}
+              className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium shadow-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitReport}
+              disabled={!newReport.content || wordCount === 0 || uploading}
+              className="px-6 py-2.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              {uploading ? 'Submitting...' : 'Submit Report'}
+            </button>
           </div>
         </div>
       </div>
@@ -1293,25 +1314,20 @@ export default function ReportsPage() {
       <div className="min-h-screen bg-transparent py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Toaster position="top-right" />
-          {/* <div className="mb-6">
-            <Link href="/employee" className="inline-flex items-center text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Dashboard
-            </Link>
-          </div> */}
 
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">Reports</h1>
               <button
                 onClick={() => setShowNewReportForm(true)}
-                className="inline-flex items-center px-6 py-3 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2 w-full sm:w-auto justify-center"
+                className="inline-flex items-center px-6 py-3 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/90 focus:ring-offset-2 w-full sm:w-auto justify-center group"
               >
-                <FilePlus className="w-5 h-5 mr-2 transition-transform group-hover:rotate-90 duration-200" />
+                <FilePlus className="w-5 h-5 mr-2 transition-transform group-hover:rotate-12 duration-200" />
                 <span>New Report</span>
               </button>
             </div>
 
+            {/* Filter by Report Type */}
             <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200/90 p-4">
               <div className="flex flex-wrap gap-2">
                 {reportTypes.map((type) => (
@@ -1321,8 +1337,8 @@ export default function ReportsPage() {
                       setSelectedType(type.id);
                       setSelectedSubtype('all');
                     }}
-                    className={`px-3 py-1 rounded-lg flex items-center space-x-2 ${
-                      selectedType === type.id ? 'bg-blue-100/90 text-blue-700' : 'text-gray-600 hover:bg-gray-100/90'
+                    className={`px-3 py-1 rounded-lg flex items-center space-x-2 transition-colors ${
+                      selectedType === type.id ? 'bg-blue-100/90 text-blue-700 font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-100/90'
                     }`}
                   >
                     {type.icon}
@@ -1332,6 +1348,7 @@ export default function ReportsPage() {
               </div>
             </div>
 
+            {/* Filter by Employee Subtype */}
             {selectedType === 'employee' && (
               <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200/90 p-4">
                 <div className="flex flex-wrap gap-2">
@@ -1339,8 +1356,8 @@ export default function ReportsPage() {
                     onClick={() => {
                       setSelectedSubtype('all');
                     }}
-                    className={`px-3 py-1 rounded-lg ${
-                      selectedSubtype === 'all' ? 'bg-blue-100/90 text-blue-700' : 'text-gray-600 hover:bg-gray-100/90'
+                    className={`px-3 py-1 rounded-lg transition-colors ${
+                      selectedSubtype === 'all' ? 'bg-blue-100/90 text-blue-700 font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-100/90'
                     }`}
                   >
                     All Employee Reports
@@ -1351,8 +1368,8 @@ export default function ReportsPage() {
                       onClick={() => {
                         setSelectedSubtype(subtype.id);
                       }}
-                      className={`px-3 py-1 rounded-lg flex items-center space-x-2 ${
-                        selectedSubtype === subtype.id ? 'bg-blue-100/90 text-blue-700' : 'text-gray-600 hover:bg-gray-100/90'
+                      className={`px-3 py-1 rounded-lg flex items-center space-x-2 transition-colors ${
+                        selectedSubtype === subtype.id ? 'bg-blue-100/90 text-blue-700 font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-100/90'
                       }`}
                     >
                       {subtype.icon}
@@ -1363,6 +1380,7 @@ export default function ReportsPage() {
               </div>
             )}
 
+            {/* Customer Report Search Filter */}
             {selectedType === 'customer' && (
               <div className="mb-6 max-w-xs">
                 <div className="relative group">
@@ -1557,6 +1575,7 @@ export default function ReportsPage() {
                             </div>
                           </div>
                         ) : report.type === 'oem' && report.subtype === 'competitor_analysis' ? (
+                          // Competitor analysis reports are handled in the table below
                           null
                         ) : (
                           <div key={report.id} className="border rounded-lg p-4 bg-white/90 animate-fadeIn">
@@ -1571,7 +1590,7 @@ export default function ReportsPage() {
                                       <p>Subtype: {employeeSubtypes.find((s) => s.id === report.subtype)?.label}</p>
                                     )}
                                     {report.type === 'oem' && report.subtype && (
-                                      <p>Subtype: {oemSubtypes.find((s) => s.id === report.subtype)?.label}</p>
+                                      <p>Subtype: {oemSubtypes.find((s) => s.id === report.subtype)?.label || report.subtype}</p>
                                     )}
                                     <p>
                                       Date:{' '}
@@ -1714,22 +1733,22 @@ export default function ReportsPage() {
                         .filter((r) => r.type === 'oem' && r.subtype === 'competitor_analysis')
                         .map((report) => (
                           <tr key={report.id} className="hover:bg-blue-50/90 transition">
-                            <td className="px-6 py-4">{report.slNo ?? '-'}</td>
-                            <td className="px-6 py-4">{report.customerName || '-'}</td>
-                            <td className="px-6 py-4">{report.itemDescription || '-'}</td>
-                            <td className="px-6 py-4">{report.competitor || '-'}</td>
-                            <td className="px-6 py-4">{report.modelNumber || '-'}</td>
-                            <td className="px-6 py-4">{report.unitPrice || '-'}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.slNo ?? '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.customerName || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.itemDescription || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.competitor || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.modelNumber || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.unitPrice || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">
                               {Array.isArray(report.date)
                                 ? `${report.date[0]}-${String(report.date[1]).padStart(2, '0')}-${String(
                                     report.date[2]
                                   ).padStart(2, '0')}`
                                 : report.date || '-'}
                             </td>
-                            <td className="px-6 py-4">{report.submittedBy || '-'}</td>
-                            <td className="px-6 py-4">{report.employeeName || '-'}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.submittedBy || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">{report.employeeName || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-gray-800">
                               {report.attachments && report.attachments.length > 0 ? (
                                 <ul className="list-disc ml-4">
                                   {report.attachments.map((att, idx) => (
@@ -1738,7 +1757,7 @@ export default function ReportsPage() {
                                         href={`${BASE_URL}/${report.id}/view`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-blue-600/90 underline"
+                                        className="text-blue-600/90 underline hover:no-underline text-xs"
                                       >
                                         {/* Use report.originalFileName for the display text if available, otherwise fallback */}
                                         {report.originalFileName || att.split('/').pop()}

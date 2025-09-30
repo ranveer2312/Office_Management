@@ -7,11 +7,13 @@ import {
   XCircle,
   AlertCircle,
   Search,
+  Download,
 } from 'lucide-react';
 
 import axios from 'axios';
 import { APIURL } from '@/constants/api';
 
+// --- Interface Definitions (Unchanged) ---
 interface AttendanceRecord {
   employeeId: string;
   employeeName: string;
@@ -45,15 +47,17 @@ interface AttendanceStats {
   totalWorkHours: number;
   avgWorkHours: string;
 }
+// ----------------------------------------
 
 export default function AdminAttendanceDashboard() {
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false); 
   const [error, setError] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(''); // This is used to filter by employee
 
   const getDateRange = useCallback(() => {
     const today = new Date();
@@ -178,7 +182,8 @@ export default function AdminAttendanceDashboard() {
   const filteredData = attendanceData.filter(record => {
     const matchesDepartment = selectedDepartment === 'all' || record.department === selectedDepartment;
     const matchesSearch = (record.employeeName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                          (record.department?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+                          (record.department?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          (record.employeeId?.toLowerCase() || '').includes(searchTerm.toLowerCase()); // Check employee ID as well
     return matchesDepartment && matchesSearch;
   });
 
@@ -197,8 +202,130 @@ export default function AdminAttendanceDashboard() {
 
   const stats: AttendanceStats = calculateStats();
   const departments = [...new Set(attendanceData.map(record => record.department))];
+  
+  // 🔄 Updated function to handle export with employee filtering
+  const handleMonthlyExport = async () => {
+    setExporting(true);
+    setError(null);
+    try {
+      // 1. Define the full month date range (independent of current viewMode)
+      const today = new Date();
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const start = formatDate(startDate);
+      const end = formatDate(endDate);
+      const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+      // 2. Fetch all data for the month
+      const response = await axios.get(`${APIURL}/api/attendance/by-date-range`, {
+        params: { startDate: start, endDate: end }
+      });
+      
+      const allMonthlyRecords: AttendanceRecord[] = response.data.map((record: BackendAttendanceRecord) => ({
+        employeeId: record.employeeId,
+        employeeName: record.employeeName || 'Unknown',
+        department: record.department || 'Unknown',
+        date: record.date,
+        signIn: record.checkInTime || '-',
+        signOut: record.checkOutTime || '-',
+        status: record.status,
+        workHours: record.workHours || 0,
+        workLocation: record.workLocation || '-',
+      }));
+      
+      // 3. Apply the current search term and department filter to the fetched monthly data
+      const dataToExport = allMonthlyRecords.filter(record => {
+          const matchesDepartment = selectedDepartment === 'all' || record.department === selectedDepartment;
+          const matchesSearch = (record.employeeName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                                (record.employeeId?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+          return matchesDepartment && matchesSearch;
+      });
+     
+      if (dataToExport.length === 0) {
+        alert(`No attendance data found for ${monthName} that matches your current filters.`);
+        return;
+      }
+      
+      // Determine the filename based on the current filter
+      let exportSuffix = "All_Employees";
+      if (searchTerm) {
+          // If a search term is present, use the name of the first employee found for the filename
+          const employeeName = dataToExport[0].employeeName.replace(/[^a-zA-Z0-9]/g, '_');
+          exportSuffix = employeeName;
+      } else if (selectedDepartment !== 'all') {
+          exportSuffix = selectedDepartment.replace(/[^a-zA-Z0-9]/g, '_');
+      }
+
+      // 4. Prepare CSV content
+      const headers = [
+        "Employee ID", 
+        "Employee Name", 
+        "Department", 
+        "Date", 
+        "Sign In", 
+        "Sign Out", 
+        "Status", 
+        "Work Hours (Decimal)",
+        "Work Hours (H:M)",
+        "Work Location"
+      ];
+      
+      const csvRows = dataToExport.map(record => 
+        [
+          `"${record.employeeId}"`, 
+          `"${record.employeeName.replace(/"/g, '""')}"`,
+          `"${record.department.replace(/"/g, '""')}"`,
+          record.date,
+          record.signIn,
+          record.signOut,
+          record.status.toUpperCase(),
+          record.workHours.toFixed(2),
+          formatWorkHours(record.workHours).replace(/,/g, ''), 
+          `"${record.workLocation?.replace(/"/g, '""')}"`,
+        ].join(',')
+      );
+
+      const csvContent = [
+        headers.join(','),
+        ...csvRows
+      ].join('\n');
+
+      // 5. Create and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Attendance_Report_${monthName.replace(' ', '_')}_${exportSuffix}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (err: Error | unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(`Failed to export attendance data: ${errorMessage}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Helper to determine the text for the export button
+  const getExportButtonText = () => {
+    if (exporting) return 'Exporting...';
+    if (searchTerm) return 'Export Filtered Employee Monthly CSV';
+    if (selectedDepartment !== 'all') return `Export ${selectedDepartment} Monthly CSV`;
+    return 'Export All Monthly CSV';
+  }
 
   const renderStatsCards = () => {
+    // ... (Stats card rendering logic - Unchanged)
     const statCards = [
       {
         title: 'Total Present',
@@ -308,7 +435,7 @@ export default function AdminAttendanceDashboard() {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search employees..."
+                  placeholder="Search employees or ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -347,6 +474,7 @@ export default function AdminAttendanceDashboard() {
                 <tr key={index} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{record.employeeName}</div>
+                    <div className="text-xs text-gray-400">ID: {record.employeeId}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{record.department}</div>
@@ -403,6 +531,31 @@ export default function AdminAttendanceDashboard() {
               <p className="text-gray-600">Monitor and manage employee attendance records</p>
             </div>
             <div className="flex flex-wrap items-center space-x-2 sm:space-x-4 mt-2 sm:mt-0">
+              
+              {/* 🔄 Export Button with dynamic text */}
+              <button
+                onClick={handleMonthlyExport}
+                disabled={exporting}
+                className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md ${
+                  exporting 
+                    ? 'bg-gray-400 text-white cursor-not-allowed' 
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {exporting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    {getExportButtonText()}
+                  </>
+                )}
+              </button>
+              {/* --- */}
+
               <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
                 {['today', 'week', 'month', 'year'].map((mode) => (
                   <button

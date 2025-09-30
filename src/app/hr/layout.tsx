@@ -1,12 +1,14 @@
+// ./src/app/hr/layout.tsx
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Calendar, FileText, Clock, Briefcase, Star, BookOpen,
-  Laptop, User, LogOut, LayoutDashboard, BarChart2,
-  ChevronRight, StickyNote, Sun, CloudSun, Moon, RefreshCw, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
+  Calendar, FileText, User, LogOut,
+  ChevronRight, Sun, CloudSun, Moon, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
+  // Removed unused imports: Clock, Briefcase, Star, BookOpen, Laptop, LayoutDashboard, BarChart2, StickyNote, RefreshCw
 } from 'lucide-react';
 import Image from 'next/image';
 import { Poppins } from 'next/font/google';
@@ -169,12 +171,12 @@ const motivationalQuotes = [
 type HeaderProps = {
   employee: Employee | null;
   todayAttendance: Attendance | null;
-  onRefresh: () => void;
-  loading: boolean;
+  // Removed unused props: onRefresh: () => void;
+  // Removed unused props: loading: boolean;
   onMenuClick: () => void;
 };
 
-const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: HeaderProps) => {
+const Header = ({ employee, todayAttendance, onMenuClick }: HeaderProps) => {
   const greeting = getGreeting();
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const [currentQuote, setCurrentQuote] = useState(motivationalQuotes[0]);
@@ -274,8 +276,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
         <Header
           employee={employee}
           todayAttendance={todayAttendance}
-          onRefresh={fetchMockData}
-          loading={loading}
+          // Removed onRefresh and loading props
           onMenuClick={() => setIsSidebarOpen(true)}
         />
         <main className="flex-1 p-4 sm:p-6 overflow-y-auto relative bg-[url('/hrdash.png')] bg-cover bg-center bg-no-repeat">

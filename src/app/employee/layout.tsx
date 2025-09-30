@@ -5,9 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import {
-    Calendar, FileText, Clock, Briefcase, Star, BookOpen,
+    Calendar, FileText, Clock, Star, BookOpen,
     Laptop, User, LogOut, LayoutDashboard, BarChart2,
     ChevronRight, StickyNote, Sun, CloudSun, Moon, RefreshCw, Menu, X,
+    // Removed unused import: Briefcase
 } from 'lucide-react';
 import Image from 'next/image';
 import { Poppins } from 'next/font/google';

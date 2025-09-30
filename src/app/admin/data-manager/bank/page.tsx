@@ -13,7 +13,7 @@ import {
 import DataView, { ViewField } from '../components/DataView';
 import Link from 'next/link';
 import { APIURL } from '@/constants/api';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast'; // FIX: Removed 'toast' as it was unused
 
 interface BankDocument {
   id: number;

@@ -5,145 +5,145 @@ import AdminStore from '@/app/components/AdminStore';
 import { ArrowLeftIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { APIURL } from '@/constants/api';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast'; // FIX: Removed 'toast' as it was unused
 
 interface FixedItem {
-  id: string;
-  name: string;
-  productNumber?: string;
-  quantity: number;
-  category: string;
-  location: string;
-  lastUpdated: Date;
-  condition: 'new' | 'good' | 'fair' | 'poor';
+	id: string;
+	name: string;
+	productNumber?: string;
+	quantity: number;
+	category: string;
+	location: string;
+	lastUpdated: Date;
+	condition: 'new' | 'good' | 'fair' | 'poor';
 }
 
 interface ApiFixedItem {
-  id: number;
-  name: string;
-  productNumber?: string;
-  quantity: number;
-  category: string;
-  location: string;
-  itemCondition: string | null;
-  lastUpdated: [number, number, number]; // [year, month, day]
+	id: number;
+	name: string;
+	productNumber?: string;
+	quantity: number;
+	category: string;
+	location: string;
+	itemCondition: string | null;
+	lastUpdated: [number, number, number]; // [year, month, day]
 }
 
 const API_BASE_URL = APIURL + `/store/stationary/fixed`;
 
 export default function FixedStationaryPage() {
-  const [items, setItems] = useState<FixedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
+	const [items, setItems] = useState<FixedItem[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [, setError] = useState<string | null>(null);
 
-  const categories = ['Furniture', 'Equipment', 'Storage', 'Other'];
+	const categories = ['Furniture', 'Equipment', 'Storage', 'Other'];
 
-  // Helper function to convert API response to local format
-  const convertApiToLocal = (apiItem: ApiFixedItem): FixedItem => {
-    // Handle potential null/undefined apiItem
-    if (!apiItem) {
-      throw new Error('Invalid item data received from API');
-    }
-    
-    // Handle date conversion with fallback
-    let lastUpdated = new Date();
-    if (apiItem.lastUpdated && Array.isArray(apiItem.lastUpdated) && apiItem.lastUpdated.length >= 3) {
-      const [year, month, day] = apiItem.lastUpdated;
-      lastUpdated = new Date(year, month - 1, day); // month is 0-indexed in JS Date
-    }
-    
-    return {
-      id: apiItem.id?.toString() || 'unknown',
-      name: apiItem.name || 'Unknown Item',
-      productNumber: apiItem.productNumber,
-      quantity: apiItem.quantity || 0,
-      category: apiItem.category || 'Other',
-      location: apiItem.location || 'Unknown Location',
-      lastUpdated: lastUpdated,
-      condition: (apiItem.itemCondition?.toLowerCase() as 'new' | 'good' | 'fair' | 'poor') || 'good',
-    };
-  };
+	// Helper function to convert API response to local format
+	const convertApiToLocal = (apiItem: ApiFixedItem): FixedItem => {
+		// Handle potential null/undefined apiItem
+		if (!apiItem) {
+			throw new Error('Invalid item data received from API');
+		}
+		
+		// Handle date conversion with fallback
+		let lastUpdated = new Date();
+		if (apiItem.lastUpdated && Array.isArray(apiItem.lastUpdated) && apiItem.lastUpdated.length >= 3) {
+			const [year, month, day] = apiItem.lastUpdated;
+			lastUpdated = new Date(year, month - 1, day); // month is 0-indexed in JS Date
+		}
+		
+		return {
+			id: apiItem.id?.toString() || 'unknown',
+			name: apiItem.name || 'Unknown Item',
+			productNumber: apiItem.productNumber,
+			quantity: apiItem.quantity || 0,
+			category: apiItem.category || 'Other',
+			location: apiItem.location || 'Unknown Location',
+			lastUpdated: lastUpdated,
+			condition: (apiItem.itemCondition?.toLowerCase() as 'new' | 'good' | 'fair' | 'poor') || 'good',
+		};
+	};
 
-  // Fetch all items
-  const fetchItems = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch(API_BASE_URL);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Check if data is null, undefined, or not an array
-      if (!data || !Array.isArray(data)) {
-        setItems([]);
-        return;
-      }
-      
-      const convertedItems = data.map(convertApiToLocal);
-      setItems(convertedItems);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch items');
-      console.error('Error fetching items:', err);
-      setItems([]); // Set empty array on error
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+	// Fetch all items
+	const fetchItems = useCallback(async () => {
+		try {
+			setLoading(true);
+			setError(null);
+			const response = await fetch(API_BASE_URL);
+			
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			
+			const data = await response.json();
+			
+			// Check if data is null, undefined, or not an array
+			if (!data || !Array.isArray(data)) {
+				setItems([]);
+				return;
+			}
+			
+			const convertedItems = data.map(convertApiToLocal);
+			setItems(convertedItems);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to fetch items');
+			console.error('Error fetching items:', err);
+			setItems([]); // Set empty array on error
+		} finally {
+			setLoading(false);
+		}
+	}, [API_BASE_URL]);
 
-  // Load items on component mount
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading fixed stationary items...</div>
-      </div>
-    );
-  }
+	// Load items on component mount
+	useEffect(() => {
+		fetchItems();
+	}, [fetchItems]);
+	
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
+				<div className="text-lg text-gray-600">Loading fixed stationary items...</div>
+			</div>
+		);
+	}
 
-  return (
-    <div className="min-h-screen bg-transparent">
-      <Toaster position="top-right" />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700 rounded-2xl p-6 mb-8">
-          <Link href="/admin/store" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
-            <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            Back to Dashboard
-          </Link>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
-                <ShoppingBagIcon className="h-10 w-10 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Fixed Stationary </h1>
-                <p className="text-base text-gray-600 dark:text-gray-300 mt-1">View and manage long-term office supplies</p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{items.length}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Total Items</div>
-              </div>
-            </div>
-          </div>
-        </div>
+	return (
+		<div className="min-h-screen bg-transparent">
+			<Toaster position="top-right" />
+			
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+				{/* Header Section */}
+				<div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-slate-800 dark:to-indigo-900 shadow-xl border-b border-blue-200 dark:border-indigo-700 rounded-2xl p-6 mb-8">
+					<Link href="/admin/store" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+						<ArrowLeftIcon className="w-5 h-5 mr-2" />
+						Back to Dashboard
+					</Link>
+					<div className="flex items-center justify-between">
+						<div className="flex items-center space-x-4">
+							<div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+								<ShoppingBagIcon className="h-10 w-10 text-white" />
+							</div>
+							<div>
+								<h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Fixed Stationary </h1>
+								<p className="text-base text-gray-600 dark:text-gray-300 mt-1">View and manage long-term office supplies</p>
+							</div>
+						</div>
+						<div className="hidden md:flex items-center space-x-4">
+							<div className="text-center">
+								<div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{items.length}</div>
+								<div className="text-xs text-gray-500 dark:text-gray-400">Total Items</div>
+							</div>
+						</div>
+					</div>
+				</div>
 
-        {/* AdminStore Component - now aligned with the header */}
-        <AdminStore
-          title="Fixed Office Supplies Items"
-          items={items}
-          categories={categories}
-        />
-      </div>
-    </div>
-  );
+				{/* AdminStore Component - now aligned with the header */}
+				<AdminStore
+					title="Fixed Office Supplies Items"
+					items={items}
+					categories={categories}
+				/>
+			</div>
+		</div>
+	);
 }

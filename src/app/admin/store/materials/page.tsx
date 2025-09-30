@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon, CubeIcon, DocumentTextIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import { APIURL } from '@/constants/api';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast'; // FIX: Removed 'toast' as it was unused
 
 interface Material {
   id: number;

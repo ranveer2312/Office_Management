@@ -5,7 +5,7 @@ import AdminStore from '@/app/components/AdminStore';
 import { ArrowLeftIcon, ShoppingBagIcon } from '@heroicons/react/24/outline'; // Replaced lucide-react ArrowLeft with Heroicons and added ShoppingBagIcon for theme consistency
 import Link from 'next/link';
 import { APIURL } from '@/constants/api';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast'; // FIX: Removed 'toast' as it was unused
 
 interface OfficeSuppliesItem {
   id: string;
@@ -74,7 +74,7 @@ export default function RegularStationaryPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [API_BASE_URL]); // Added API_BASE_URL to dependencies, although it's constant, for completeness
 
   // Load items on component mount
   useEffect(() => {
