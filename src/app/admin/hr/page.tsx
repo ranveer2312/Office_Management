@@ -73,7 +73,7 @@ export default function HRDashboard() {
             setLoadingStats(true);
             setLoadingEmployees(true);
             try {
-                const employeesResponse = await fetch('https://dev.tirangaidms.com/api/employees');
+                const employeesResponse = await fetch('http://localhost:8080/api/employees');
                 if (!employeesResponse.ok) {
                     throw new Error('Failed to fetch employees');
                 }
@@ -108,7 +108,7 @@ export default function HRDashboard() {
         const fetchActivities = async () => {
             setLoadingActivities(true);
             try {
-                const activitiesResponse = await fetch('https://dev.tirangaidms.com/api/activities');
+                const activitiesResponse = await fetch('http://localhost:8080/api/activities');
                 if (!activitiesResponse.ok) {
                     throw new Error('Failed to fetch activities');
                 }

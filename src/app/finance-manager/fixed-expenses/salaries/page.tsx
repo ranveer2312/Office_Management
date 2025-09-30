@@ -5,7 +5,7 @@ import { PlusCircleIcon, TrashIcon, PencilSquareIcon, BriefcaseIcon, DocumentTex
 import toast, { Toaster } from 'react-hot-toast';
 
 // The API URL is defined for fetching data.
-const APIURL = 'https://dev.tirangaidms.com';
+const APIURL = 'http://localhost:8080';
 
 interface SalaryReimbursement {
 	id: number;

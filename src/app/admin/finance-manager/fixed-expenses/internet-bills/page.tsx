@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 
 // The API URL should now point to your local backend server.
-const APIURL = 'https://dev.tirangaidms.com';
+const APIURL = 'http://localhost:8080';
 
 interface InternetBillExpense {
     id: number;

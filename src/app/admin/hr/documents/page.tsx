@@ -5,7 +5,7 @@ import { File, Search, Filter, User, FileText, CreditCard, Briefcase, Graduation
 import { Toaster } from 'react-hot-toast';
 
 // Assuming APIURL is correctly defined and points to your backend
-const APIURL = 'https://dev.tirangaidms.com';
+const APIURL = 'http://localhost:8080';
 
 interface Document {
 	id: number;
