@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeftIcon, BeakerIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { APIURL } from '@/constants/api';
-import { Toaster } from 'react-hot-toast'; // FIX: Removed 'toast' as it was unused
+import { Toaster } from 'react-hot-toast'; 
 
 interface LabComponent {
 	id: string;
@@ -66,7 +66,7 @@ export default function LabComponentsPage() {
 		};
 
 		fetchComponents();
-	}, [API_BASE_URL]); // Added API_BASE_URL for robustness
+	}, []); // FIX: Removed API_BASE_URL from the dependency array
 
 	if (isLoading) {
 		return (

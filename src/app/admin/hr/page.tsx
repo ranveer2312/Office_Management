@@ -10,8 +10,9 @@ import {
     Award,
     CheckCircle,
     UserPlus,
-    GraduationCap,
+    // Removed unused icons: GraduationCap
 } from 'lucide-react';
+import Image from 'next/image'; // Import the Next.js Image component
 
 interface Employee {
     id: string | number;
@@ -48,7 +49,7 @@ const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = 
     Award,
     UserPlus,
     Building,
-    GraduationCap,
+    // Note: GraduationCap was removed from imports
     Briefcase,
 };
 
@@ -76,21 +77,25 @@ export default function HRDashboard() {
                 if (!employeesResponse.ok) {
                     throw new Error('Failed to fetch employees');
                 }
-                const employeesData = await employeesResponse.json();
+                const employeesData: Employee[] = await employeesResponse.json();
                 
                 if (Array.isArray(employeesData)) {
                     setEmployees(employeesData);
                     setTotalWorkforce(employeesData.length);
+                    
+                    // FIX: Explicitly use Employee type for map callback
                     const uniqueDepartments = Array.from(new Set(employeesData.map((e: Employee) => e.department || 'Unassigned')));
                     setDepartments(uniqueDepartments);
                     
                     const oneMonthAgo = new Date();
                     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                    
+                    // FIX: Explicitly use Employee type for filter callback
                     setNewHires(employeesData.filter((e: Employee) => e.joinDate && new Date(e.joinDate) > oneMonthAgo).length);
                 } else {
                     throw new Error("Invalid data format from API.");
                 }
-            } catch (error: any) {
+            } catch (error: unknown) { // Use unknown for safety
                 console.error("Failed to fetch dashboard data:", error);
                 setErrorStats("Failed to load dashboard statistics.");
                 setErrorEmployees("Failed to load employee directory.");
@@ -109,7 +114,7 @@ export default function HRDashboard() {
                 }
                 const activitiesData = await activitiesResponse.json();
                 setActivities(activitiesData);
-            } catch (error: any) {
+            } catch (error: unknown) { // Use unknown for safety
                 console.error("Failed to fetch activities:", error);
                 setErrorActivities("Failed to load recent activities.");
             } finally {
@@ -249,7 +254,14 @@ export default function HRDashboard() {
                                                         <td className="py-4 px-2">
                                                             <div className="flex items-center space-x-4">
                                                                 {employee.profilePhotoUrl ? (
-                                                                    <img src={employee.profilePhotoUrl} alt={employee.employeeName} className="w-12 h-12 rounded-full flex-shrink-0 object-cover" />
+                                                                    <Image // FIX: Replaced <img> with <Image />
+                                                                        src={employee.profilePhotoUrl}
+                                                                        alt={employee.employeeName || 'Profile'}
+                                                                        className="w-12 h-12 rounded-full flex-shrink-0 object-cover"
+                                                                        width={48}
+                                                                        height={48}
+                                                                        unoptimized
+                                                                    />
                                                                 ) : (
                                                                     <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-300 transition-all">
                                                                         <Users className="w-6 h-6 text-blue-600" />
@@ -322,7 +334,7 @@ export default function HRDashboard() {
                                                         activity.status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
                                                         activity.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
                                                         'bg-red-50 text-red-700 border border-red-200'
-                                                    }`}>
+                                                        }`}>
                                                         <div className={`w-2 h-2 rounded-full mr-2 ${
                                                             activity.status === 'completed' ? 'bg-green-400' : 'bg-gray-400'
                                                         }`} />

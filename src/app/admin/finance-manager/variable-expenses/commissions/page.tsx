@@ -140,7 +140,7 @@ export default function AdminCommissionsPage() {
                                                                     return;
                                                                 }
                                                                 
-                                                                let url;
+                                                                let url: string; // FIX: Declared url once
                                                                 if (expense.documentPath.startsWith('http')) {
                                                                     url = expense.documentPath;
                                                                 } else {
@@ -149,9 +149,10 @@ export default function AdminCommissionsPage() {
                                                                         toast.error('Invalid document path');
                                                                         return;
                                                                     }
-                                                                    const url = `${APIURL}/files/${encodeURIComponent(filename)}`;
-                                                                    window.open(url, '_blank');
+                                                                    url = `${APIURL}/files/${encodeURIComponent(filename)}`;
                                                                 }
+
+                                                                window.open(url, '_blank'); // FIX: Used the single url variable here
                                                             } catch {
                                                                 toast.error('Error opening document');
                                                             }
@@ -217,7 +218,7 @@ export default function AdminCommissionsPage() {
                                                             return;
                                                         }
                                                         
-                                                        let url;
+                                                        let url: string;
                                                         if (expense.documentPath.startsWith('http')) {
                                                             url = expense.documentPath;
                                                         } else {
@@ -228,7 +229,6 @@ export default function AdminCommissionsPage() {
                                                             }
                                                             url = `${APIURL}/files/${encodeURIComponent(filename)}`;
                                                         }
-
                                                         window.open(url, '_blank');
                                                     } catch {
                                                         toast.error('Error opening document');

@@ -92,7 +92,7 @@ export default function FixedStationaryPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [API_BASE_URL]);
+	}, []); // FIX: Removed API_BASE_URL from the dependency array
 
 	// Load items on component mount
 	useEffect(() => {

@@ -42,6 +42,8 @@ export default function AdminSalariesPage() {
         }
     };
 
+    // FIX: Removed the unused formatDate function definition
+    /*
     const formatDate = (dateString: unknown) => {
         if (!dateString) return 'N/A';
         const dateStr = String(dateString).trim();
@@ -63,6 +65,7 @@ export default function AdminSalariesPage() {
             return dateStr;
         }
     };
+    */
 
     if (loading) {
         return (
