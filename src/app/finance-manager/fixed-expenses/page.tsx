@@ -8,8 +8,6 @@ import {
   CurrencyDollarIcon,
   ChartBarIcon,
   CalendarIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
 
@@ -227,7 +225,6 @@ export default function FixedExpensesPage() {
           <div className="divide-y divide-slate-200 dark:divide-slate-700">
             {fixedExpenseItems.map((item) => {
               const data = expenseData[item.dataKey as keyof typeof expenseData];
-              const isPositiveTrend = data.trend > 0;
               
               return (
                 <Link key={item.id} href={item.link} className="block group hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer">
@@ -252,12 +249,6 @@ export default function FixedExpensesPage() {
                             <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                               {item.name}
                             </h3>
-                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${getPriorityColor(item.priority)}`}>
-                              {item.priority}
-                            </span>
-                            <span className="px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                              {item.category}
-                            </span>
                           </div>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{item.description}</p>
                           <div className="flex items-center space-x-4 text-xs text-slate-500 dark:text-slate-400">
@@ -271,38 +262,6 @@ export default function FixedExpensesPage() {
                             </div>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Middle Section - Financial Data */}
-                      <div className="text-center px-6">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">
-                            ₹{data.total.toLocaleString('en-IN')}
-                          </p>
-                          {data.trend !== 0 && (
-                            <div className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium ${
-                              isPositiveTrend
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            }`}>
-                              {isPositiveTrend ? (
-                                <ArrowTrendingUpIcon className="w-3 h-3" />
-                              ) : (
-                                <ArrowTrendingDownIcon className="w-3 h-3" />
-                              )}
-                              <span>{Math.abs(data.trend)}%</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mb-1">
-                          <div
-                            className="bg-gradient-to-r from-indigo-500 to-purple-600 h-1.5 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min((data.total / totalExpenses) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {((data.total / totalExpenses) * 100).toFixed(1)}% of total
-                        </p>
                       </div>
 
                       {/* Right Section - Visual Indicator */}

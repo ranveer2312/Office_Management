@@ -1,14 +1,12 @@
-// ./src/app/hr/layout.tsx
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Calendar, FileText, User, LogOut,
-  ChevronRight, Sun, CloudSun, Moon, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
-  // Removed unused imports: Clock, Briefcase, Star, BookOpen, Laptop, LayoutDashboard, BarChart2, StickyNote, RefreshCw
+  Calendar, FileText, Clock, Briefcase, Star, BookOpen,
+  Laptop, User, LogOut, LayoutDashboard, BarChart2,
+  ChevronRight, StickyNote, Sun, CloudSun, Moon, RefreshCw, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Poppins } from 'next/font/google';
@@ -100,7 +98,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
               alt="HR Logo"
               width={180}
               height={50}
-              className="h-20 w-auto"
+              className="h-12 w-auto"
               priority
             />
           </div>
@@ -137,7 +135,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 truncate">
-                {employee?.employeeName.split(' ')[0] || 'Bharath'}
+                {employee?.employeeName.split(' ')[0] || ''}
               </p>
               <p className="text-xs text-slate-500 truncate">{employee?.position || 'HR Manager'}</p>
             </div>
@@ -171,12 +169,12 @@ const motivationalQuotes = [
 type HeaderProps = {
   employee: Employee | null;
   todayAttendance: Attendance | null;
-  // Removed unused props: onRefresh: () => void;
-  // Removed unused props: loading: boolean;
+  onRefresh: () => void;
+  loading: boolean;
   onMenuClick: () => void;
 };
 
-const Header = ({ employee, todayAttendance, onMenuClick }: HeaderProps) => {
+const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: HeaderProps) => {
   const greeting = getGreeting();
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const [currentQuote, setCurrentQuote] = useState(motivationalQuotes[0]);
@@ -199,7 +197,7 @@ const Header = ({ employee, todayAttendance, onMenuClick }: HeaderProps) => {
         </div>
         <div>
           <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            {greeting.text}, {employee?.employeeName.split(' ')[0] || 'Bharath'}
+            {greeting.text}, {employee?.employeeName.split(' ')[0] || ''}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-medium transition-opacity duration-1000">{currentQuote}</p>
         </div>
@@ -231,7 +229,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
     setLoading(true);
     // Mock API data to display the UI correctly
     const mockEmployee = {
-      employeeName: 'Bharath',
+      employeeName: 'HR',
       position: 'HR Manager',
       profilePhotoUrl: '', // You can add a URL here if you have one
     };
@@ -276,11 +274,12 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
         <Header
           employee={employee}
           todayAttendance={todayAttendance}
-          // Removed onRefresh and loading props
+          onRefresh={fetchMockData}
+          loading={loading}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
         <main className="flex-1 p-4 sm:p-6 overflow-y-auto relative bg-[url('/hrdash.png')] bg-cover bg-center bg-no-repeat">
-          <div className="absolute inset-0 bg-white/50 z-0" /> {/* Corrected transparency layer */}
+          <div className="" /> {/* Corrected transparency layer */}
           <div className="relative z-10"> {/* Ensure content is above the background */}
             {children}
           </div>
