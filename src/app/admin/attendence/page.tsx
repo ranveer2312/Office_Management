@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo for efficient sorting
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Clock,
   CheckCircle,
@@ -8,14 +8,14 @@ import {
   AlertCircle,
   Search,
   Download,
-  ArrowDownNarrowWide, // Icon for Descending
-  ArrowUpWideNarrow,   // Icon for Ascending
+  ArrowDownNarrowWide,
+  ArrowUpWideNarrow,
 } from 'lucide-react';
 
 import axios from 'axios';
 import { APIURL } from '@/constants/api';
 
-// --- Interface Definitions (Unchanged) ---
+// --- Interface Definitions ---
 interface AttendanceRecord {
   employeeId: string;
   employeeName: string;
@@ -26,6 +26,8 @@ interface AttendanceRecord {
   status: 'present' | 'absent' | 'half-day' | 'late' | 'not_marked';
   workHours: number;
   workLocation: string | null;
+  // New field to capture late arrival status
+  arrivalStatus?: 'Late' | 'On-Time' | 'N/A';
 }
 
 interface BackendAttendanceRecord {
@@ -38,6 +40,8 @@ interface BackendAttendanceRecord {
   employeeName?: string;
   department?: string;
   workLocation?: string | null;
+  // New field from backend
+  arrivalStatus?: string | null;
 }
 
 interface AttendanceStats {
@@ -49,9 +53,7 @@ interface AttendanceStats {
   totalWorkHours: number;
   avgWorkHours: string;
 }
-// ----------------------------------------
 
-// 1. Define the sort state type
 type SortOrder = 'none' | 'asc' | 'desc';
 
 export default function AdminAttendanceDashboard() {
@@ -63,9 +65,8 @@ export default function AdminAttendanceDashboard() {
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // 2. Add state for sorting by time
-  const [sortOrder, setSortOrder] = useState<SortOrder>('none'); 
+
+  const [sortOrder, setSortOrder] = useState<SortOrder>('none');
 
   const getDateRange = useCallback(() => {
     const today = new Date();
@@ -91,12 +92,12 @@ export default function AdminAttendanceDashboard() {
       default:
         break;
     }
-    
+
     const formatDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
     return {
@@ -111,7 +112,7 @@ export default function AdminAttendanceDashboard() {
       setError(null);
       try {
         const { startDate, endDate } = getDateRange();
-        
+
         const attendanceResponse = await axios.get(`${APIURL}/api/attendance/by-date-range`, {
           params: { startDate, endDate }
         });
@@ -127,9 +128,10 @@ export default function AdminAttendanceDashboard() {
             status: record.status,
             workHours: record.workHours || 0,
             workLocation: record.workLocation || '-',
+            arrivalStatus: (record.arrivalStatus as 'Late' | 'On-Time') || 'N/A',
           };
         });
-        
+
         setAttendanceData(mappedData);
       } catch (err: Error | unknown) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -139,9 +141,7 @@ export default function AdminAttendanceDashboard() {
       }
     };
     fetchAttendance();
-    
-    // Reset sort when data changes (e.g., view mode changes)
-    setSortOrder('none'); 
+    setSortOrder('none');
   }, [viewMode, getDateRange]);
 
   const getStatusColor = (status: string) => {
@@ -176,11 +176,11 @@ export default function AdminAttendanceDashboard() {
 
   const formatWorkHours = (hours: number): string => {
     if (hours === 0) return '0 mins';
-    
+
     const totalMinutes = Math.round(hours * 60);
     const hrs = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    
+
     if (hrs === 0) {
       return `${mins} mins`;
     } else if (mins === 0) {
@@ -189,62 +189,63 @@ export default function AdminAttendanceDashboard() {
       return `${hrs} hour${hrs > 1 ? 's' : ''} ${mins} mins`;
     }
   };
-  
-  // 3. Apply filtering and then sorting using useMemo
+
   const sortedAndFilteredData = useMemo(() => {
     let data = attendanceData.filter(record => {
       const matchesDepartment = selectedDepartment === 'all' || record.department === selectedDepartment;
       const matchesSearch = (record.employeeName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                            (record.department?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                            (record.employeeId?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+        (record.department?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (record.employeeId?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       return matchesDepartment && matchesSearch;
     });
 
     if (sortOrder !== 'none') {
       data = data.sort((a, b) => {
-        // Use a date object comparison for reliable time sorting (date + time)
         const timeA = a.signIn ? new Date(`${a.date}T${a.signIn}`) : null;
         const timeB = b.signIn ? new Date(`${b.date}T${b.signIn}`) : null;
 
-        // Handle null/missing sign-in times by pushing them to the end (or start) based on sort order
         if (!timeA && !timeB) return 0;
-        if (!timeA) return sortOrder === 'asc' ? 1 : -1; // null time is "later" in ASC, "earlier" in DESC
-        if (!timeB) return sortOrder === 'asc' ? -1 : 1; // null time is "later" in ASC, "earlier" in DESC
+        if (!timeA) return sortOrder === 'asc' ? 1 : -1;
+        if (!timeB) return sortOrder === 'asc' ? -1 : 1;
 
-        // Convert dates to numbers (milliseconds) for comparison
         const comparison = timeA.getTime() - timeB.getTime();
 
-        return sortOrder === 'asc' ? comparison : -comparison; // Invert for descending
+        return sortOrder === 'asc' ? comparison : -comparison;
       });
     }
 
     return data;
-  }, [attendanceData, selectedDepartment, searchTerm, sortOrder]); // Re-calculate when these dependencies change
+  }, [attendanceData, selectedDepartment, searchTerm, sortOrder]);
 
-  const filteredData = sortedAndFilteredData; // Use the memoized data
+  const filteredData = sortedAndFilteredData;
 
   const calculateStats = () => {
     const stats = filteredData.reduce((acc, record) => {
-      acc[record.status] = (acc[record.status] || 0) + 1;
+      if (record.arrivalStatus === 'Late') {
+        acc.late = (acc.late || 0) + 1;
+        // Late arrivals are also considered present
+        acc.present = (acc.present || 0) + 1;
+      } else if (record.status !== 'not_marked') {
+        acc[record.status] = (acc[record.status] || 0) + 1;
+      }
+
       acc.total = (acc.total || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     const totalWorkHours = filteredData.reduce((sum, record) => sum + record.workHours, 0);
     const avgWorkHours = stats.total > 0 ? (totalWorkHours / stats.total).toFixed(1) : '0';
-    
+
     return { ...stats, totalWorkHours, avgWorkHours };
   };
 
   const stats: AttendanceStats = calculateStats();
-  const departments = [...new Set(attendanceData.map(record => record.department))].filter(Boolean); // Filter out potential nulls/empty strings
-  
-  // 🔄 Updated function to handle export with employee filtering
+  const departments = [...new Set(attendanceData.map(record => record.department))].filter(Boolean);
+
   const handleMonthlyExport = async () => {
     setExporting(true);
     setError(null);
     try {
-      // 1. Define the full month date range (independent of current viewMode)
       const today = new Date();
       const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
       const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -260,11 +261,10 @@ export default function AdminAttendanceDashboard() {
       const end = formatDate(endDate);
       const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-      // 2. Fetch all data for the month
       const response = await axios.get(`${APIURL}/api/attendance/by-date-range`, {
         params: { startDate: start, endDate: end }
       });
-      
+
       const allMonthlyRecords: AttendanceRecord[] = response.data.map((record: BackendAttendanceRecord) => ({
         employeeId: record.employeeId,
         employeeName: record.employeeName || 'Unknown',
@@ -275,56 +275,55 @@ export default function AdminAttendanceDashboard() {
         status: record.status,
         workHours: record.workHours || 0,
         workLocation: record.workLocation || '-',
+        arrivalStatus: record.arrivalStatus || 'N/A',
       }));
-      
-      // 3. Apply the current search term and department filter to the fetched monthly data
+
       const dataToExport = allMonthlyRecords.filter(record => {
-          const matchesDepartment = selectedDepartment === 'all' || record.department === selectedDepartment;
-          const matchesSearch = (record.employeeName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                                (record.employeeId?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-          return matchesDepartment && matchesSearch;
+        const matchesDepartment = selectedDepartment === 'all' || record.department === selectedDepartment;
+        const matchesSearch = (record.employeeName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+          (record.employeeId?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+        return matchesDepartment && matchesSearch;
       });
-      
+
       if (dataToExport.length === 0) {
         alert(`No attendance data found for ${monthName} that matches your current filters.`);
         return;
       }
-      
-      // Determine the filename based on the current filter
+
       let exportSuffix = "All_Employees";
       if (searchTerm) {
-          // If a search term is present, use the name of the first employee found for the filename
-          const employeeName = dataToExport[0].employeeName.replace(/[^a-zA-Z0-9]/g, '_');
-          exportSuffix = employeeName;
+        const employeeName = dataToExport[0].employeeName.replace(/[^a-zA-Z0-9]/g, '_');
+        exportSuffix = employeeName;
       } else if (selectedDepartment !== 'all') {
         exportSuffix = selectedDepartment.replace(/[^a-zA-Z0-9]/g, '_');
       }
 
-      // 4. Prepare CSV content
       const headers = [
-        "Employee ID", 
-        "Employee Name", 
-        "Department", 
-        "Date", 
-        "Sign In", 
-        "Sign Out", 
-        "Status", 
+        "Employee ID",
+        "Employee Name",
+        "Department",
+        "Date",
+        "Sign In",
+        "Sign Out",
+        "Status",
+        "Arrival Status",
         "Work Hours (Decimal)",
         "Work Hours (H:M)",
         "Work Location"
       ];
-      
-      const csvRows = dataToExport.map(record => 
+
+      const csvRows = dataToExport.map(record =>
         [
-          `"${record.employeeId}"`, 
+          `"${record.employeeId}"`,
           `"${record.employeeName.replace(/"/g, '""')}"`,
           `"${record.department.replace(/"/g, '""')}"`,
           record.date,
           record.signIn,
           record.signOut,
           record.status.toUpperCase(),
+          record.arrivalStatus || 'N/A',
           record.workHours.toFixed(2),
-          formatWorkHours(record.workHours).replace(/,/g, ''), 
+          formatWorkHours(record.workHours).replace(/,/g, ''),
           `"${record.workLocation?.replace(/"/g, '""')}"`,
         ].join(',')
       );
@@ -334,7 +333,6 @@ export default function AdminAttendanceDashboard() {
         ...csvRows
       ].join('\n');
 
-      // 5. Create and trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -343,7 +341,7 @@ export default function AdminAttendanceDashboard() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
     } catch (err: Error | unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(`Failed to export attendance data: ${errorMessage}`);
@@ -352,7 +350,6 @@ export default function AdminAttendanceDashboard() {
     }
   };
 
-  // Helper to determine the text for the export button
   const getExportButtonText = () => {
     if (exporting) return 'Exporting...';
     if (searchTerm) return 'Export Filtered Employee Monthly CSV';
@@ -361,7 +358,6 @@ export default function AdminAttendanceDashboard() {
   }
 
   const renderStatsCards = () => {
-    // ... (Stats card rendering logic - Unchanged)
     const statCards = [
       {
         title: 'Total Present',
@@ -417,9 +413,8 @@ export default function AdminAttendanceDashboard() {
   };
 
   const renderAttendanceTable = () => {
-    // 4. Use the memoized, sorted data
-    const dataToShow = filteredData; 
-    
+    const dataToShow = filteredData;
+
     if (dataToShow.length === 0) {
       return (
         <div className="text-center py-12">
@@ -428,7 +423,6 @@ export default function AdminAttendanceDashboard() {
       );
     }
 
-    // New mobile-friendly table view
     const renderMobileTable = () => (
       <div className="space-y-4 md:hidden">
         {dataToShow.map((record, index) => (
@@ -459,7 +453,6 @@ export default function AdminAttendanceDashboard() {
       </div>
     );
 
-    // Desktop table view
     const renderDesktopTable = () => (
       <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -479,7 +472,7 @@ export default function AdminAttendanceDashboard() {
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              
+
               {/* Department Filter */}
               <select
                 value={selectedDepartment}
@@ -491,14 +484,14 @@ export default function AdminAttendanceDashboard() {
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
-              
-              {/* 5. Time Sorting Buttons */}
+
+              {/* Time Sorting Buttons */}
               <div className="flex space-x-2">
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'none' : 'asc')}
                   className={`p-2 rounded-lg transition-colors border border-gray-300 ${
-                    sortOrder === 'asc' 
-                      ? 'bg-blue-500 text-white' 
+                    sortOrder === 'asc'
+                      ? 'bg-blue-500 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-100'
                   }`}
                   aria-label="Sort Ascending by Sign In Time"
@@ -509,8 +502,8 @@ export default function AdminAttendanceDashboard() {
                 <button
                   onClick={() => setSortOrder(sortOrder === 'desc' ? 'none' : 'desc')}
                   className={`p-2 rounded-lg transition-colors border border-gray-300 ${
-                    sortOrder === 'desc' 
-                      ? 'bg-blue-500 text-white' 
+                    sortOrder === 'desc'
+                      ? 'bg-blue-500 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-100'
                   }`}
                   aria-label="Sort Descending by Sign In Time"
@@ -523,7 +516,7 @@ export default function AdminAttendanceDashboard() {
             </div>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -531,7 +524,7 @@ export default function AdminAttendanceDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                {/* 6. Indicate sorting column */}
+                {/* Indicate sorting column */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center">
                     Sign In
@@ -569,9 +562,10 @@ export default function AdminAttendanceDashboard() {
                     <div className="text-sm text-gray-900">{formatWorkHours(record.workHours)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(record.status)}`}>
-                      {getStatusIcon(record.status)}
-                      <span className="ml-1 capitalize">{record.status}</span>
+                    {/* Check if the arrival status is 'Late' to apply the orange badge */}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${record.arrivalStatus === 'Late' ? getStatusColor('late') : getStatusColor(record.status)}`}>
+                        {record.arrivalStatus === 'Late' ? getStatusIcon('late') : getStatusIcon(record.status)}
+                        <span className="ml-1 capitalize">{record.status}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -586,10 +580,10 @@ export default function AdminAttendanceDashboard() {
     );
 
     return (
-        <>
-          {renderMobileTable()}
-          {renderDesktopTable()}
-        </>
+      <>
+        {renderMobileTable()}
+        {renderDesktopTable()}
+      </>
     );
   };
 
@@ -608,14 +602,14 @@ export default function AdminAttendanceDashboard() {
               <p className="text-gray-600">Monitor and manage employee attendance records</p>
             </div>
             <div className="flex flex-wrap items-center space-x-2 sm:space-x-4 mt-2 sm:mt-0">
-              
-              {/* 🔄 Export Button with dynamic text */}
+
+              {/* Export Button with dynamic text */}
               <button
                 onClick={handleMonthlyExport}
                 disabled={exporting}
                 className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md ${
-                  exporting 
-                    ? 'bg-gray-400 text-white cursor-not-allowed' 
+                  exporting
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
                     : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
@@ -631,7 +625,6 @@ export default function AdminAttendanceDashboard() {
                   </>
                 )}
               </button>
-              {/* --- */}
 
               <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
                 {['today', 'week', 'month', 'year'].map((mode) => (
