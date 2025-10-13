@@ -363,7 +363,7 @@ export default function ActivitiesPage() {
       <Toaster position="top-right" />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Employee Engagement</h1>
+          <h1 className="text-4xl font-bold text-gray-100">Employee Engagement</h1>
           <button 
             onClick={() => openModal('add')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"

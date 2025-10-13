@@ -316,8 +316,6 @@ export default function VariableExpensesPage() {
           <div className="divide-y divide-slate-200 dark:divide-slate-700">
             {variableExpenseItems.map((item) => {
               const data = expenseData[item.dataKey as keyof typeof expenseData];
-              const isPositiveTrend = data.trend > 0;
-              const isHighVariance = Math.abs(data.variance) > 15;
               
               return (
                 <Link key={item.id} href={item.link} className="block group hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer">
@@ -336,13 +334,6 @@ export default function VariableExpensesPage() {
                             <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                               {item.name}
                             </h3>
-                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${getVolatilityColor(item.volatility)}`}>
-                              {item.volatility} Volatility
-                            </span>
-                            <div className="flex items-center space-x-1">
-                              {getBudgetImpactIcon(item.budgetImpact)}
-                              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{item.budgetImpact}</span>
-                            </div>
                           </div>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{item.description}</p>
                           <div className="flex items-center space-x-4 text-xs text-slate-500 dark:text-slate-400">
@@ -354,56 +345,8 @@ export default function VariableExpensesPage() {
                               <DocumentDuplicateIcon className="w-3 h-3" />
                               <span>{data.count} transactions</span>
                             </div>
-                            {isHighVariance && (
-                              <div className="flex items-center space-x-1 text-orange-600 dark:text-orange-400">
-                                <ExclamationTriangleIcon className="w-3 h-3" />
-                                <span>High variance</span>
-                              </div>
-                            )}
                           </div>
                         </div>
-                      </div>
-
-                      {/* Middle Section - Financial Analytics */}
-                      <div className="text-center px-6">
-                        <div className="flex items-center justify-center space-x-3 mb-2">
-                          <div className="text-right">
-                            <p className="text-xl font-bold text-slate-900 dark:text-white">
-                              ₹{data.total.toLocaleString('en-IN')}
-                            </p>
-                            <div className="flex items-center justify-center space-x-2 mt-1">
-                              {data.trend !== 0 && (
-                                <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-md text-xs font-medium ${
-                                  isPositiveTrend
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                }`}>
-                                  {isPositiveTrend ? (
-                                    <ArrowTrendingUpIcon className="w-3 h-3" />
-                                  ) : (
-                                    <ArrowTrendingDownIcon className="w-3 h-3" />
-                                  )}
-                                  <span>{Math.abs(data.trend)}%</span>
-                                </div>
-                              )}
-                              {Math.abs(data.variance) > 0 && (
-                                <div className="px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                                  ±{Math.abs(data.variance)}%
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mb-1">
-                          <div
-                            className="bg-gradient-to-r from-emerald-500 to-teal-600 h-1.5 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min((data.total / totalExpenses) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {((data.total / totalExpenses) * 100).toFixed(1)}% of total
-                        </p>
                       </div>
 
                       {/* Right Section - Visual Indicator */}

@@ -669,7 +669,7 @@ const LeaveManagementSystem = () => {
   return (
     <div className="min-h-screen p-6">
       <Toaster position="top-right" />
-      <div className="max-w-7xl mx-auto bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
+      <div className="max-w-7xl mx-auto bg-white/45 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
         {/* Header with Notification Icon */}
         <div className="flex items-center justify-between mb-10 pb-6 border-b-4 border-blue-500">
           <div>

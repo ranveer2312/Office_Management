@@ -1,362 +1,487 @@
 'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { APIURL } from '@/constants/api';
-import {
-  BuildingOfficeIcon,
-  ChevronRightIcon,
-  CurrencyDollarIcon,
-  ChartBarIcon,
-  CalendarIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  DocumentDuplicateIcon,
-} from '@heroicons/react/24/outline';
 
-interface ExpenseItem {
-  amount?: number;
+import Link from 'next/link';
+import {
+  Users,
+  Package,
+  Database,
+  DollarSign,
+  BarChart3,
+  Clock,
+  CheckCircle,
+  TrendingUp,
+  Zap,
+  Activity,
+  Award,
+  AlertCircle,
+  ArrowUpRight,
+} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { APIURL } from '@/constants/api';
+
+interface RecentActivity {
+  id: string;
+  name: string;
+  description: string;
+  activityDate: string;
+  activityTime: string;
+  category: string;
+  status: string;
 }
 
-const backgroundImage = '/finance2.jpg';
+interface Employee {
+  id: string;
+  name: string;
+  department?: string;
+  status?: string;
+  joiningDate?: string;
+  joinDate?: string;
+}
 
-export default function FixedExpensesPage() {
-  const [expenseData, setExpenseData] = useState({
-    rent: { total: 0, count: 0, trend: 0 },
-    electric: { total: 0, count: 0, trend: 0 },
-    internet: { total: 0, count: 0, trend: 0 },
-    sim: { total: 0, count: 0, trend: 0 },
-    salaries: { total: 0, count: 0, trend: 0 },
+interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  date: string;
+  status: string;
+}
+
+interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
+
+interface ActivityData {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export default function AdminDashboard() {
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+
+  const [metrics, setMetrics] = useState({
+    totalEmployees: 0,
+    totalDepartments: 0,
+    newEmployees: 0,
+    activeProjects: 0,
+    systemHealth: 0,
+    presentToday: 0,
+    onLeave: 0,
+    tasksCompleted: 0,
+    activeToday: 0,
   });
+  const [metricsLoading, setMetricsLoading] = useState(true);
 
-  const fixedExpenseItems = [
+  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return [];
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    };
+
+    try {
+      const response = await fetch(url, { ...options, headers });
+      if (!response.ok) {
+        console.error(`Error fetching ${url}:`, response.status);
+        return [];
+      }
+
+      const text = await response.text();
+      if (!text.trim()) {
+        return [];
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        console.error(`Invalid JSON from ${url}`);
+        return [];
+      }
+    } catch (err) {
+      console.error(`Network error for ${url}:`, err);
+      return [];
+    }
+  };
+
+  const quickActions = [
     {
-      id: 'rent',
-      name: 'Rent & Facilities',
-      link: '/finance-manager/fixed-expenses/rent',
-      icon: BuildingOfficeIcon,
-      description: 'Property rent, maintenance, and facility management costs',
-      category: 'Property',
-      frequency: 'Monthly',
-      priority: 'High',
-      dataKey: 'rent'
+      title: 'Employee Management',
+      description: 'Manage employee records',
+      icon: Users,
+      href: '/admin/hr',
+      color: 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
     },
     {
-      id: 'electric',
-      name: 'Utilities',
-      link: '/finance-manager/fixed-expenses/electric-bills',
-      icon: '⚡',
-      description: 'Electricity, water, and essential utility services',
-      category: 'Utilities',
-      frequency: 'Monthly',
-      priority: 'High',
-      dataKey: 'electric'
+      title: 'Attendance Tracking',
+      description: 'Monitor attendance',
+      icon: Clock,
+      href: '/admin/attendence',
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
     },
     {
-      id: 'internet',
-      name: 'Internet & Telecom',
-      link: '/finance-manager/fixed-expenses/internet-bills',
-      icon: '🌐',
-      description: 'Internet connectivity and telecommunications',
-      category: 'Technology',
-      frequency: 'Monthly',
-      priority: 'Medium',
-      dataKey: 'internet'
+      title: 'Finance Management',
+      description: 'Financial operations',
+      icon: DollarSign,
+      href: '/admin/finance-manager/dashboard',
+      color: 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100',
     },
     {
-      id: 'sim',
-      name: 'Mobile Services',
-      link: '/finance-manager/fixed-expenses/sim-bills',
-      icon: '📱',
-      description: 'Mobile plans, data packages, and device services',
-      category: 'Technology',
-      frequency: 'Monthly',
-      priority: 'Medium',
-      dataKey: 'sim'
+      title: 'Inventory Control',
+      description: 'Manage Store',
+      icon: Package,
+      href: '/admin/store',
+      color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
     },
     {
-      id: 'salaries',
-      name: 'Payroll',
-      link: '/finance-manager/fixed-expenses/salaries',
-      icon: '👥',
-      description: 'Employee compensation, benefits, and payroll taxes',
-      category: 'Human Resources',
-      frequency: 'Monthly',
-      priority: 'Critical',
-      dataKey: 'salaries'
+      title: 'Reports & Analytics',
+      description: 'Generate reports',
+      icon: BarChart3,
+      href: '/admin/reports',
+      color: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
+    },
+    {
+      title: 'Data Management',
+      description: 'System data control',
+      icon: Database,
+      href: '/admin/data-manager',
+      color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
     },
   ];
 
   useEffect(() => {
-    const fetchExpenseData = async () => {
-      try {
-        const safeJsonParse = async (url: string) => {
-          try {
-            const response = await fetch(url);
-            if (!response.ok) return [];
-            const text = await response.text();
-            if (!text.trim()) return [];
-            return JSON.parse(text);
-          } catch {
-            return [];
-          }
-        };
-
-        const [rentData, electricData, internetData, simData, salariesData] = await Promise.all([
-          safeJsonParse(`${APIURL}/api/rent`),
-          safeJsonParse(`${APIURL}/api/electric-bills`),
-          safeJsonParse(`${APIURL}/api/internet-bills`),
-          safeJsonParse(`${APIURL}/api/sim-bills`),
-          safeJsonParse(`${APIURL}/api/salaries`),
-        ]);
-
-        const calculateMetrics = (data: ExpenseItem[] | { total?: number; count?: number }) => {
-          if (Array.isArray(data)) {
-            const total = data.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const trend = Math.random() * 20 - 10; // Simulated trend data
-            return {
-              total,
-              count: data.length,
-              trend: parseFloat(trend.toFixed(1))
-            };
-          }
-          return { total: data?.total || 0, count: data?.count || 0, trend: 0 };
-        };
-
-        setExpenseData({
-          rent: calculateMetrics(rentData),
-          electric: calculateMetrics(electricData),
-          internet: calculateMetrics(internetData),
-          sim: calculateMetrics(simData),
-          salaries: calculateMetrics(salariesData),
-        });
-      } catch (error) {
-        console.error('Failed to fetch expense data:', error);
-      }
+    const fetchActivities = async () => {
+      setActivitiesLoading(true);
+      const data = await fetchWithAuth(`${APIURL}/api/activities`);
+      setRecentActivities(Array.isArray(data) ? data.slice(0, 6) : []);
+      setActivitiesLoading(false);
     };
 
-    fetchExpenseData();
+    const fetchMetrics = async () => {
+      setMetricsLoading(true);
+
+      const employees = await fetchWithAuth(`${APIURL}/api/employees`);
+      const attendanceData = await fetchWithAuth(`${APIURL}/api/attendance`);
+      const leaveData = await fetchWithAuth(`${APIURL}/api/leave-requests`);
+      const activitiesData = await fetchWithAuth(`${APIURL}/api/activities`);
+
+      const totalEmployees = Array.isArray(employees) ? employees.length : 0;
+      const activeEmployees = Array.isArray(employees)
+        ? employees.filter((emp: Employee) => emp.status === 'active' || !emp.status).length
+        : 0;
+
+      const departments = new Set(
+        Array.isArray(employees)
+          ? employees.map((emp: Employee) => emp.department || '').filter(Boolean)
+          : [],
+      );
+      const totalDepartments = departments.size;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const newEmployees = Array.isArray(employees)
+        ? employees.filter((emp: Employee) => {
+            if (!emp.joiningDate && !emp.joinDate) return false;
+            const dateString = emp.joiningDate || emp.joinDate;
+            if (!dateString) return false;
+            const joinDate = new Date(dateString);
+            return !isNaN(joinDate.getTime()) && joinDate >= thirtyDaysAgo;
+          }).length
+        : 0;
+
+      const today = new Date().toISOString().split('T')[0];
+      const todayAttendance = Array.isArray(attendanceData)
+        ? attendanceData.filter(
+            (record: AttendanceRecord) => record.date === today && record.status === 'present',
+          )
+        : [];
+
+      const onLeaveToday = Array.isArray(leaveData)
+        ? leaveData.filter((leave: LeaveRequest) => {
+            const start = new Date(leave.startDate);
+            const end = new Date(leave.endDate);
+            const todayDate = new Date();
+            return leave.status === 'Approved' && start <= todayDate && end >= todayDate;
+          }).length
+        : 0;
+
+      const completedTasks = Array.isArray(activitiesData)
+        ? activitiesData.filter((act: ActivityData) => act.status === 'completed').length
+        : 0;
+
+      const systemHealth = Math.min(
+        98,
+        Math.max(85, 95 - (onLeaveToday / (totalEmployees || 1)) * 10 + (todayAttendance.length / (totalEmployees || 1)) * 5),
+      );
+
+      setMetrics({
+        totalEmployees,
+        totalDepartments,
+        newEmployees,
+        activeProjects: 12,
+        systemHealth: Math.round(systemHealth),
+        presentToday: todayAttendance.length,
+        onLeave: onLeaveToday,
+        tasksCompleted: completedTasks,
+        activeToday: activeEmployees,
+      });
+
+      setMetricsLoading(false);
+    };
+
+    fetchActivities();
+    fetchMetrics();
   }, []);
 
-  const totalExpenses = Object.values(expenseData).reduce((sum, item) => sum + item.total, 0);
-  const totalEntries = Object.values(expenseData).reduce((sum, item) => sum + item.count, 0);
-  const avgExpensePerCategory = totalExpenses / fixedExpenseItems.length;
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Critical': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-      case 'High': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    }
-  };
-
   return (
-    <div
-      className="min-h-screen p-6"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Fixed Expenses Dashboard</h2>
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                <CurrencyDollarIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
-                TOTAL
-              </span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                ₹{totalExpenses.toLocaleString('en-IN')}
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Total Fixed Expenses</p>
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                <ChartBarIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
-                AVERAGE
-              </span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                ₹{Math.round(avgExpensePerCategory).toLocaleString('en-IN')}
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Average per Category</p>
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <DocumentDuplicateIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
-                ENTRIES
-              </span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{totalEntries}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Total Expense Records</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Expense Categories Table View */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-            <div className="flex items-center justify-between">
+    <>
+      <div className="min-h-screen bg-transparent">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Welcome Section */}
+          <div className="mb-10">
+            <div className="flex flex-col sm:flex-row items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Expense Categories</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Manage your recurring monthly expenses</p>
+                <h1 className="text-4xl font-bold text-slate-900 mb-3">
+                  Welcome back, Admin
+                </h1>
+                <p className="text-lg text-slate-600 font-medium">
+                  Here&apos;s what&apos;s happening in your organization today.
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="divide-y divide-slate-200 dark:divide-slate-700">
-            {fixedExpenseItems.map((item) => {
-              const data = expenseData[item.dataKey as keyof typeof expenseData];
-              const isPositiveTrend = data.trend > 0;
-              
-              return (
-                <Link key={item.id} href={item.link} className="block group hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer">
-                  <div className="px-6 py-5">
-                    <div className="flex items-center justify-between">
-                      {/* Left Section - Main Info */}
-                      <div className="flex items-center space-x-4 flex-1 min-w-0">
-                        <div className="flex-shrink-0">
-                          {typeof item.icon === 'string' ? (
-                            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-xl">
-                              {item.icon}
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
-                              <item.icon className="w-6 h-6 text-slate-600 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-3 mb-1">
-                            <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                              {item.name}
-                            </h3>
-                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${getPriorityColor(item.priority)}`}>
-                              {item.priority}
-                            </span>
-                            <span className="px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                              {item.category}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{item.description}</p>
-                          <div className="flex items-center space-x-4 text-xs text-slate-500 dark:text-slate-400">
-                            <div className="flex items-center space-x-1">
-                              <CalendarIcon className="w-3 h-3" />
-                              <span>{item.frequency}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <DocumentDuplicateIcon className="w-3 h-3" />
-                              <span>{data.count} records</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                    Total Employees
+                  </p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2">
+                    {metricsLoading ? '...' : metrics.totalEmployees}
+                  </p>
+                  <p className="text-sm text-emerald-600 font-medium mt-2 flex items-center">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    +12% from last month
+                  </p>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+              </div>
+            </div>
 
-                      {/* Middle Section - Financial Data */}
-                      <div className="text-center px-6">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <p className="text-xl font-bold text-slate-900 dark:text-white">
-                            ₹{data.total.toLocaleString('en-IN')}
-                          </p>
-                          {data.trend !== 0 && (
-                            <div className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium ${
-                              isPositiveTrend
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            }`}>
-                              {isPositiveTrend ? (
-                                <ArrowTrendingUpIcon className="w-3 h-3" />
-                              ) : (
-                                <ArrowTrendingDownIcon className="w-3 h-3" />
-                              )}
-                              <span>{Math.abs(data.trend)}%</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mb-1">
-                          <div
-                            className="bg-gradient-to-r from-indigo-500 to-purple-600 h-1.5 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min((data.total / totalExpenses) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {((data.total / totalExpenses) * 100).toFixed(1)}% of total
-                        </p>
-                      </div>
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                    Present Today
+                  </p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2">
+                    {metricsLoading ? '...' : metrics.presentToday}
+                  </p>
+                  <p className="text-sm text-slate-600 font-medium mt-2">Employees at work</p>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg">
+                  <CheckCircle className="w-7 h-7 text-white" />
+                </div>
+              </div>
+            </div>
 
-                      {/* Right Section - Visual Indicator */}
-                      <div className="flex items-center">
-                        <ChevronRightIcon className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                    Total Departments
+                  </p>
+                  <p className="text-3xl font-bold text-slate-900 mt-2">
+                    {metricsLoading ? '...' : metrics.totalDepartments}
+                  </p>
+                  <p className="text-sm text-slate-600 font-medium mt-2">Active departments</p>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg">
+                  <TrendingUp className="w-7 h-7 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-slate-200 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                    New Hires
+                  </p>
+                  <p className="text-3xl font-bold text-emerald-600 mt-2">{metricsLoading ? '...' : metrics.newEmployees}</p>
+                  <p className="text-sm text-slate-600 font-medium mt-2">In the last 30 days</p>
+                </div>
+                <div className="p-4 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg">
+                  <Zap className="w-7 h-7 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions Grid */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8 mb-10">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-bold text-slate-900">Admin Panel</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {quickActions.map((action, index) => (
+                <Link key={index} href={action.href}>
+                  <div
+                    className={`p-8 rounded-2xl border-2 hover:shadow-xl transition-all duration-300 cursor-pointer group transform hover:-translate-y-1 ${action.color}`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="p-3 rounded-xl bg-white shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-200">
+                        <action.icon className="w-6 h-6" />
                       </div>
+                      <ArrowUpRight className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-all duration-200 transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">{action.title}</h3>
+                      <p className="text-sm opacity-75 leading-relaxed">
+                        {action.description}
+                      </p>
                     </div>
                   </div>
                 </Link>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Summary Section */}
-        <div className="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-8 text-white">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Monthly Overview</h3>
-              <p className="text-indigo-100 text-sm leading-relaxed">
-                Your fixed expenses represent the foundation of your budget planning. These recurring costs help establish baseline financial requirements.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-3xl font-bold mb-1">₹{totalExpenses.toLocaleString('en-IN')}</p>
-              <p className="text-indigo-200 text-sm">Total Monthly Fixed Costs</p>
-              <div className="mt-3 flex justify-center">
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                  <span className="text-indigo-100">Updated automatically</span>
-                </div>
+          {/* Bottom Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl p-8 items-stretch">
+            {/* Recent Activities */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8 flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-slate-900">Recent Activities</h3>
+                <div className="h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full w-16"></div>
               </div>
+              {activitiesLoading ? (
+                <div className="text-center py-12 flex-grow">
+                  <div className="inline-flex items-center px-4 py-2 text-slate-600 bg-slate-100 rounded-full">
+                    <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Loading activities...
+                  </div>
+                </div>
+              ) : recentActivities.length > 0 ? (
+                <div className="space-y-4 flex-grow">
+                  {recentActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start space-x-4 p-6 bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md">
+                        <Activity className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-semibold text-slate-900">
+                          {activity.name}
+                        </p>
+                        <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                          {activity.description}
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center mt-3 space-x-0 sm:space-x-4">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-2 sm:mb-0 ${
+                              activity.status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : activity.status === 'pending'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {activity.status}
+                          </span>
+                          <span className="text-xs text-slate-500 font-medium">
+                            {activity.activityDate}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 flex-grow">
+                  <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                  <p className="text-slate-500 font-medium">No recent activities</p>
+                </div>
+              )}
             </div>
-            
-            <div className="text-right md:text-left">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-indigo-200 text-sm">Categories:</span>
-                  <span className="font-semibold">{fixedExpenseItems.length}</span>
+
+            {/* System Overview */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8 flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-slate-900">System Overview</h3>
+                <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full w-16"></div>
+              </div>
+              <div className="space-y-4 flex-grow">
+                <div className="flex items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-200 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-blue-500 rounded-lg">
+                      <CheckCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-base font-semibold text-slate-900">
+                      Present Today
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-600">
+                    {metricsLoading ? '...' : metrics.presentToday}
+                  </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-indigo-200 text-sm">Records:</span>
-                  <span className="font-semibold">{totalEntries}</span>
+                <div className="flex items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-orange-200 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-orange-500 rounded-lg">
+                      <AlertCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-base font-semibold text-slate-900">On Leave</span>
+                  </div>
+                  <span className="text-lg font-bold text-orange-600">
+                    {metricsLoading ? '...' : metrics.onLeave}
+                  </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-indigo-200 text-sm">Last Updated:</span>
-                  <span className="font-semibold text-sm">Just now</span>
+                <div className="flex items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-emerald-200 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-emerald-500 rounded-lg">
+                      <Award className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-base font-semibold text-slate-900">
+                      Tasks Completed
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-emerald-600">
+                    {metricsLoading ? '...' : metrics.tasksCompleted}
+                  </span>
+                </div>
+                {/* Updated card with improved responsiveness */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-white/70 backdrop-blur-sm rounded-xl border border-violet-200 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-violet-500 rounded-lg">
+                      <Zap className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-base font-semibold text-slate-900">
+                      System Status
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-emerald-600 mt-2 sm:mt-0">Healthy</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

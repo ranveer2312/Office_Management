@@ -632,7 +632,7 @@ export default function PerformanceManagement() {
       <Toaster position="top-right" />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Performance Management</h1>
+          <h1 className="text-4xl font-bold text-gray-100">Performance Management</h1>
           <button 
             onClick={() => openModal('add')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
@@ -644,7 +644,7 @@ export default function PerformanceManagement() {
 
         {/* Employee Selection Dropdown */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-100 mb-2">
             Select Employee to View Performance Metrics
           </label>
           <select
@@ -830,7 +830,7 @@ export default function PerformanceManagement() {
         {/* Performance Improvement Plans Section */}
         <div className="mt-12">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Performance Improvement Plans</h2>
+            <h2 className="text-2xl font-bold text-gray-100">Performance Improvement Plans</h2>
             <button
               onClick={() => openPipModal('add')}
               className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-orange-700 transition-colors"
@@ -842,7 +842,7 @@ export default function PerformanceManagement() {
           {pipLoading ? (
             <div className="text-gray-600">Loading PIPs...</div>
           ) : pips.length === 0 ? (
-            <div className="text-gray-500 italic">No Performance Improvement Plans found.</div>
+            <div className="text-gray-100 italic">No Performance Improvement Plans found.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {pips.map((pip) => (

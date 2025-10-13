@@ -39,7 +39,7 @@ interface Attendance {
     workHours: number;
 }
 
-const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const APIURL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com';
 
 const poppins = Poppins({
     subsets: ['latin'],
