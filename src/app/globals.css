@@ -14,7 +14,6 @@
 }
 
 /* Dark mode is disabled for all users */
-
 * {
   color-scheme: light !important;
 }
@@ -127,4 +126,25 @@ body {
 
 .animate-fade-in-right {
   animation: fade-in-right 1s ease-out 0.3s both;
+}
+
+/* 🔒 Watermark Overlay */
+body::after {
+  content: attr(data-watermark);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: rgba(200, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: rotate(-30deg);
+  pointer-events: none;
+  z-index: 999999;
+  white-space: nowrap;
 }

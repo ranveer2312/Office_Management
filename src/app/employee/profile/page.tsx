@@ -39,6 +39,7 @@ interface Employee {
     joiningDate: string;
     relievingDate?: string; // Optional
     status: string; // Joining, Active, Relieving
+    dateOfBirth: string; // <-- FIX: ADDED dateOfBirth to interface
 }
 
 interface ApiResponse<T> {
@@ -49,25 +50,25 @@ interface ApiResponse<T> {
 }
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com/api';
 
 // ----------------------------------------------------------------------
-// API Service: Handles fetching and saving data via multipart/form-data
+// API Service & Helper Components (Unchanged)
 // ----------------------------------------------------------------------
 
 class ApiService {
+    // ... (ApiService implementation remains unchanged) ...
     private baseURL: string;
 
     constructor(baseURL: string) {
         this.baseURL = baseURL;
     }
-
+    // ... (methods remain unchanged) ...
     private getJsonHeaders(): HeadersInit {
         return {
             'Content-Type': 'application/json',
         };
     }
-
     private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
         if (!response.ok) {
             if (response.status === 401) {
@@ -76,7 +77,6 @@ class ApiService {
                 }
                 throw new Error('Authentication failed. Please login again.');
             }
-
             let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
             try {
                 const errorData = await response.json();
@@ -88,12 +88,9 @@ class ApiService {
                     // Keep the default error message
                 }
             }
-
             throw new Error(errorMessage);
         }
-
         const data = await response.json();
-
         if (data.success !== undefined) {
             return data;
         } else {
@@ -104,56 +101,35 @@ class ApiService {
             };
         }
     }
-
     async getEmployeeProfile(employeeId: string): Promise<ApiResponse<Employee>> {
         const response = await fetch(`${this.baseURL}/employees/byEmployeeId/${employeeId}`, {
             method: 'GET',
             headers: this.getJsonHeaders(),
         });
-
         return this.handleResponse<Employee>(response);
     }
-
-    /**
-     * Updates employee profile using FormData. Includes ALL fields (personal + professional)
-     * in the JSON payload to ensure the backend PUT request preserves read-only fields.
-     */
     async updateEmployeeProfile(id: number, data: Partial<Employee>, photoFile?: File): Promise<ApiResponse<Employee>> {
         const formData = new FormData();
-        
-        // The backend expects 'employee' as a JSON string for the main data
         formData.append('employee', JSON.stringify(data));
-
-        // Only append the 'photo' file part if a new file was actually selected
         if (photoFile) {
             formData.append('photo', photoFile);
         }
-
         const response = await fetch(`${this.baseURL}/employees/${id}`, {
             method: 'PUT',
-            // DO NOT set 'Content-Type': 'multipart/form-data'. Browser handles this.
             body: formData,
         });
-
         return this.handleResponse<Employee>(response);
     }
-
     async uploadProfilePhoto(employeeId: string, file: File): Promise<ApiResponse<{ profilePhotoUrl: string }>> {
         const formData = new FormData();
         formData.append('profilePhoto', file);
-
         const response = await fetch(`${this.baseURL}/employees/${employeeId}/photo`, {
             method: 'POST',
             body: formData,
         });
-
         return this.handleResponse<{ profilePhotoUrl: string }>(response);
     }
 }
-
-// ----------------------------------------------------------------------
-// Reusable Form and Detail Components
-// ----------------------------------------------------------------------
 
 /** Input Field Helper */
 const InputField: React.FC<{
@@ -226,7 +202,8 @@ const EditProfileForm: React.FC<{
     // Fields the employee is ALLOWED to edit
     const editableFields: (keyof Employee)[] = [
         'employeeName', 'email', 'phoneNumber', 'bloodGroup', 
-        'currentAddress', 'permanentAddress', 
+        'currentAddress', 'permanentAddress',
+        'dateOfBirth', // <-- FIX: Added dateOfBirth to editable fields
     ];
 
     // Fields that are HR-controlled (read-only)
@@ -259,6 +236,9 @@ const EditProfileForm: React.FC<{
         bloodGroup: 'Blood Group',
         currentAddress: 'Current Address',
         permanentAddress: 'Permanent Address',
+        
+        dateOfBirth: 'Date of Birth', // <-- ADDED LABEL
+        
         position: 'Position',
         department: 'Department',
         joiningDate: 'Joining Date',
@@ -281,7 +261,6 @@ const EditProfileForm: React.FC<{
                 <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg relative mb-4">
                     {previewUrl ? (
                         <Image
-                            // Use previewUrl for blob, otherwise construct the URL from API_BASE_URL or use direct HTTP link
                             src={previewUrl.startsWith('blob:') ? previewUrl : (previewUrl.startsWith('http') ? previewUrl : `${API_BASE_URL}${previewUrl}`)}
                             alt="Profile Preview"
                             layout="fill"
@@ -310,7 +289,6 @@ const EditProfileForm: React.FC<{
                     accept="image/jpeg,image/png,image/webp"
                     className="hidden"
                     disabled={isLoading}
-                    // Reset file input value when the file state is cleared (e.g., after successful save)
                     key={previewUrl} 
                 />
             </div>
@@ -319,18 +297,25 @@ const EditProfileForm: React.FC<{
             <div className="space-y-6">
                 <h3 className="text-lg font-bold text-gray-900 border-b pb-2">Personal Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Basic Info Fields */}
-                    {editableFields.filter(key => key !== 'permanentAddress' && key !== 'currentAddress' && key !== 'bloodGroup').map((key) => (
+                    {/* Basic Info Fields + Date of Birth */}
+                    {editableFields.filter(key => 
+                        key !== 'permanentAddress' && key !== 'currentAddress' && key !== 'bloodGroup'
+                    ).map((key) => (
                         <InputField
                             key={key}
                             id={key}
                             label={fieldLabels[key]!}
-                            type={key === 'email' ? 'email' : key === 'phoneNumber' ? 'tel' : 'text'}
-                            value={formData[key] as string || ''}
+                            // Check if field is dateOfBirth or joiningDate (if it were editable)
+                            type={key.includes('Date') || key === 'dateOfBirth' ? 'date' : key === 'email' ? 'email' : key === 'phoneNumber' ? 'tel' : 'text'}
+                            
+                            // Use getDateFormat for date fields
+                            value={key.includes('Date') || key === 'dateOfBirth' ? getDateFormat(formData[key] as string | undefined) : (formData[key] as string || '')}
+                            
                             onChange={handleChange}
                             disabled={isLoading}
                         />
                     ))}
+                    
                     {/* Blood Group Select */}
                     <div>
                         <label htmlFor="bloodGroup" className="block text-sm font-medium text-gray-700 mb-1">
@@ -376,15 +361,16 @@ const EditProfileForm: React.FC<{
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {professionalFields.map((key) => (
                          <InputField
-                            key={key}
-                            id={key}
-                            label={fieldLabels[key]!}
-                            type={key.includes('Date') ? 'date' : 'text'}
-                            value={key.includes('Date') ? getDateFormat(formData[key] as string | undefined) : (formData[key] as string || '')}
-                            onChange={() => {}} // Disabled field, no change handler needed
-                            disabled={true} 
-                            isReadOnly={true} // Visually indicates it's read-only
-                        />
+                             key={key}
+                             id={key}
+                             label={fieldLabels[key]!}
+                             type={key.includes('Date') ? 'date' : 'text'}
+                             // Use getDateFormat helper for joiningDate/relievingDate
+                             value={key.includes('Date') ? getDateFormat(formData[key] as string | undefined) : (formData[key] as string || '')}
+                             onChange={() => {}} 
+                             disabled={true} 
+                             isReadOnly={true}
+                         />
                     ))}
                 </div>
             </div>
@@ -548,7 +534,7 @@ export default function EmployeeProfilePage() {
             // CRITICAL FIX: Merge ALL existing employee data with the edited data.
             const fullPayload: Partial<Employee> = {
                 ...employee, 
-                ...data,     
+                ...data,     
             };
             
             const updateResponse = await apiService.updateEmployeeProfile(employee.id, fullPayload, photoFile);
@@ -672,8 +658,7 @@ export default function EmployeeProfilePage() {
 
             {/* Content Container */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                 {/* Main Wrapper: Applied bg-white/70, rounded-2xl, shadow-xl, border, border-gray-200, and conditional padding */}
-                <div className={`bg-white/70 rounded-2xl shadow-xl border border-gray-200 ${isEditMode ? '' : 'p-8'}`}>
+                 <div className={`bg-white/70 rounded-2xl shadow-xl border border-gray-200 ${isEditMode ? '' : 'p-8'}`}>
                     
                     {/* Header for View Mode */}
                     {!isEditMode && (
@@ -694,23 +679,23 @@ export default function EmployeeProfilePage() {
                     )}
                 
                     {isEditMode ? (
-                        // Edit Mode
+                        /* Edit Mode */
                         <div className="h-full">
                              <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center">
-                                <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                                    <Edit className="w-6 h-6 mr-3 text-blue-600" />
-                                    Edit Personal Information
-                                </h1>
-                            </div>
-                            <EditProfileForm
-                                employee={employee}
-                                onSave={handleSaveProfile}
-                                onCancel={handleCancelEdit}
-                                isLoading={saving}
-                            />
+                                 <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                                     <Edit className="w-6 h-6 mr-3 text-blue-600" />
+                                     Edit Personal Information
+                                 </h1>
+                             </div>
+                             <EditProfileForm
+                                 employee={employee}
+                                 onSave={handleSaveProfile}
+                                 onCancel={handleCancelEdit}
+                                 isLoading={saving}
+                             />
                         </div>
                     ) : (
-                        // View Mode
+                        /* View Mode */
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             {/* Profile Summary Card - Left Column */}
                             <div className="lg:col-span-1">
@@ -766,6 +751,7 @@ export default function EmployeeProfilePage() {
                                         <Detail keyName="Full Name" value={employee.employeeName} />
                                         <Detail keyName="Email Address" value={employee.email} />
                                         <Detail keyName="Phone Number" value={employee.phoneNumber} />
+                                        <Detail keyName="Date of Birth" value={formatDate(employee.dateOfBirth)} icon={<Calendar className="w-4 h-4 text-gray-400 mr-2" />} /> {/* Display Date of Birth */}
                                         <Detail keyName="Blood Group">
                                             <span className="inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-red-50 text-red-700 border border-red-200">
                                                 {employee.bloodGroup}

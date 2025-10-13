@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { Poppins } from 'next/font/google';
+import { FaMoneyBillAlt } from 'react-icons/fa';
 
 // Interfaces for data type
 interface Employee {
@@ -38,7 +39,7 @@ interface Attendance {
     workHours: number;
 }
 
-const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const APIURL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com';
 
 const poppins = Poppins({
     subsets: ['latin'],
@@ -131,6 +132,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
                             { icon: <BarChart2 size={20} />, label: 'Reports', href: '/employee/reports' },
                             { icon: <BookOpen size={20} />, label: 'Training & Development', href: '/employee/training' },
                             { type: 'divider' } as const,
+                            { icon: <FaMoneyBillAlt size={20} />, label: 'Payslip', href: '/employee/payslip' },
                         ] as Array<{ icon?: React.ReactNode; label?: string; href?: string; type?: 'divider' }>
                     ).map((link, index) =>
                         link.type === 'divider' ? (
