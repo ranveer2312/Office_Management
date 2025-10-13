@@ -202,12 +202,13 @@ export default function HomePage() {
           <div className="flex items-center cursor-pointer group">
             <div className="relative">
               <Image
-                src="https://www.tirangaaerospace.com/assets/images/logo/logo.png"
-                alt="Tiranga Aerospace Logo"
-                width={120}
-                height={120}
-                className="transition-transform duration-300 group-hover:scale-105"
-              />
+                                          src="/originaltirangalogo.png"
+                                          alt="HR Logo"
+                                          width={200}
+                                          height={50}
+                                          className="h-20 w-auto"
+                                          priority
+                                      />
             </div>
           </div>
           

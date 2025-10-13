@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch employee data from backend
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+    const backendUrl = process.env.BACKEND_URL || 'https://dev.tirangaidms.com';
     const backendApiUrl = `${backendUrl}/api/payroll/payslip?employeeId=${employeeId}&month=${monthNumber}&year=${year}`;
     
     console.log('Fetching from backend:', backendApiUrl);
