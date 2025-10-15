@@ -79,7 +79,7 @@ type MenuItem =
 
 
 
-const APIURL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com';
+const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 
 const poppins = Poppins({
@@ -320,8 +320,10 @@ const AdminSidebar = ({ onLogout, isSidebarOpen, onClose }: AdminSidebarProps) =
             <Image
               src="/hrlogo.png"
               alt="HR Logo"
-              width={120}
-              height={40}
+              width={200}
+              height={50}
+              className="h-20 w-auto"
+               priority
             />
           </div>
           <button onClick={onClose} className="p-2 lg:hidden text-slate-500 hover:text-slate-800 transition-colors">

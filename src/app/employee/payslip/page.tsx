@@ -13,33 +13,33 @@ import Image from 'next/image';
 
 interface CompanyData {
     name: string;
-    addressLine1: string; // Assuming Java DTO uses addressLine1/2
-    addressLine2: string;
-    stateAndPin: string;
+    address: string; // <-- CRITICAL FIX: Reverting to single 'address' field
+    email?: string; // Included based on the Java DTO model, though unused here
+    phone?: string; // Included based on the Java DTO model, though unused here
 }
 
 interface EmployeeData {
     name: string;
-    employeeId: string; // Corrected from employeeNo to match Spring DTO
+    id: string; // Changed back to 'id' to reflect the Java DTO and the URL logic
     designation: string;
     department: string;
     location: string;
     joiningDate: string;
     
-    pan: string; // Corrected from panNumber (Must match your Java DTO, e.g., pan or panNumber)
-    uan: string; // Added UAN field (Implied)
-
-    bankName: string;
-    bankAccount: string; // Corrected from accountNo to match Java DTO
+    pan: string;
+    uan: string; 
     
-    effectiveWorkDays: number;
+    bank: string; // Changed to 'bank' to match the Java DTO
+    accountNo: string; // Changed to 'accountNo' to match the Java DTO
+    
+    workDays: number; // Changed to 'workDays' to match the Java DTO
     lop: number;
 }
 
 interface EarningsDeduction {
     label: string;
     amount: number;
-    fullAmount?: number;
+    // Removed fullAmount as it's not present in the Java DTO and causes confusion
 }
 
 export interface PayslipData {
@@ -49,6 +49,11 @@ export interface PayslipData {
     earnings: EarningsDeduction[];
     deductions: EarningsDeduction[];
     printDate: string;
+
+    // Added the totals which are returned by the Spring DTO
+    totalEarnings: number;
+    totalDeductions: number;
+    netPay: number;
 }
 
 interface PayslipMetadata {
@@ -72,12 +77,25 @@ const formatCurrency = (amount: number): string => {
     });
 };
 
+// Helper to replace commas with <br> for clean display
+const formatAddress = (address: string): React.ReactNode => {
+    if (!address) return null;
+    // Replace comma + space with <br/> for the address lines
+    return address.split(', ').map((line, index) => (
+        <React.Fragment key={index}>
+            {line}
+            {index < address.split(', ').length - 1 && <br />}
+        </React.Fragment>
+    ));
+};
+
 // --- PayslipContent Component (UPDATED MAPPING) ---
 const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
-    const totalEarnings = data.earnings.reduce((s, e) => s + e.amount, 0);
-    const totalFullEarnings = data.earnings.reduce((s, e) => s + (e.fullAmount || 0), 0);
-    const totalDeductions = data.deductions.reduce((s, d) => s + d.amount, 0);
-    const netPay = totalEarnings - totalDeductions;
+    // Note: Using the netPay, totalEarnings, totalDeductions from the DTO directly
+    const totalEarnings = data.totalEarnings; 
+    const totalDeductions = data.totalDeductions;
+    const netPay = data.netPay;
+    
     const netPayWords = numberToWords.toWords(Math.round(netPay || 0)).toUpperCase();
     const maxRows = Math.max(data.earnings.length, data.deductions.length);
 
@@ -111,10 +129,12 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
                                 
                                 <div style={{ fontSize: '12px', flexGrow: 1, textAlign: 'center' }}>
                                     <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{data.company.name}</div>
-                                    <div style={{ marginTop: '2px' }}>
-                                        {data.company.addressLine1}, {data.company.addressLine2},
+                                    
+                                    {/* CRITICAL FIX: Use the single 'address' field and format it */}
+                                    <div style={{ marginTop: '2px', lineHeight: '1.4' }}>
+                                        {formatAddress(data.company.address)}
                                     </div>
-                                    <div>{data.company.stateAndPin}</div>
+
                                 </div>
 
                                 <div style={{ width: '100px' }}></div>
@@ -136,12 +156,14 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
                         <td style={{ width: '50%', borderRight: '1px solid black' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <tbody>
+                                    {/* FIX: Use employee.name */}
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.name}</td></tr>
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Joining Date:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.joiningDate}</td></tr>
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Designation:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.designation}</td></tr>
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Department:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.department}</td></tr>
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Location:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.location}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Effective Work Days:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.effectiveWorkDays}</td></tr>
+                                    {/* FIX: Use employee.workDays */}
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Effective Work Days:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.workDays}</td></tr>
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>LOP:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.lop}</td></tr>
                                 </tbody>
                             </table>
@@ -151,14 +173,15 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
                         <td style={{ width: '50%' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <tbody>
-                                    {/* FIX 1: Use employeeId */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Employee No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.employeeId}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Bank Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.bankName}</td></tr>
-                                    {/* FIX 2: Use bankAccount */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Bank Account No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.bankAccount}</td></tr>
-                                    {/* FIX 3: Use pan */}
+                                    {/* FIX: Use employee.id */}
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Employee No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.id}</td></tr>
+                                    {/* FIX: Use employee.bank */}
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Bank Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.bank}</td></tr>
+                                    {/* FIX: Use employee.accountNo */}
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Bank Account No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.accountNo}</td></tr>
+                                    {/* FIX: Use employee.pan */}
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>PAN Number:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.pan}</td></tr>
-                                    {/* Add UAN field */}
+                                    {/* Use employee.uan */}
                                     <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>UAN:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.uan}</td></tr>
                                     <tr><td style={TD_STYLE}></td><td style={TD_STYLE}></td></tr>
                                     <tr><td style={TD_STYLE}></td><td style={TD_STYLE}></td></tr>
@@ -174,17 +197,18 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
                 <thead>
                     <tr style={{ fontWeight: 'bold', backgroundColor: '#f3f4f6' }}>
                         <th style={{ ...TD_STYLE, width: '25%', textAlign: 'left', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Earnings</th>
-                        <th style={{ ...TD_STYLE, width: '12.5%', textAlign: 'right', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Full</th>
-                        <th style={{ ...TD_STYLE, width: '12.5%', textAlign: 'right', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Actual</th>
+                        {/* Removed 'Full' column as it is not used/set by the backend DTO in the service logic */}
+                        <th style={{ ...TD_STYLE, width: '25%', textAlign: 'right', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Actual</th>
                         <th style={{ ...TD_STYLE, width: '25%', textAlign: 'left', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Deductions</th>
                         <th style={{ ...TD_STYLE, width: '25%', textAlign: 'right', borderBottom: '1px solid black' }}>Actual</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {Array.from({ length: maxRows }).map((_, i) => (
+                    {/* Max Rows changed to 3 to simplify the layout and match the standard 3 earnings/2 deductions */}
+                    {Array.from({ length: 3 }).map((_, i) => (
                         <tr key={i}>
                             <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>{data.earnings[i]?.label || ''}</td>
-                            <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }}>{data.earnings[i]?.fullAmount ? formatCurrency(data.earnings[i].fullAmount) : ''}</td>
+                            {/* Removed 'Full' column cell */}
                             <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }}>{data.earnings[i]?.amount ? formatCurrency(data.earnings[i].amount) : ''}</td>
                             <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>{data.deductions[i]?.label || ''}</td>
                             <td style={{ ...TD_STYLE, textAlign: 'right' }}>{data.deductions[i]?.amount ? formatCurrency(data.deductions[i].amount) : (data.deductions[i] ? '0' : '')}</td>
@@ -192,8 +216,8 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
                     ))}
                     <tr style={{ fontWeight: 'bold', borderTop: '1px solid black', backgroundColor: '#f3f4f6' }}>
                         <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>Total Earnings:</td>
-                        <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }}>{formatCurrency(totalFullEarnings)}</td>
-                        <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }}>{formatCurrency(totalEarnings)}</td>
+                        {/* Merging the Full/Actual columns for Total Earnings */}
+                        <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }} colSpan={1}>{formatCurrency(totalEarnings)}</td> 
                         <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>Total Deductions:</td>
                         <td style={{ ...TD_STYLE, textAlign: 'right' }}>{formatCurrency(totalDeductions)}</td>
                     </tr>
@@ -219,7 +243,7 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
 
 
 // -------------------------------------------------------------------
-// DYNAMIC HOOK: Retrieves the ID from Session/Local Storage (Unchanged from last step)
+// DYNAMIC HOOK: Retrieves the ID from Session/Local Storage (Unchanged)
 // -------------------------------------------------------------------
 function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
     const [id, setId] = useState<string | null>(null);

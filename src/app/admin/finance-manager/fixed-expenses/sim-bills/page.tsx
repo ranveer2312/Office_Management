@@ -5,7 +5,7 @@ import { DocumentTextIcon, DevicePhoneMobileIcon, ArrowLeftIcon } from '@heroico
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 
-// NOTE: Removed 'const APIURL = 'https://dev.tirangaidms.com';' 
+// NOTE: Removed 'const APIURL = 'http://localhost:8080';' 
 // to fix the '@typescript-eslint/no-unused-vars' error.
 
 interface SimBillExpense {

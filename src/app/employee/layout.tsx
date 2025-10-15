@@ -39,7 +39,7 @@ interface Attendance {
     workHours: number;
 }
 
-const APIURL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.tirangaidms.com';
+const APIURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const poppins = Poppins({
     subsets: ['latin'],
@@ -103,7 +103,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
                     {/* START: Replaced the original logo block with the Image component */}
                     <div className="flex items-center space-x-3">
                         <Image
-                            src="/HR.jpg"
+                            src="/hrlogo.png"
                             alt="HR Logo"
                             width={200}
                             height={50}

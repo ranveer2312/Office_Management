@@ -1,18 +1,14 @@
+// ./src/app/hr/layout.tsx
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-<<<<<<< HEAD
     Calendar, FileText, User, LogOut,
     ChevronRight, Sun, CloudSun, Moon, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
     Banknote,
-=======
-  Calendar, FileText, Clock, Briefcase, Star, BookOpen,
-  Laptop, User, LogOut, LayoutDashboard, BarChart2,
-  ChevronRight, StickyNote, Sun, CloudSun, Moon, RefreshCw, Menu, X, Home, TrendingUp, GraduationCap, UserPlus, Archive, Activity,
->>>>>>> 85424c85b62c0098d2c2a04d80d3398af1dce2a5
 } from 'lucide-react';
 import Image from 'next/image';
 import { Poppins } from 'next/font/google';
@@ -103,18 +99,18 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
                 onClick={onClose}
             />
 
-<<<<<<< HEAD
             <aside className={`fixed top-0 left-0 w-80 h-full bg-white flex flex-col shrink-0 shadow-2xl border-r border-slate-200/60 z-50 transition-transform duration-300 ${isSidebarOpen ? 'transform translate-x-0' : 'transform -translate-x-full'} lg:translate-x-0`}>
                 <div className="h-24 flex items-center justify-between px-6 border-b border-slate-200/60 bg-gradient-to-r from-white to-slate-50">
                     <div className="flex items-center space-x-3">
                         <Image
-                            src="/HR.jpg"
-                            alt="HR Logo"
-                            width={180}
-                            height={50}
-                            className="h-20 w-auto"
-                            priority
-                        />
+                                      src="/hrlogo.png"
+                                      alt="HR Logo"
+                                      width={200}
+                                      height={50}
+                                      className="h-20 w-auto"
+                                       priority
+                                    />
+                        
                     </div>
                     <button onClick={onClose} className="p-2 lg:hidden text-slate-500 hover:text-slate-800 transition-colors">
                         <X size={24} />
@@ -149,7 +145,7 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
                         )}
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-800 truncate">
-                                {employee?.employeeName.split(' ')[0] || 'Bharath'}
+                                {employee?.employeeName.split(' ')[0] || 'HR'}
                             </p>
                             <p className="text-xs text-slate-500 truncate">{employee?.position || 'HR Manager'}</p>
                         </div>
@@ -163,67 +159,6 @@ const Sidebar = ({ employee, profilePhoto, onLogout, isSidebarOpen, onClose }: S
             </aside>
         </>
     );
-=======
-      <aside className={`fixed top-0 left-0 w-80 h-full bg-white flex flex-col shrink-0 shadow-2xl border-r border-slate-200/60 z-50 transition-transform duration-300 ${isSidebarOpen ? 'transform translate-x-0' : 'transform -translate-x-full'} lg:translate-x-0`}>
-        <div className="h-24 flex items-center justify-between px-6 border-b border-slate-200/60 bg-gradient-to-r from-white to-slate-50">
-          <div className="flex items-center space-x-3">
-            <Image
-              src="/HR.jpg"
-              alt="HR Logo"
-              width={180}
-              height={50}
-              className="h-12 w-auto"
-              priority
-            />
-          </div>
-          <button onClick={onClose} className="p-2 lg:hidden text-slate-500 hover:text-slate-800 transition-colors">
-            <X size={24} />
-          </button>
-        </div>
-        <nav className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-          {sidebarItems.map((link) => (
-            <NavItem
-              key={link.label}
-              icon={link.icon}
-              label={link.label}
-              href={link.href}
-              active={pathname === link.href}
-              onClick={onClose}
-            />
-          ))}
-        </nav>
-        <div className="p-6 border-t border-slate-200/60">
-          <div className="flex items-center space-x-3 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-200 backdrop-blur-sm">
-            {profilePhoto ? (
-              <Image
-                src={profilePhoto}
-                alt={employee?.employeeName || 'User'}
-                width={48}
-                height={48}
-                className="w-12 h-12 rounded-full object-cover border-2 border-blue-400/60 shadow-lg"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <User size={20} className="text-white" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">
-                {employee?.employeeName.split(' ')[0] || ''}
-              </p>
-              <p className="text-xs text-slate-500 truncate">{employee?.position || 'HR Manager'}</p>
-            </div>
-            <LogOut
-              size={18}
-              className="text-slate-500 hover:text-red-500 cursor-pointer transition-all duration-300 hover:scale-110"
-              onClick={onLogout}
-            />
-          </div>
-        </div>
-      </aside>
-    </>
-  );
->>>>>>> 85424c85b62c0098d2c2a04d80d3398af1dce2a5
 };
 
 // --------------------------------------------------------------------------------
@@ -243,7 +178,6 @@ const motivationalQuotes = [
 ];
 
 type HeaderProps = {
-<<<<<<< HEAD
     employee: Employee | null;
     todayAttendance: Attendance | null;
     onMenuClick: () => void;
@@ -253,19 +187,6 @@ const Header = ({ employee, todayAttendance, onMenuClick }: HeaderProps) => {
     const greeting = getGreeting();
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const [currentQuote, setCurrentQuote] = useState(motivationalQuotes[0]);
-=======
-  employee: Employee | null;
-  todayAttendance: Attendance | null;
-  onRefresh: () => void;
-  loading: boolean;
-  onMenuClick: () => void;
-};
-
-const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: HeaderProps) => {
-  const greeting = getGreeting();
-  const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const [currentQuote, setCurrentQuote] = useState(motivationalQuotes[0]);
->>>>>>> 85424c85b62c0098d2c2a04d80d3398af1dce2a5
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -274,7 +195,6 @@ const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: 
         return () => clearInterval(interval);
     }, []);
 
-<<<<<<< HEAD
     return (
         <header className="h-24 bg-white/80 backdrop-blur-lg border-b border-slate-200/60 flex items-center justify-between px-4 sm:px-8 shadow-sm">
             <div className="flex items-center space-x-3 sm:space-x-5">
@@ -286,7 +206,7 @@ const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: 
                 </div>
                 <div>
                     <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                        {greeting.text}, {employee?.employeeName.split(' ')[0] || 'Bharath'}
+                        {greeting.text}, {employee?.employeeName.split(' ')[0] || 'HR'}
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-500 font-medium transition-opacity duration-1000">{currentQuote}</p>
                 </div>
@@ -302,35 +222,6 @@ const Header = ({ employee, todayAttendance, onRefresh, loading, onMenuClick }: 
             </div>
         </header>
     );
-=======
-  return (
-    <header className="h-24 bg-white/80 backdrop-blur-lg border-b border-slate-200/60 flex items-center justify-between px-4 sm:px-8 shadow-sm">
-      <div className="flex items-center space-x-3 sm:space-x-5">
-        <button onClick={onMenuClick} className="lg:hidden p-2 text-slate-600 hover:text-blue-600 transition-colors">
-          <Menu size={24} />
-        </button>
-        <div className="hidden sm:block p-2 bg-gradient-to-br from-amber-100 to-sky-100 rounded-2xl">
-          {greeting.icon}
-        </div>
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            {greeting.text}, {employee?.employeeName.split(' ')[0] || ''}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium transition-opacity duration-1000">{currentQuote}</p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="hidden md:block text-sm font-semibold text-slate-800">
-          {currentDate}
-        </p>
-        <div className="flex items-center justify-end mt-1">
-          <div className={`w-2 h-2 rounded-full mr-2 ${todayAttendance?.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <p className="text-xs text-slate-500 font-medium capitalize">{todayAttendance?.status || 'Not checked in'}</p>
-        </div>
-      </div>
-    </header>
-  );
->>>>>>> 85424c85b62c0098d2c2a04d80d3398af1dce2a5
 };
 // --------------------------------------------------------------------------------
 
@@ -343,7 +234,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-<<<<<<< HEAD
     // Use a hardcoded data for UI demonstration to avoid API errors
     const fetchMockData = useCallback(() => {
         setLoading(true);
@@ -370,16 +260,6 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('employeeId');
         localStorage.removeItem('employeeToken');
         router.replace('/login');
-=======
-  // Use a hardcoded data for UI demonstration to avoid API errors
-  const fetchMockData = useCallback(() => {
-    setLoading(true);
-    // Mock API data to display the UI correctly
-    const mockEmployee = {
-      employeeName: 'HR',
-      position: 'HR Manager',
-      profilePhotoUrl: '', // You can add a URL here if you have one
->>>>>>> 85424c85b62c0098d2c2a04d80d3398af1dce2a5
     };
 
     if (loading) {
@@ -415,35 +295,4 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
             </div>
         </div>
     );
-<<<<<<< HEAD
-=======
-  }
-
-  return (
-    <div className={`${poppins.variable} font-sans h-screen flex`}>
-      <Sidebar
-        employee={employee}
-        profilePhoto={profilePhoto}
-        onLogout={handleLogout}
-        isSidebarOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-      <div className="flex flex-col flex-1 lg:ml-80 relative z-10">
-        <Header
-          employee={employee}
-          todayAttendance={todayAttendance}
-          onRefresh={fetchMockData}
-          loading={loading}
-          onMenuClick={() => setIsSidebarOpen(true)}
-        />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto relative bg-[url('/hrdash.png')] bg-cover bg-center bg-no-repeat">
-          <div className="" /> {/* Corrected transparency layer */}
-          <div className="relative z-10"> {/* Ensure content is above the background */}
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
-  );
->>>>>>> 85424c85b62c0098d2c2a04d80d3398af1dce2a5
 }

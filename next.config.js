@@ -7,7 +7,7 @@ const nextConfig = {
     // 👆 END OF ADDED BLOCK
 
     images: {
-        domains: ["images.unsplash.com", "localhost", "www.tirangaaerospace.com", "idmstiranga.online", "res.cloudinary.com"],
+        domains: ["images.unsplash.com", "localhost",  "res.cloudinary.com"],
         remotePatterns: [{
                 protocol: "https",
                 hostname: "tirangaidms",
