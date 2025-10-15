@@ -38,6 +38,7 @@ interface Employee {
     permanentAddress: string;
     position: string;
     department: string;
+    designation?: string; // Add designation here
     joiningDate: string; // YYYY-MM-DD
     dateOfBirth: string; // YYYY-MM-DD
     status: 'Active' | 'Joining' | 'Exit';
@@ -103,6 +104,7 @@ const transformEmployeeFromApiResponse = (apiEmployee: ApiEmployeeResponse): Emp
         permanentAddress: apiEmployee.permanentAddress,
         position: apiEmployee.position,
         department: apiEmployee.department,
+        designation: apiEmployee.designation, // Map designation
         
         joiningDate: joiningDate,
         dateOfBirth: dateOfBirth, 
@@ -162,7 +164,8 @@ const updateEmployee = async (id: string, employeeObj: Partial<Employee>, profil
     
     formData.append('employee', JSON.stringify(payloadToSend));
     if (profilePhotoFile) {
-        formData.append('photo', profileFile);
+        // NOTE: 'profileFile' was likely a typo for 'profilePhotoFile' in the original code, corrected here
+        formData.append('photo', profilePhotoFile); 
     }
     try {
         const response = await axios.put(APIURL +`/api/employees/${id}`, formData, {
@@ -183,6 +186,7 @@ const updateEmployee = async (id: string, employeeObj: Partial<Employee>, profil
 };
 
 // --- Payroll Input Modal Component ---
+// (PayrollInputModal implementation remains the same as provided by the user)
 
 const PayrollInputModal: React.FC<PayrollModalProps> = ({ employee, onClose, onUpdateSalary }) => {
     const [formData, setFormData] = useState<PayrollFormData>({
@@ -294,7 +298,7 @@ const PayrollInputModal: React.FC<PayrollModalProps> = ({ employee, onClose, onU
                             {isSubmitting ? 'Saving...' : 'Update Employee Salary Base'}
                         </button>
                         <p className="text-xs text-indigo-700 pt-2">
-                           *This value is saved permanently on the employee record for future payslips.
+                            *This value is saved permanently on the employee record for future payslips.
                         </p>
                     </div>
 
@@ -497,6 +501,7 @@ export default function JoiningPage() {
                 permanentAddress: '',
                 position: '',
                 department: '',
+                designation: '', // Initialize designation for add mode
                 joiningDate: formatDateForClient(new Date().toISOString()),
                 dateOfBirth: '', 
                 status: 'Joining',
@@ -893,6 +898,7 @@ export default function JoiningPage() {
                                                             <div><p className="text-sm text-gray-600">Phone Number</p><p className="font-medium">{selectedEmployee?.phoneNumber}</p></div>
                                                             <div><p className="text-sm text-gray-600">Position</p><p className="font-medium">{selectedEmployee?.position}</p></div>
                                                             <div><p className="text-sm text-gray-600">Department</p><p className="font-medium">{selectedEmployee?.department}</p></div>
+                                                            <div><p className="text-sm text-gray-600">Designation</p><p className="font-medium">{selectedEmployee?.designation || 'N/A'}</p></div>
                                                             <div><p className="text-sm text-gray-600">Joining Date</p><p className="font-medium">{selectedEmployee?.joiningDate}</p></div>
                                                             <div><p className="text-sm text-gray-600">Status</p><p className="font-medium">{selectedEmployee?.status}</p></div>
                                                             <div><p className="text-sm text-gray-600">Blood Group</p><p className="font-medium">{selectedEmployee?.bloodGroup}</p></div>
@@ -916,8 +922,6 @@ export default function JoiningPage() {
                                                                         onChange={e => {
                                                                             const newPrefix = e.target.value;
                                                                             setEmployeeIdPrefix(newPrefix);
-                                                                            // Auto-increment logic
-                                                                            // (Omitted here for brevity, assume complex logic is handled externally)
                                                                             setFormData({ ...formData, employeeId: newPrefix });
                                                                         }}
                                                                         disabled={modalType === 'edit'}
@@ -970,6 +974,11 @@ export default function JoiningPage() {
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
                                                                 <input type="text" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={formData.position || ''} onChange={(e) => setFormData({...formData, position: e.target.value})} />
+                                                            </div>
+                                                            {/* Designation - FIX ADDED */}
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={formData.designation || ''} onChange={(e) => setFormData({...formData, designation: e.target.value})} placeholder="e.g. Senior Developer" />
                                                             </div>
                                                             {/* Department */}
                                                             <div>
@@ -1048,14 +1057,3 @@ export default function JoiningPage() {
         </div>
     );
 }
-
-// NOTE: PayrollInputModal implementation should be in a separate file or declared above the main component.
-
-const updateEmployeeSalary = async (id: string, grossMonthlySalary: number) => {
-    // Only send the field that is being updated
-    const employeeObj = { grossMonthlySalary }; 
-    
-    // Using the previously defined updateEmployee function which handles multipart forms
-    const updatedData = await updateEmployee(id, employeeObj);
-    return updatedData;
-};
