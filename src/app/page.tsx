@@ -202,7 +202,7 @@ export default function HomePage() {
           <div className="flex items-center cursor-pointer group">
             <div className="relative">
               <Image
-                                          src="/originaltirangalogo.png"
+                                          src="/hrlogo.png"
                                           alt="HR Logo"
                                           width={200}
                                           height={50}
