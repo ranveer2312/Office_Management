@@ -1,1243 +1,1086 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Download, FileText, Presentation, Users, Building, Database, Store, UserCheck, DollarSign,
   ArrowRight, Menu, X, Phone, Mail, MapPin, Award, Target, TrendingUp, Shield, CheckCircle, Star,
-  Globe, Zap, Play, Clock, Sparkles, Rocket, Heart, ChevronRight, Check, Cpu, BarChart, RefreshCw
+  Globe, Zap, Play, Clock, Sparkles, Rocket, Heart, ChevronRight, Check, Cpu, BarChart, RefreshCw,
+  Handshake, CalendarCheck, BookOpen, Clock4, Briefcase, Tablet, LayoutGrid, CheckSquare, ShieldCheck,
+  BarChart3, Settings, FileSpreadsheet, PieChart, Activity, TrendingDown, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { APIURL } from '@/constants/api';
 import toast, { Toaster } from 'react-hot-toast';
 
-interface Employee {
-  department: string;
+interface NavItem {
+  id: string;
+  label: string;
+  href: string;
+  icon: React.ElementType;
+  subItems?: NavItem[];
 }
 
-interface Attendance {
-  date: string;
-  workHours: number;
+// --- NEW DATA: 9 Detailed Product Items for Mega Dropdown ---
+interface ProductItemData {
+    id: string;
+    icon: React.ElementType;
+    title: string;
+    description: string;
+    href: string;
+    colorClass: string;
 }
+
+const detailedProducts: ProductItemData[] = [
+    {
+        id: "data-management",
+        icon: Database,
+        title: "Data Management",
+        description: "Centralize and organize all your business data in one secure platform",
+        href: "/products/data-management",
+        colorClass: "text-blue-500 bg-blue-500/10"
+    },
+    {
+        id: "hr-management",
+        icon: Users,
+        title: "HR Management",
+        description: "Complete human resource management from hiring to retirement",
+        href: "/products/hr-management",
+        colorClass: "text-green-500 bg-green-500/10"
+    },
+    {
+        id: "finance-accounting",
+        icon: DollarSign,
+        title: "Finance & Accounting",
+        description: "Streamlined financial management and accounting solutions",
+        href: "/products/finance-accounting",
+        colorClass: "text-emerald-500 bg-emerald-500/10"
+    },
+    {
+        id: "inventory-management",
+        icon: Store,
+        title: "Inventory Management",
+        description: "Track and manage your inventory with real-time insights",
+        href: "/products/inventory-management",
+        colorClass: "text-orange-500 bg-orange-500/10"
+    },
+    {
+        id: "project-management",
+        icon: Target,
+        title: "Project Management",
+        description: "Plan, execute, and track projects with advanced tools",
+        href: "/products/project-management",
+        colorClass: "text-purple-500 bg-purple-500/10"
+    },
+    {
+        id: "analytics-reporting",
+        icon: BarChart3,
+        title: "Analytics & Reporting",
+        description: "Powerful analytics and reporting for data-driven decisions",
+        href: "/products/analytics-reporting",
+        colorClass: "text-cyan-500 bg-cyan-500/10"
+    },
+    {
+        id: "document-management",
+        icon: FileText,
+        title: "Document Management",
+        description: "Secure document storage and management system",
+        href: "/products/document-management",
+        colorClass: "text-indigo-500 bg-indigo-500/10"
+    },
+    {
+        id: "compliance-security",
+        icon: Shield,
+        title: "Compliance & Security",
+        description: "Ensure data security and regulatory compliance",
+        href: "/products/compliance-security",
+        colorClass: "text-red-500 bg-red-500/10"
+    },
+    {
+        id: "integration-tools",
+        icon: Settings,
+        title: "Integration Tools",
+        description: "Seamlessly integrate with your existing business tools",
+        href: "/products/integration-tools",
+        colorClass: "text-teal-500 bg-teal-500/10"
+    },
+];
+// -----------------------------------------------------------
+
+// ===============================================
+// 1. REFACTORED: Extracted Components & Hooks
+// (Rest of the original component definitions remain the same)
+// ===============================================
+
+// Hook for scroll-triggered animations (Intersection Observer)
+const useScrollAnimation = (threshold: number = 0.1) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      // Only set to visible if it enters the viewport
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        // Optional: stop observing once visible
+        observer.unobserve(element); 
+      }
+    }, { threshold });
+
+    observer.observe(element);
+
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+    };
+  }, [threshold]);
+
+  return { ref, isVisible };
+};
+
+// Wrapper Component for Scroll Animations
+const AnimatedOnScroll = ({ 
+    children, 
+    animationClass, 
+    delayClass = 'delay-0',
+    threshold = 0.1,
+    className = ''
+}: { 
+    children: React.ReactNode, 
+    animationClass: string, 
+    delayClass?: string,
+    threshold?: number,
+    className?: string
+}) => {
+    const { ref, isVisible } = useScrollAnimation(threshold);
+    
+    return (
+        <div 
+            ref={ref} 
+            className={`${className} ${animationClass} ${delayClass} ${isVisible ? 'is-visible' : ''}`}
+        >
+            {children}
+        </div>
+    );
+};
+
+
+// Component for counting animation
+const Counter = ({ target }: { target: number }) => {
+  const [count, setCount] = useState(0);
+  // Adjusted step calculation to ensure completion
+  const step = target > 0 ? Math.ceil(target / 80) : 0; 
+
+  useEffect(() => {
+    if (count < target) {
+      const timer = setTimeout(() => {
+        setCount(Math.min(target, count + step));
+      }, 15); // Slightly slower for better effect
+      return () => clearTimeout(timer);
+    }
+  }, [count, target, step]);
+
+  return <span>{count.toLocaleString()}</span>;
+};
+
+// Stat Card Component
+const StatCard = ({ stat }: { stat: typeof initialStats[0] }) => {
+  const Icon = stat.icon;
+  const targetNumber = parseInt(stat.number);
+
+  return (
+    <div className={`p-6 bg-white rounded-xl shadow-lg border border-gray-100 transform hover:scale-[1.02] transition-transform duration-300`}>
+      <div className={`flex items-center justify-between text-white p-3 rounded-lg shadow-md mb-4 bg-gradient-to-r ${stat.color}`}>
+        <Icon className="w-6 h-6" />
+        <h3 className="text-xl font-semibold">{stat.label}</h3>
+      </div>
+      <div className="text-4xl font-bold text-gray-800">
+        {targetNumber > 0 ? <Counter target={targetNumber} /> : '0'}
+      </div>
+    </div>
+  );
+};
+
+// --- NEW COMPONENT: Detailed Product Item for Dropdown ---
+interface DropdownProductItemProps extends ProductItemData {
+    onClick: (id: string) => void;
+}
+
+const DropdownProductItem = ({ icon: Icon, title, description, href, colorClass, onClick, id }: DropdownProductItemProps) => {
+    // Split the color class into icon color and background color
+    const [iconColor, bgColor] = colorClass.split(' ');
+
+    return (
+        <Link 
+            href={href}
+            onClick={() => onClick(id)}
+            className="flex p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 group"
+        >
+            <div className={`mr-4 p-2 rounded-full flex-shrink-0 ${bgColor}`}>
+                <Icon className={`h-6 w-6 ${iconColor}`} />
+            </div>
+            <div>
+                <h5 className="font-semibold text-base text-gray-900 group-hover:text-teal-600 transition-colors">{title}</h5>
+                <p className="text-sm text-gray-500">{description}</p>
+            </div>
+        </Link>
+    );
+};
+
+// --- NEW COMPONENT: Mega Dropdown Container ---
+interface MegaDropdownProps {
+    items: ProductItemData[];
+    onLinkClick: (id: string) => void;
+    onClose: () => void;
+}
+
+const MegaDropdown = ({ items, onLinkClick, onClose }: MegaDropdownProps) => {
+    // Split items into two columns
+    const numItems = items.length;
+    // Column 1 gets slightly more if odd number of items (5 vs 4 for 9 items)
+    const col1Count = Math.ceil(numItems / 2); 
+    const col1 = items.slice(0, col1Count);
+    const col2 = items.slice(col1Count);
+
+    return (
+        <div 
+            className="absolute left-1/2 transform -translate-x-1/2 mt-0 w-[650px] rounded-2xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transition-all duration-300 overflow-hidden"
+            // Use pointer events auto to allow interaction when visible
+            style={{ pointerEvents: 'auto', opacity: 1 }}
+        >
+            <div className="grid grid-cols-2 p-5 gap-y-6 gap-x-8">
+                {/* Column 1 */}
+                <div className="space-y-6 border-r pr-4">
+                    {col1.map(item => (
+                        <DropdownProductItem key={item.id} {...item} onClick={(id) => { onLinkClick(id); onClose(); }} />
+                    ))}
+                </div>
+                
+                {/* Column 2 */}
+                <div className="space-y-6 pl-4">
+                    {col2.map(item => (
+                        <DropdownProductItem key={item.id} {...item} onClick={(id) => { onLinkClick(id); onClose(); }} />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+// ---------------------------------------------
+
+
+// ===============================================
+// Main HomePage Component
+// ===============================================
+
+// Define stats outside for clean reference
+const initialStats = [
+    { number: '0', label: 'Data Records', icon: Database, color: 'from-blue-500 to-cyan-600' }, 
+    { number: '0', label: 'Active Users', icon: Users, color: 'from-emerald-500 to-teal-600' }, 
+    { number: '0', label: 'Integrations', icon: Settings, color: 'from-purple-500 to-pink-600' },
+    { number: '0', label: 'Reports Generated', icon: BarChart3, color: 'from-orange-500 to-amber-600' },
+];
+
+const navItems: NavItem[] = [
+    { id: 'home', label: 'Home', href: '/', icon: Building },
+    {
+      id: 'products',
+      label: 'Products',
+      href: '/products', 
+      icon: Database,
+      subItems: [] 
+    },
+    { id: 'solutions', label: 'Solutions', href: '#solutions', icon: Sparkles },
+    { id: 'pricing', label: 'Pricing', href: '/pricing', icon: DollarSign },
+    { id: 'about', label: 'About', href: '/about', icon: Globe },
+    { id: 'contact', label: 'Contact', href: '#contact', icon: Phone },
+];
+
 
 export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [scrollY, setScrollY] = useState(0);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [stats, setStats] = useState([
-    { number: '0', label: 'Total Employees', icon: Building, color: 'from-blue-600 to-indigo-700' },
-    { number: '0', label: 'Active Today', icon: Shield, color: 'from-emerald-600 to-teal-700' },
-    { number: '0', label: 'Departments', icon: Globe, color: 'from-violet-600 to-purple-700' },
-    { number: '0', label: 'Avg Work Hours', icon: Clock, color: 'from-amber-600 to-orange-700' }
-  ]);
-  const [loading, setLoading] = useState(true);
-  const [backendConnected, setBackendConnected] = useState(false);
+  // Renamed to better reflect its function across desktop/mobile
+  const [isProductsDropdownOpen, setIsProductsDropdownOpen] = useState(false); 
+  const [isAboutDropdownOpen, setIsAboutDropdownOpen] = useState(false);
+  const [stats, setStats] = useState(initialStats);
 
-  // Fetch dashboard statistics
-  const fetchDashboardStats = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch employees
-      const employeesResponse = await fetch(`${APIURL}/api/employees`);
-      if (!employeesResponse.ok) {
-        throw new Error('Failed to fetch employees');
-      }
-      const employees: Employee[] = await employeesResponse.json();
-      
-      // Fetch today's attendance
-      const today = new Date().toISOString().split('T')[0];
-      const attendanceResponse = await fetch(`${APIURL}/api/attendance`);
-      if (!attendanceResponse.ok) {
-        throw new Error('Failed to fetch attendance');
-      }
-      const allAttendance: Attendance[] = await attendanceResponse.json();
-      const todayAttendance = allAttendance.filter((att) => att.date === today);
-      
-      // Calculate department stats
-      const departments = [...new Set(employees.map((emp) => emp.department))];
-      
-      // Calculate average work hours
-      const totalWorkHours = allAttendance.reduce((sum: number, att) => {
-        return sum + (att.workHours || 0);
-      }, 0);
-      const avgWorkHours = allAttendance.length > 0 ? (totalWorkHours / allAttendance.length).toFixed(1) : '0';
-      
-      // Update stats
-      setStats([
-        { number: employees.length.toString(), label: 'Total Employees', icon: Building, color: 'from-blue-600 to-indigo-700' },
-        { number: todayAttendance.length.toString(), label: 'Active Today', icon: Shield, color: 'from-emerald-600 to-teal-700' },
-        { number: departments.length.toString(), label: 'Departments', icon: Globe, color: 'from-violet-600 to-purple-700' },
-        { number: avgWorkHours, label: 'Avg Work Hours', icon: Clock, color: 'from-amber-600 to-orange-700' }
-      ]);
-      
-      toast.success('Dashboard statistics updated!');
-      setBackendConnected(true);
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      toast.error('Failed to load dashboard statistics. Please check if the backend is running.');
-      setBackendConnected(false);
-      
-      // Set default stats when backend is not available
-      setStats([
-        { number: '0', label: 'Total Employees', icon: Building, color: 'from-blue-600 to-indigo-700' },
-        { number: '0', label: 'Active Today', icon: Shield, color: 'from-emerald-600 to-teal-700' },
-        { number: '0', label: 'Departments', icon: Globe, color: 'from-violet-600 to-purple-700' },
-        { number: '0', label: 'Avg Work Hours', icon: Clock, color: 'from-amber-600 to-orange-700' }
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 2. REFACTORED: Used useCallback for scroll handler
+  const handleScroll = useCallback(() => {
+    setScrollY(window.scrollY);
+  }, []);
 
+  // Helper function to update stats for demo
+  const updateDemoStats = useCallback(() => {
+    setStats(prevStats => prevStats.map((stat, index) => {
+      let newNumber = 0;
+      switch (index) {
+        case 0: newNumber = 2500000; break; // Data Records
+        case 1: newNumber = 15000; break; // Active Users
+        case 2: newNumber = 500; break; // Integrations
+        case 3: newNumber = 10000; break; // Reports Generated
+        default: newNumber = 0;
+      }
+      return { ...stat, number: newNumber.toString() };
+    }));
+  }, []);
+
+  // Effect for scroll tracking
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [handleScroll]);
 
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'HR Director',
-      company: 'TechCorp India',
-      content: 'Tiranga IDMS transformed our HR operations completely. The automation features saved us 15+ hours weekly!',
-      rating: 5
-    },
-    {
-      name: 'Rajesh Kumar',
-      role: 'CEO',
-      company: 'InnovateHub',
-      content: 'Best investment we made for our growing team. The analytics insights are game-changing.',
-      rating: 5
-    },
-    {
-      name: 'Priya Sharma',
-      role: 'Operations Manager',
-      company: 'GrowthCo',
-      content: 'User-friendly interface and powerful features. Our employees adapted quickly and love using it.',
-      rating: 5
-    }
-  ];
-  
+
+  // Effect for initial stat load animation
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
+    const timeout = setTimeout(updateDemoStats, 500);
+    return () => clearTimeout(timeout);
+  }, [updateDemoStats]);
 
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const handleRoleLogin = (role: string) => {
-    console.log(`Selected role: ${role}`);
-    // Store the selected role in localStorage for the login page
-    localStorage.setItem('selectedRole', role);
-    // Navigate to login page
-    window.location.href = '/login';
-  };
-
-  const scrollToSection = (sectionId: string) => {
-    setActiveSection(sectionId);
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-    setIsMenuOpen(false);
-  };
-
-  const features = [
-    {
-      icon: Cpu,
-      title: 'AI-Powered Intelligence',
-      description: 'Advanced machine learning algorithms for predictive analytics and smart automation',
-      gradient: 'from-blue-600 to-indigo-700',
-      delay: '0ms'
-    },
-    {
-      icon: Shield,
-      title: 'Enterprise Security',
-      description: 'SOC 2 Type II certified with end-to-end encryption and zero-trust architecture',
-      gradient: 'from-emerald-600 to-teal-700',
-      delay: '100ms'
-    },
-    {
-      icon: Globe,
-      title: 'Global Infrastructure',
-      description: 'Multi-region deployment with 99.99% uptime SLA and disaster recovery',
-      gradient: 'from-violet-600 to-purple-700',
-      delay: '200ms'
-    },
-    {
-      icon: Users,
-      title: 'User Experience First',
-      description: 'Intuitive design with accessibility compliance and mobile-first approach',
-      gradient: 'from-rose-600 to-pink-700',
-      delay: '300ms'
-    },
-    {
-      icon: BarChart,
-      title: 'Real-Time Analytics',
-      description: 'Live dashboards with customizable reports and actionable insights',
-      gradient: 'from-amber-600 to-orange-700',
-      delay: '400ms'
-    },
-    {
-      icon: Clock,
-      title: '24/7 Expert Support',
-      description: 'Dedicated success managers with average response time under 2 minutes',
-      gradient: 'from-slate-600 to-gray-700',
-      delay: '500ms'
-    }
-  ];
 
   return (
-    <div className="min-h-screen font-sans text-gray-900 bg-gradient-to-br from-slate-50 via-white to-slate-50 transition-all duration-300 overflow-x-hidden">
-      {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrollY > 50 ? 'bg-white/95 backdrop-blur-lg shadow-xl border-b border-slate-200' : 'bg-white/90 backdrop-blur-sm'}`}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center cursor-pointer group">
-            <div className="relative">
-              <Image
-                                          src="/hrlogo.png"
-                                          alt="HR Logo"
-                                          width={200}
-                                          height={50}
-                                          className="h-20 w-auto"
-                                          priority
-                                      />
-            </div>
-          </div>
-          
-          {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-8 items-center">
-            {['home', 'about', 'services', 'resources', 'contact'].map((section) => (
-              <button
-                key={section}
-                onClick={() => scrollToSection(section)}
-                className={`relative text-base font-medium transition-all duration-200 px-3 py-2 rounded-lg ${
-                  activeSection === section
-                    ? 'text-slate-800 bg-slate-100'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-              >
-                {section.charAt(0).toUpperCase() + section.slice(1)}
-                {activeSection === section && (
-                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-gradient-to-r from-slate-800 to-slate-900 rounded-full"></div>
-                )}
-              </button>
-            ))}
-            <button
-              onClick={() => scrollToSection('login')}
-              className="ml-6 px-8 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-xl font-semibold hover:from-slate-900 hover:to-black transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              Get Started
-            </button>
-          </div>
-          
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-3 text-gray-700 hover:text-indigo-600 transition-colors bg-white rounded-xl shadow-lg"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-        
-        {/* Mobile Dropdown Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white/95 backdrop-blur-lg shadow-xl border-t border-gray-100">
-            <div className="flex flex-col space-y-2 px-6 py-6">
-              {['home', 'about', 'services', 'resources', 'contact'].map((section) => (
-                <button
-                  key={section}
-                  onClick={() => scrollToSection(section)}
-                  className="text-gray-700 hover:text-indigo-600 text-base font-medium py-3 text-left transition-colors px-4 rounded-lg hover:bg-indigo-50"
-                >
-                  {section.charAt(0).toUpperCase() + section.slice(1)}
-                </button>
-              ))}
-              <button
-                onClick={() => scrollToSection('login')}
-                className="mt-4 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        )}
-      </nav>
+    <div className="min-h-screen bg-gray-50">
+      <Toaster />
 
-      {/* Hero Section - Light Background */}
-      <section
-        id="home"
-        className="relative flex items-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 overflow-hidden pt-20 pb-16"
+      {/* --- Header (Desktop & Mobile) --- */}
+      <header
+        className={`fixed top-0 z-50 w-full transition-shadow duration-300 ${
+          // Changed background to a light blue/white blend to match the image background
+          scrollY > 50 ? 'bg-white shadow-lg' : 'bg-white/90 backdrop-blur-sm shadow-md' 
+        }`}
       >
-        {/* Subtle Background Elements */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-full filter blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 rounded-full filter blur-3xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-gradient-to-r from-violet-500/5 to-purple-500/5 rounded-full filter blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse delay-500"></div>
-          
-          {/* Floating geometric shapes */}
-          <div className="absolute top-32 right-1/4 w-6 h-6 bg-blue-400/20 rotate-45 animate-bounce delay-1000"></div>
-          <div className="absolute bottom-32 left-1/4 w-4 h-4 bg-purple-400/20 rounded-full animate-bounce delay-2000"></div>
-          <div className="absolute top-1/2 right-20 w-8 h-8 bg-emerald-400/20 rotate-12 animate-pulse"></div>
-        </div>
-        
-        <div className="relative max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center z-20">
-          {/* Left Content */}
-          <div className="text-slate-900">
-            {/* Badge */}
-            <div className="flex items-center gap-4 mb-8">
-              <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-200 text-blue-700 rounded-full font-medium text-sm shadow-lg animate-fade-in hover:scale-105 transition-transform duration-300">
-                <Star className="w-4 h-4 mr-2 text-amber-500" />
-                <span>Trusted by 15,000+ Enterprise Organizations</span>
-              </div>
-              <div className={`inline-flex items-center px-4 py-2 rounded-full font-medium text-sm shadow-lg transition-all duration-300 ${
-                backendConnected
-                  ? 'bg-green-50 border border-green-200 text-green-700'
-                  : 'bg-red-50 border border-red-200 text-red-700'
-              }`}>
-                <div className={`w-2 h-2 rounded-full mr-2 ${backendConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span>{backendConnected ? 'Backend Connected' : 'Backend Offline'}</span>
-              </div>
+        <div className="container mx-auto flex items-center justify-between p-4">
+          {/* Logo/Brand */}
+          <Link href="/" className="flex items-center cursor-pointer group">
+            {/* INCREASED SIZE HERE: w-44 h-16 */}
+            <div className="relative w-44 h-16"> 
+              <Image
+                src="/hrlogo.png" 
+                alt="IDMS Intelligent Data Management System Logo"
+                fill
+                style={{ objectFit: 'contain' }}
+                className="w-full h-full"
+              />
             </div>
-            
-            {/* Main Headline */}
-            <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight">
-              <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent animate-slide-up">
-                Enterprise
-              </span>
-              <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent animate-slide-up delay-200">
-                HR Management
-              </span>
-              <span className="block text-3xl md:text-4xl font-semibold text-slate-600 mt-4 animate-slide-up delay-400">
-                Reimagined
-              </span>
-            </h1>
-            
-            {/* Subtext */}
-            <p className="max-w-xl mb-10 text-xl md:text-2xl text-slate-600 leading-relaxed animate-slide-up delay-600">
-              Next-generation HRMS platform with
-              <span className="font-semibold text-slate-800"> AI-powered automation</span>,
-              <span className="font-semibold text-slate-800"> real-time analytics</span>, and
-              <span className="font-semibold text-slate-800"> enterprise-grade security</span> for modern organizations.
-            </p>
-            
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-6 items-start animate-slide-up delay-800">
-              <button
-                onClick={() => scrollToSection('login')}
-                className="group px-10 py-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 text-lg flex items-center transform hover:scale-105 hover:-translate-y-1"
-              >
-                <Play className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
-                Start Free Trial
-                <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-2 transition-transform duration-300" />
-              </button>
-              <button
-                onClick={() => scrollToSection('about')}
-                className="px-10 py-5 border-2 border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:border-slate-400 transition-all duration-300 text-lg backdrop-blur-sm group"
-              >
-                <span className="mr-3">Watch Demo</span>
-                <Play className="w-5 h-5 inline group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
+          </Link>
 
-            {/* Stats Row */}
-            <div className="flex items-center justify-between mt-16 animate-slide-up delay-1000">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 flex-1">
-              {stats.map((stat, index) => (
-                <div key={index} className="text-center group cursor-pointer">
-                  <div className="flex items-center justify-center mb-3">
-                    <div className={`w-12 h-12 bg-gradient-to-r ${stat.color} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
-                      <stat.icon className="w-6 h-6 text-white" />
-                    </div>
+          {/* Desktop Navigation - UPDATED FOR STYLE AND SIZE */}
+          {/* Increased space-x for a wider layout */}
+          <nav className="hidden space-x-10 md:flex"> 
+            {navItems.map((item) => (
+              <div key={item.id} className="relative">
+                {item.id === 'products' ? (
+                  // --- MEGA DROPDOWN MENU FOR DESKTOP (Products) ---
+                  <div
+                    className="group relative inline-block cursor-pointer"
+                    onMouseEnter={() => setIsProductsDropdownOpen(true)}
+                    onMouseLeave={() => setIsProductsDropdownOpen(false)}
+                  >
+                    <a
+                      onClick={(e) => { e.preventDefault(); setActiveSection(item.id); }}
+                      // UPDATED STYLES: Larger text, darker initial color, blue hover/active, remove blue-600 hover
+                      className={`flex items-center text-lg text-gray-800 font-medium transition-colors 
+                                  ${activeSection === item.id ? 'text-blue-600' : 'hover:text-blue-600'}`}
+                    >
+                      {item.label} 
+                      {/* Changed ChevronRight to a simple ">" appearance for subtlety */}
+                      <span className={`ml-1 transform transition-transform text-xl ${isProductsDropdownOpen ? 'rotate-90' : 'rotate-0'}`}>
+                          {isProductsDropdownOpen ? '▾' : '›'} 
+                      </span>
+                    </a>
+                    
+                    {/* Render the MegaDropdown conditionally */}
+                    {isProductsDropdownOpen && (
+                        <MegaDropdown 
+                            items={detailedProducts} 
+                            onLinkClick={setActiveSection}
+                            onClose={() => setIsProductsDropdownOpen(false)}
+                        />
+                    )}
                   </div>
-                  <div className={`text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent group-hover:scale-110 transition-transform duration-300`}>
-                    {loading ? '...' : stat.number}
-                  </div>
-                  <div className="text-slate-500 text-sm font-medium mt-1">{stat.label}</div>
-                </div>
-              ))}
-              </div>
-              <button
-                onClick={fetchDashboardStats}
-                disabled={loading}
-                className="ml-4 p-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-xl hover:from-slate-900 hover:to-black transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Refresh Statistics"
-              >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Right Content - Hero Illustration */}
-          <div className="relative animate-fade-in-right">
-            <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 border border-slate-200/50 shadow-2xl hover:shadow-3xl transition-all duration-500">
-              {/* Mock Dashboard Preview */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 shadow-inner">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex space-x-2">
-                    <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse delay-200"></div>
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse delay-400"></div>
-                  </div>
-                  <div className="text-slate-400 text-sm font-medium">Tiranga IDMS Dashboard</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-4 text-white hover:scale-105 transition-transform duration-300">
-                    <Users className="w-6 h-6 mb-2" />
-                    <div className="text-2xl font-bold">{loading ? '...' : stats[0].number}</div>
-                    <div className="text-sm opacity-80">Total Employees</div>
-                  </div>
-                  <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl p-4 text-white hover:scale-105 transition-transform duration-300">
-                    <TrendingUp className="w-6 h-6 mb-2" />
-                    <div className="text-2xl font-bold">{loading ? '...' : stats[1].number}</div>
-                    <div className="text-sm opacity-80">Active Today</div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  {[
-                    { label: 'Employee Onboarding', progress: loading ? 0 : Math.min(100, (Number(stats[0].number) * 10)) , color: 'bg-blue-600' },
-                    { label: 'Attendance Rate', progress: loading ? 0 : Number(stats[0].number) !== 0 ? Math.round((Number(stats[1].number) / Number(stats[0].number)) * 100) : 0, color: 'bg-emerald-600' },
-                    { label: 'System Utilization', progress: loading ? 0 : Math.min(100, (Number(stats[3].number) * 10)) , color: 'bg-violet-600' }
-                  ].map((item, index) => (
-                    <div key={index} className="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-colors duration-300">
-                      <div className="flex justify-between text-sm text-slate-300 mb-2">
-                        <span>{item.label}</span>
-                        <span>{item.progress}%</span>
+                ) : item.id === 'about' ? (
+                  <div
+                    className="group relative inline-block cursor-pointer"
+                    onMouseEnter={() => setIsAboutDropdownOpen(true)}
+                    onMouseLeave={() => setIsAboutDropdownOpen(false)}
+                  >
+                    <Link
+                      href={item.href}
+                      // UPDATED STYLES: Larger text, darker initial color, blue hover/active, remove blue-600 hover
+                      className={`flex items-center text-lg text-gray-800 font-medium transition-colors 
+                                  ${activeSection === item.id ? 'text-blue-600' : 'hover:text-blue-600'}`}
+                    >
+                      {item.label} 
+                      {/* Changed ChevronRight to a simple ">" appearance for subtlety */}
+                      <span className={`ml-1 transform transition-transform text-xl ${isAboutDropdownOpen ? 'rotate-90' : 'rotate-0'}`}>
+                          {isAboutDropdownOpen ? '▾' : '›'} 
+                      </span>
+                    </Link>
+                    {isAboutDropdownOpen && (
+                      <div className="absolute left-1/2 transform -translate-x-1/2 mt-0 w-56 rounded-xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 p-2">
+                        <Link href="/about" className="block px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg">About</Link>
+                        <Link href="/about/team" className="block px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg">Team</Link>
+                        <Link href="/contact" className="block px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg">Contact Us</Link>
                       </div>
-                      <div className="w-full bg-slate-700 rounded-full h-2">
-                        <div className={`${item.color} h-2 rounded-full transition-all duration-1000 hover:shadow-lg`} style={{width: `${item.progress}%`}}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            {/* Floating Elements */}
-            <div className="absolute -top-6 -right-6 w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl animate-bounce hover:scale-110 transition-transform duration-300">
-              <Sparkles className="w-10 h-10 text-white" />
-            </div>
-            <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl flex items-center justify-center shadow-2xl animate-pulse hover:scale-110 transition-transform duration-300">
-              <Rocket className="w-8 h-8 text-white" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="py-24 bg-white relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-600 to-purple-600"></div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full mb-6 font-semibold text-sm">
-              <Award className="w-4 h-4 mr-2" /> Why Choose Tiranga IDMS
-            </div>
-            <h2 className="text-5xl md:text-6xl font-bold mb-8 bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">
-              Built for the Future of Work
-            </h2>
-            <p className="text-xl max-w-4xl mx-auto text-gray-600 leading-relaxed">
-              We&apos;re not just another HR platform. We&apos;re your strategic partner in digital transformation,
-              building the future of work with cutting-edge technology and human-centric design.
-            </p>
-          </div>
-          
-          {/* Enhanced Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 mb-20">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="group bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 border border-slate-100 h-full flex flex-col relative overflow-hidden hover:transform hover:scale-105"
-                style={{ animationDelay: feature.delay }}
-              >
-                {/* Gradient Background */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-                
-                <div className={`relative w-16 h-16 mx-auto mb-6 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
-                  <feature.icon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="relative text-xl font-bold mb-4 text-slate-900 text-center group-hover:text-slate-800">
-                  {feature.title}
-                </h3>
-                <p className="relative text-slate-600 leading-relaxed text-center flex-grow">
-                  {feature.description}
-                </p>
-                
-                {/* Hover Arrow */}
-                <div className="relative flex justify-center mt-6 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                  <ChevronRight className="w-6 h-6 text-slate-700" />
-                </div>
+                    )}
+                  </div>
+                ) : (
+                  // --- REGULAR DESKTOP LINK - UPDATED FOR STYLE ---
+                  <Link
+                      href={item.href}
+                      onClick={() => setActiveSection(item.id)}
+                      // STYLES TO MATCH REFERENCE IMAGE
+                      className={`relative text-lg font-medium transition-colors pb-2
+                                  ${activeSection === item.id ? 'text-blue-600' : 'text-gray-800 hover:text-blue-600'}`}
+                    >
+                      {item.label}
+                      {/* Blue underline to match the reference image */}
+                      {activeSection === item.id && (
+                        <span className="absolute bottom-0 left-0 w-full h-[3px] bg-blue-600 rounded-full"></span>
+                      )}
+                    </Link>
+                )}
               </div>
             ))}
+          </nav>
+
+          {/* Login/Signup Buttons (Desktop) - Adjusted colors to match Hero/General theme */}
+          <div className="hidden md:flex space-x-4">
+            <a
+              href="/login"
+              className="px-4 py-2 text-blue-600 border border-blue-600 rounded-full hover:bg-blue-50 transition-colors font-medium"
+            >
+              Log In
+            </a>
+            <a
+              href="#"
+              className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium"
+            >
+              Start Free Trial
+            </a>
           </div>
-          
-          {/* Company Values */}
-          <div className="bg-gradient-to-br from-gray-50 to-indigo-50 rounded-3xl p-12 shadow-inner">
-            <div className="grid md:grid-cols-3 gap-8">
+
+          {/* Mobile Menu Button */}
+          <button className="md:hidden p-2 text-gray-700" onClick={() => setIsMenuOpen(true)}>
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Mobile Menu Overlay - Adjusted hover/active colors to blue-based */}
+        <div
+          className={`fixed inset-0 z-50 transform transition-transform duration-300 ease-in-out md:hidden ${
+            isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          } bg-white shadow-xl`}
+        >
+          <div className="flex justify-end p-4">
+            <button className="p-2 text-gray-700" onClick={() => setIsMenuOpen(false)}>
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <nav className="flex flex-col space-y-2 p-4">
+            {navItems.map((item) => (
+              <div key={item.id} className="w-full">
+                {item.id === 'products' ? (
+                  // --- MOBILE MENU for Products (Simple Accordion) ---
+                  <div className="w-full">
+                    <button
+                      className="flex justify-between items-center w-full p-3 text-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-lg"
+                      onClick={() => setIsProductsDropdownOpen(!isProductsDropdownOpen)}
+                    >
+                      <span className="flex items-center">
+                        <item.icon className="w-5 h-5 mr-3" />
+                        {item.label}
+                      </span>
+                      <ChevronRight className={`w-5 h-5 transition-transform ${isProductsDropdownOpen ? 'rotate-90' : ''}`} />
+                    </button>
+                    {isProductsDropdownOpen && (
+                      // Display a simplified list or link to the full section
+                      <div className="ml-4 border-l pl-4 my-2 space-y-1">
+                        {detailedProducts.slice(0, 3).map((subItem) => ( // Show top 3 products
+                          <a
+                            key={subItem.id}
+                            href={subItem.href}
+                            onClick={() => {
+                              setActiveSection(subItem.id);
+                              setIsMenuOpen(false);
+                              setIsProductsDropdownOpen(false);
+                            }}
+                            className="flex items-center p-2 text-base text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-lg"
+                          >
+                            <subItem.icon className="w-4 h-4 mr-2" />
+                            {subItem.title}
+                          </a>
+                        ))}
+                        <a 
+                            href="#product-details" // Link to a dedicated full page section 
+                            onClick={() => {
+                                setIsMenuOpen(false);
+                                setIsProductsDropdownOpen(false);
+                            }}
+                            className="flex items-center p-2 text-base font-semibold text-blue-600 hover:bg-blue-50 transition-colors rounded-lg"
+                        >
+                            <ArrowRight className="w-4 h-4 mr-2" />
+                            View All Solutions (9)
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : item.id === 'about' ? (
+                  <div className="w-full">
+                    <button
+                      className="flex justify-between items-center w-full p-3 text-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-lg"
+                      onClick={() => setIsAboutDropdownOpen(!isAboutDropdownOpen)}
+                    >
+                      <span className="flex items-center">
+                        <item.icon className="w-5 h-5 mr-3" />
+                        {item.label}
+                      </span>
+                      <ChevronRight className={`w-5 h-5 transition-transform ${isAboutDropdownOpen ? 'rotate-90' : ''}`} />
+                    </button>
+                    {isAboutDropdownOpen && (
+                      <div className="ml-4 border-l pl-4 my-2 space-y-1">
+                        <Link href="/about/team" onClick={() => { setActiveSection('about'); setIsMenuOpen(false); setIsAboutDropdownOpen(false); }} className="block p-2 text-base text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg">Team</Link>
+                        <Link href="/contact" onClick={() => { setActiveSection('contact'); setIsMenuOpen(false); setIsAboutDropdownOpen(false); }} className="block p-2 text-base text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg">Contact Us</Link>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                   // --- REGULAR MOBILE LINK ---
+                     <a
+                       href={item.href}
+                       onClick={() => {
+                         setActiveSection(item.id);
+                         setIsMenuOpen(false);
+                       }}
+                       className={`flex items-center p-3 text-lg hover:bg-blue-50 hover:text-blue-600 transition-colors rounded-lg ${
+                         activeSection === item.id ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-gray-700'
+                       }`}
+                     >
+                       <item.icon className="w-5 h-5 mr-3" />
+                       {item.label}
+                     </a>
+                 )}
+              </div>
+            ))}
+
+            {/* Login/Signup in mobile menu - Adjusted colors to blue-based */}
+            <div className="pt-4 space-y-2">
+              <button className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                Log In
+              </button>
+              <button className="w-full p-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium">
+                Start Free Trial
+              </button>
+            </div>
+          </nav>
+        </div>
+      </header>
+      {/* --- End Header --- */}
+
+      <main>
+        {/* Hero Section */}
+<section id="home" className="pt-32 pb-20 bg-gradient-to-br from-blue-50 to-cyan-100">
+          <div className="container mx-auto px-4">
+            {/* Added a flex container to align text and image */}
+            <div className="flex flex-col md:flex-row items-center justify-between text-center md:text-left max-w-6xl mx-auto">
+              
+              {/* Text Content */}
+              <div className="max-w-xl md:w-1/2">
+                <AnimatedOnScroll animationClass="animate-fade-in-down">
+                  <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 leading-tight mb-4">
+                    Intelligent Data Management. <span className="text-blue-600">Simplified</span>
+                  </h1>
+                </AnimatedOnScroll>
+                <AnimatedOnScroll animationClass="animate-fade-in-up" delayClass="delay-200">
+                  <p className="text-xl md:text-2xl text-gray-600 mb-8">
+                    Unlock insights, automate workflows, and ensure data integrity our comprehensive IDMS platform
+                  </p>
+                </AnimatedOnScroll>
+                
+                {/* Call-to-Action Buttons */}
+                <AnimatedOnScroll animationClass="animate-fade-in-up" delayClass="delay-400">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start items-center">
+                    {/* Get Started Button (Dark Blue Style from Screenshot) */}
+                    <Link
+                      href="/pricing"
+                      className="px-8 py-3 bg-blue-900 text-white text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-800 transition-all transform hover:scale-[1.02] flex items-center"
+                    >
+                      Get Started
+                    </Link>
+                    {/* Request Demo Button (Outline Style from Screenshot) */}
+                    <a
+                      href="#" // Assuming '#' or a demo form link
+                      className="px-8 py-3 border-2 border-blue-900 text-blue-900 text-lg font-semibold rounded-lg hover:bg-blue-50 transition-all transform hover:scale-[1.02] flex items-center"
+                    >
+                      Request Demo
+                    </a>
+                  </div>
+                </AnimatedOnScroll>
+                
+                {/* The "IDMS the Data Management Software..." text is removed as per the request */}
+              </div>
+
+              {/* Image Illustration */}
+              <AnimatedOnScroll animationClass="animate-fade-in-right" delayClass="delay-600" className="mt-10 md:mt-0 md:w-1/2 flex justify-center">
+                {/* NOTE: You'll need to save the screenshot image and correctly reference it here. 
+                         For this example, I'll use a placeholder structure. */}
+                <Image
+                  src="/background.png" // Replace with your actual image path
+                  alt="Intelligent Data Management System Illustration"
+                  width={500} // Adjust size as needed
+                  height={500} // Adjust size as needed
+                  className="w-full max-w-sm md:max-w-md lg:max-w-lg h-auto"
+                />
+              </AnimatedOnScroll>
+
+            </div>
+          </div>
+        </section>
+
+        {/* Industries Section */}
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4">
+            <AnimatedOnScroll animationClass="animate-slide-up">
+              <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
+                Built for Growing Teams and Modern Businesses
+              </h2>
+            </AnimatedOnScroll>
+            <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-200">
+              <p className="text-lg text-center text-gray-600 mb-12 max-w-3xl mx-auto">
+                Whether you're a startup or an enterprise, IDMS helps you manage data smarter and scale effortlessly.
+              </p>
+            </AnimatedOnScroll>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+              {[
+                { name: 'Finance', icon: DollarSign, color: 'text-green-600 bg-green-100' },
+                { name: 'Healthcare', icon: Shield, color: 'text-blue-600 bg-blue-100' },
+                { name: 'Education', icon: BookOpen, color: 'text-purple-600 bg-purple-100' },
+                { name: 'Enterprise IT', icon: Settings, color: 'text-orange-600 bg-orange-100' }
+              ].map((industry, index) => (
+                <AnimatedOnScroll 
+                  key={index} 
+                  animationClass="animate-slide-up" 
+                  delayClass={`delay-${(index + 1) * 200}`}
+                >
+                  <div className="text-center p-6 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${industry.color}`}>
+                      <industry.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800">{industry.name}</h3>
+                  </div>
+                </AnimatedOnScroll>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Stats Section */}
+        <section id="stats" className="py-16 bg-white">
+          <div className="container mx-auto px-4">
+            <AnimatedOnScroll animationClass="animate-slide-up">
+                <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">
+                    Smart Data Management to <span className="text-blue-600">outsmart the changing world</span>
+                </h2>
+            </AnimatedOnScroll>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              {/* 3. UPDATED: Apply AnimatedOnScroll with Staggered Delays */}
+              {stats.map((stat, index) => (
+                <AnimatedOnScroll 
+                    key={index} 
+                    animationClass="animate-slide-up" 
+                    delayClass={`delay-${index * 200}`} // Staggered delay
+                >
+                  <StatCard stat={stat} />
+                </AnimatedOnScroll>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section id="solutions" className="py-20 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <AnimatedOnScroll animationClass="animate-slide-up">
+                <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
+                    Everything you need to create a <span className="text-blue-600">high performance culture</span>
+                </h2>
+            </AnimatedOnScroll>
+            <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-200">
+                <p className="text-xl text-center text-gray-600 mb-16">
+                    One platform to manage your data, people, and business processes.
+                </p>
+            </AnimatedOnScroll>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
+                  icon: Database,
+                  title: "Data Management",
+                  description: "Centralize and organize all your business data in one secure platform. Real-time insights and analytics.",
+                  color: "border-blue-500",
+                  iconColor: "text-blue-600"
+                },
+                {
+                  icon: Users,
+                  title: "HR Management",
+                  description: "Complete human resource management from hiring to retirement. Employee lifecycle management.",
+                  color: "border-green-500",
+                  iconColor: "text-green-600"
+                },
+                {
+                  icon: DollarSign,
+                  title: "Finance & Accounting",
+                  description: "Streamlined financial management and accounting solutions. Automated reporting and compliance.",
+                  color: "border-emerald-500",
+                  iconColor: "text-emerald-600"
+                },
+                {
+                  icon: Store,
+                  title: "Inventory Management",
+                  description: "Track and manage your inventory with real-time insights. Automated stock management.",
+                  color: "border-orange-500",
+                  iconColor: "text-orange-600"
+                },
+                {
                   icon: Target,
-                  title: 'Our Mission',
-                  desc: 'Democratize enterprise-grade HR tools for organizations of all sizes, making world-class technology accessible to everyone.',
-                  gradient: 'from-red-500 to-pink-500'
+                  title: "Project Management",
+                  description: "Plan, execute, and track projects with advanced tools. Resource allocation and timeline management.",
+                  color: "border-purple-500",
+                  iconColor: "text-purple-600"
                 },
                 {
-                  icon: Award,
-                  title: 'Our Vision',
-                  desc: 'Create a world where every team has the tools and insights to unlock their full potential and drive meaningful impact.',
-                  gradient: 'from-yellow-500 to-orange-500'
+                  icon: BarChart3,
+                  title: "Analytics & Reporting",
+                  description: "Powerful analytics and reporting for data-driven decisions. Custom dashboards and insights.",
+                  color: "border-cyan-500",
+                  iconColor: "text-cyan-600"
                 },
-                {
-                  icon: TrendingUp,
-                  title: 'Our Values',
-                  desc: 'Innovation-first mindset, radical transparency, customer obsession, and sustainable growth through continuous learning.',
-                  gradient: 'from-green-500 to-teal-500'
-                },
-              ].map((item, index) => (
-                <div key={index} className="text-center group">
-                  <div className={`w-16 h-16 mx-auto mb-6 bg-gradient-to-r ${item.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300`}>
-                    <item.icon className="w-8 h-8 text-white" />
-                  </div>
-                  <h4 className="text-xl font-bold mb-4 text-gray-900">{item.title}</h4>
-                  <p className="text-gray-600 leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section id="services" className="py-24 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full mb-6 font-semibold text-sm shadow-lg">
-              <Database className="w-4 h-4 mr-2" /> Our Solutions
-            </div>
-            <h2 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-indigo-900 to-purple-900 bg-clip-text text-transparent">
-              Tiranga IDMS
-            </h2>
-            <p className="text-2xl md:text-3xl font-semibold mb-8 text-gray-700">
-              Internal Data Management System
-            </p>
-            <p className="text-xl max-w-4xl mx-auto text-gray-600 leading-relaxed">
-              Complete ecosystem of integrated solutions designed to streamline your operations,
-              boost productivity, and drive growth through intelligent automation.
-            </p>
-          </div>
-          
-          {/* Enhanced Solution Cards */}
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Users,
-                title: 'Employee Lifecycle Management',
-                desc: 'End-to-end employee journey from onboarding to offboarding with AI-powered insights and automation.',
-                gradient: 'from-blue-500 to-indigo-600',
-                features: ['Smart Onboarding', 'Performance Tracking', 'Career Development']
-              },
-              {
-                icon: Database,
-                title: 'Advanced Data Analytics',
-                desc: 'Transform raw data into actionable insights with real-time dashboards and predictive analytics.',
-                gradient: 'from-green-500 to-teal-600',
-                features: ['Real-time Dashboards', 'Predictive Analytics', 'Custom Reports']
-              },
-              {
-                icon: Store,
-                title: 'Operations Excellence Hub',
-                desc: 'Streamline inventory management, performance monitoring, and operational workflows seamlessly.',
-                gradient: 'from-purple-500 to-pink-600',
-                features: ['Inventory Control', 'Workflow Automation', 'Quality Management']
-              },
-              {
-                icon: UserCheck,
-                title: 'Next-Gen HR Suite',
-                desc: 'Revolutionary HR tools covering recruitment, engagement, learning, and talent development.',
-                gradient: 'from-orange-500 to-red-600',
-                features: ['Smart Recruitment', 'Employee Engagement', 'Learning Management']
-              },
-              {
-                icon: DollarSign,
-                title: 'Financial Command Center',
-                desc: 'Comprehensive budgeting, expense tracking, payroll management with automated compliance.',
-                gradient: 'from-yellow-500 to-orange-600',
-                features: ['Automated Payroll', 'Expense Management', 'Budget Planning']
-              },
-              {
-                icon: Shield,
-                title: 'Security & Compliance Shield',
-                desc: 'Enterprise-grade security framework with automated compliance monitoring and reporting.',
-                gradient: 'from-indigo-500 to-purple-600',
-                features: ['Data Protection', 'Compliance Monitoring', 'Audit Trails']
-              },
-            ].map((service, index) => (
-              <div
-                key={index}
-                className="group bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/50 h-full flex flex-col relative overflow-hidden"
-              >
-                {/* Gradient Background on Hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-                
-                <div className={`relative w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${service.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
-                  <service.icon className="w-10 h-10 text-white" />
-                </div>
-                
-                <h3 className="relative text-xl font-bold mb-4 text-gray-900 text-center">{service.title}</h3>
-                <p className="relative text-gray-600 mb-6 leading-relaxed text-center flex-grow">{service.desc}</p>
-                
-                {/* Feature List */}
-                <div className="relative space-y-2 mb-6">
-                  {service.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center text-sm text-gray-600">
-                      <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-                
-                <button className={`relative w-full py-3 bg-gradient-to-r ${service.gradient} text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 group-hover:scale-105`}>
-                  Explore Solution
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-indigo-900 bg-clip-text text-transparent">
-              What Our Customers Say
-            </h2>
-            <p className="text-xl text-gray-600">Join thousands of satisfied customers who trust Tiranga IDMS</p>
-          </div>
-          
-          <div className="relative max-w-4xl mx-auto">
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-12 text-center shadow-lg">
-              <div className="flex justify-center mb-6">
-                {[...Array(testimonials[currentTestimonial].rating)].map((_, i) => (
-                  <Star key={i} className="w-6 h-6 text-yellow-400 fill-current" />
-                ))}
-              </div>
-              
-              <blockquote className="text-2xl font-medium text-gray-900 mb-8 italic">
-                &quot;{testimonials[currentTestimonial].content}&quot;
-              </blockquote>
-              
-              <div className="flex items-center justify-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-white font-bold text-xl">
-                    {testimonials[currentTestimonial].name.charAt(0)}
-                  </span>
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</div>
-                  <div className="text-gray-600">{testimonials[currentTestimonial].role}, {testimonials[currentTestimonial].company}</div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Testimonial Indicators */}
-            <div className="flex justify-center mt-8 space-x-2">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentTestimonial(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    index === currentTestimonial
-                      ? 'bg-indigo-600 w-8'
-                      : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Resources */}
-      <section id="resources" className="py-24 bg-gradient-to-br from-gray-50 to-indigo-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-full mb-6 font-semibold text-sm shadow-lg">
-              <Download className="w-4 h-4 mr-2" /> Resources
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-indigo-900 bg-clip-text text-transparent">
-              Resource Center
-            </h2>
-            <p className="text-xl max-w-3xl mx-auto text-gray-600 leading-relaxed">
-              Download our comprehensive guides, case studies, and presentations to accelerate your digital transformation journey.
-            </p>
-          </div>
-          
-          {/* Enhanced Download Cards */}
-          <div className="grid md:grid-cols-2 gap-12">
-            {/* PDF Card */}
-            <div className="group bg-white/90 backdrop-blur-sm p-10 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/50 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              
-              <div className="relative w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                <FileText className="w-12 h-12 text-white" />
-              </div>
-              
-              <h3 className="relative text-3xl font-bold mb-6 text-gray-900 text-center">Company Profile</h3>
-              <div className="relative space-y-4 mb-8">
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Complete company overview and capabilities</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Success stories and case studies</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Technical specifications and features</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Implementation roadmap and timeline</span>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => {
-                  // Download company profile PDF
-                  const link = document.createElement('a');
-                  link.href = '/downloads/company-profile.pdf';
-                  link.download = 'Tiranga-IDMS-Company-Profile.pdf';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  toast.success('Download started!');
-                }}
-                className="relative w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl group-hover:scale-105 flex items-center justify-center"
-              >
-                <Download className="w-6 h-6 mr-3" />
-                Download PDF
-                <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-            
-            {/* PPT Card */}
-            <div className="group bg-white/90 backdrop-blur-sm p-10 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/50 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              
-              <div className="relative w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                <Presentation className="w-12 h-12 text-white" />
-              </div>
-              
-              <h3 className="relative text-3xl font-bold mb-6 text-gray-900 text-center">Executive Presentation</h3>
-              <div className="relative space-y-4 mb-8">
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Executive-level solution overview</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>ROI analysis and business benefits</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Strategic advantages and differentiators</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Implementation strategy and support</span>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => {
-                  // Download executive presentation
-                  const link = document.createElement('a');
-                  link.href = '/downloads/executive-presentation.pptx';
-                  link.download = 'Tiranga-IDMS-Executive-Presentation.pptx';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  toast.success('Download started!');
-                }}
-                className="relative w-full px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-2xl font-bold text-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl group-hover:scale-105 flex items-center justify-center"
-              >
-                <Download className="w-6 h-6 mr-3" />
-                Download PPT
-                <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Role-based Dashboard */}
-      <section id="login" className="py-24 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-purple-50/50"></div>
-        
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full mb-6 font-semibold text-sm shadow-lg">
-              <UserCheck className="w-4 h-4 mr-2" /> Choose Your Portal
-            </div>
-            <h2 className="text-5xl md:text-6xl font-bold mb-8 bg-gradient-to-r from-indigo-900 to-purple-900 bg-clip-text text-transparent">
-              Access Your Dashboard
-            </h2>
-            <p className="text-xl max-w-4xl mx-auto text-gray-600 leading-relaxed">
-              Experience role-specific tools, insights, and workflows designed precisely for your responsibilities
-              and organizational needs.
-            </p>
-          </div>
-          
-          {/* Enhanced Role Cards */}
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Users,
-                role: 'System Admin',
-                desc: 'Complete system control with advanced configuration options',
-                gradient: 'from-red-500 to-pink-600',
-                features: ['User Management', 'System Config', 'Security Settings'],
-                popular: false
-              },
-              {
-                icon: UserCheck,
-                role: 'Employee',
-                desc: 'Self-service portal with personal dashboard and tools',
-                gradient: 'from-blue-500 to-indigo-600',
-                features: ['Personal Dashboard', 'Leave Management', 'Performance Tracking'],
-                popular: true
-              },
-              {
-                icon: Database,
-                role: 'Data Manager',
-                desc: 'Advanced analytics, reporting, and business intelligence',
-                gradient: 'from-green-500 to-teal-600',
-                features: ['Analytics Dashboard', 'Custom Reports', 'Data Insights'],
-                popular: false
-              },
-              {
-                icon: Store,
-                role: 'Store Manager',
-                desc: 'Inventory control and operational excellence tools',
-                gradient: 'from-orange-500 to-red-600',
-                features: ['Inventory Control', 'Order Management', 'Stock Analytics'],
-                popular: false
-              },
-              {
-                icon: UserCheck,
-                role: 'HR Manager',
-                desc: 'Comprehensive HR suite for talent management',
-                gradient: 'from-purple-500 to-pink-600',
-                features: ['Recruitment Tools', 'Employee Engagement', 'Performance Reviews'],
-                popular: false
-              },
-              {
-                icon: DollarSign,
-                role: 'Finance Manager',
-                desc: 'Financial oversight with automated compliance tracking',
-                gradient: 'from-yellow-500 to-orange-600',
-                features: ['Budget Management', 'Expense Tracking', 'Financial Reports'],
-                popular: false
-              },
-            ].map((role, index) => (
-              <div
-                key={index}
-                className={`group relative bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 border-2 h-full flex flex-col ${
-                  role.popular
-                    ? 'border-indigo-200 ring-2 ring-indigo-100'
-                    : 'border-gray-100 hover:border-gray-200'
-                }`}
-              >
-                {/* Popular Badge */}
-                {role.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full text-sm font-bold shadow-lg">
-                    Most Popular
-                  </div>
-                )}
-                
-                {/* Gradient Background on Hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-3xl`}></div>
-                
-                <div className={`relative w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${role.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
-                  <role.icon className="w-10 h-10 text-white" />
-                </div>
-                
-                <h3 className="relative text-2xl font-bold mb-4 text-gray-900 text-center">{role.role}</h3>
-                <p className="relative text-gray-600 mb-6 leading-relaxed text-center flex-grow">{role.desc}</p>
-                
-                {/* Feature List */}
-                <div className="relative space-y-3 mb-8">
-                  {role.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center text-sm text-gray-600">
-                      <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-                
-                <button
-                  onClick={() => handleRoleLogin(role.role.toLowerCase().replace(' ', '-'))}
-                  className={`relative w-full px-6 py-4 bg-gradient-to-r ${role.gradient} text-white rounded-2xl font-bold text-lg hover:shadow-lg transition-all duration-300 group-hover:scale-105 flex items-center justify-center`}
+              ].map((feature, index) => (
+                <AnimatedOnScroll 
+                    key={index} 
+                    animationClass="animate-slide-up" 
+                    delayClass={`delay-${(index + 3) * 200}`}
                 >
-                  Access {role.role.split(' ')[0]} Portal
-                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-            ))}
+                  <div className={`p-8 bg-white rounded-xl shadow-lg border-t-4 ${feature.color} hover:shadow-xl transition-all duration-300 hover:scale-105`}>
+                    <feature.icon className={`w-12 h-12 ${feature.iconColor} mb-6`} />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">{feature.title}</h3>
+                    <p className="text-gray-600 mb-6">{feature.description}</p>
+                    <a href="#" className="inline-flex items-center text-blue-600 font-medium hover:text-blue-700 transition-colors">
+                      Learn more <ArrowRight className="w-4 h-4 ml-1" />
+                    </a>
+                  </div>
+                </AnimatedOnScroll>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Professional Contact Section */}
-      <section id="contact" className="py-24 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white relative overflow-hidden">
-        {/* Subtle Background Effects */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-full filter blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-full filter blur-3xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-gradient-to-r from-emerald-500/5 to-teal-500/5 rounded-full filter blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse delay-500"></div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-full mb-6 font-semibold text-sm border border-white/20">
-              <Phone className="w-4 h-4 mr-2" /> Get In Touch
-            </div>
-            <h2 className="text-5xl md:text-6xl font-bold mb-8">
-              <span className="bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
-                Transform Your
-              </span>
-              <span className="block bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
-                Workplace Today
-              </span>
-            </h2>
-            <p className="text-xl max-w-3xl mx-auto text-slate-300 leading-relaxed">
-              Ready to revolutionize your HR operations? Our expert team is here to guide you through
-              every step of your digital transformation journey.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-16">
-            {/* Contact Info */}
-            <div className="space-y-8">
-              <h3 className="text-3xl font-bold mb-8 text-white">Connect With Our Experts</h3>
-              
-              {/* Phone */}
-              <div className="flex items-center group hover:transform hover:scale-105 transition-all duration-300">
-                <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center rounded-2xl mr-6 shadow-lg group-hover:shadow-xl transition-all duration-300">
-                  <Phone className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <div className="font-bold text-xl text-white">Call Us Directly</div>
-                  <div className="text-slate-300 text-lg font-semibold">+91 80489 05416</div>
-                  <div className="text-sm text-slate-400">Available 9 AM - 6 PM IST</div>
-                </div>
-              </div>
-              
-              {/* Email */}
-              <div className="flex items-center group hover:transform hover:scale-105 transition-all duration-300">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center rounded-2xl mr-6 shadow-lg group-hover:shadow-xl transition-all duration-300">
-                  <Mail className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <div className="font-bold text-xl text-white">Email Support</div>
-                  <div className="text-slate-300 text-lg">support@tirangaaerospace.com</div>
-                  <div className="text-sm text-slate-400">Response within 2 hours</div>
-                </div>
-              </div>
-              
-              {/* Address */}
-              <div className="flex items-start group hover:transform hover:scale-105 transition-all duration-300">
-                <div className="w-16 h-16 bg-gradient-to-r from-violet-500 to-purple-600 flex items-center justify-center rounded-2xl mr-6 shadow-lg group-hover:shadow-xl transition-all duration-300">
-                  <MapPin className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <div className="font-bold text-xl text-white">Visit Our Office</div>
-                  <div className="text-slate-300 text-lg leading-relaxed">
-                    1st Floor Hillside Meadows Layout,<br />
-                    Adityanagar, Vidyaranyapura,<br />
-                    Bengaluru - 560097
-                  </div>
-                  <div className="text-sm text-slate-400">Open Monday - Saturday</div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Professional Info Card */}
-            <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-8 shadow-2xl hover:transform hover:scale-105 transition-all duration-500">
-              <h3 className="text-3xl font-bold mb-8 text-center text-white">Why Choose Us?</h3>
-              
-              <div className="space-y-6 mb-8">
-                {[
-                  { icon: Clock, title: '24/7 Emergency Support', desc: 'Critical issues resolved immediately', color: 'from-blue-500 to-indigo-600' },
-                  { icon: Shield, title: 'Data Security Guarantee', desc: 'Bank-grade security protocols', color: 'from-emerald-500 to-teal-600' },
-                  { icon: Users, title: 'Dedicated Success Manager', desc: 'Personal guidance throughout', color: 'from-violet-500 to-purple-600' },
-                  { icon: Award, title: '99.9% Uptime SLA', desc: 'Reliable service you can trust', color: 'from-amber-500 to-orange-600' }
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center group hover:transform hover:scale-105 transition-all duration-300">
-                    <div className={`w-12 h-12 bg-gradient-to-r ${item.color} rounded-xl flex items-center justify-center mr-4 shadow-lg group-hover:shadow-xl transition-all duration-300`}>
-                      <item.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-white">{item.title}</div>
-                      <div className="text-slate-300 text-sm">{item.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="bg-gradient-to-r from-blue-500/20 to-indigo-600/20 rounded-2xl p-6 border border-blue-400/30 hover:border-blue-300/50 transition-all duration-300">
-                <div className="flex items-center mb-3">
-                  <Sparkles className="w-6 h-6 text-blue-400 mr-3" />
-                  <span className="font-bold text-blue-400 text-lg">Free 30-Day Trial</span>
-                </div>
-                <p className="text-slate-200 leading-relaxed mb-6">
-                  Start your transformation journey with zero risk. Full access to all features
-                  with dedicated onboarding support.
+        {/* Call to Action Section */}
+        <section className="py-20 bg-gray-50" id="cta">
+          <div className="container mx-auto px-4 text-center">
+            <AnimatedOnScroll animationClass="animate-slide-up" threshold={0.3}>
+                <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                    Ready to Transform Your Data Management?
+                </h2>
+            </AnimatedOnScroll>
+            <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-200" threshold={0.3}>
+                <p className="text-xl text-gray-600 mb-8">
+                    Get started with IDMS and experience the future of intelligent data management.
                 </p>
-                
-                <button
-                  onClick={() => scrollToSection('login')}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold text-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center group"
+            </AnimatedOnScroll>
+             <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-400" threshold={0.3}>
+                 <div className="flex flex-col sm:flex-row justify-center gap-4">
+                     <Link
+                         href="/pricing"
+                         className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg shadow-xl hover:bg-blue-700 transition-all transform hover:scale-105"
+                     >
+                         Get Started
+                     </Link>
+                     <a
+                         href="#"
+                         className="px-8 py-4 border-2 border-blue-600 text-blue-600 text-lg font-semibold rounded-lg hover:bg-blue-600 hover:text-white transition-all transform hover:scale-105"
+                     >
+                         Schedule a Demo
+                     </a>
+                 </div>
+             </AnimatedOnScroll>
+          </div>
+        </section>
+
+        {/* Our Vision Section */}
+        <section id="vision" className="py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <AnimatedOnScroll animationClass="animate-slide-up">
+                <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
+                    Our Vision
+                </h2>
+            </AnimatedOnScroll>
+            <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-200">
+                <p className="text-xl text-center text-gray-600 mb-12 max-w-3xl mx-auto">
+                    We're on a mission to make data management simple, secure, and accessible to every business.
+                </p>
+            </AnimatedOnScroll>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {[
+                {
+                  icon: Rocket,
+                  title: "Simplicity",
+                  description: "Intuitive tools that work out of the box.",
+                  color: "text-blue-600 bg-blue-100"
+                },
+                {
+                  icon: Shield,
+                  title: "Security",
+                  description: "Enterprise-grade protection for all your data.",
+                  color: "text-green-600 bg-green-100"
+                },
+                {
+                  icon: Settings,
+                  title: "Automation",
+                  description: "Save hours with smart workflows.",
+                  color: "text-purple-600 bg-purple-100"
+                }
+              ].map((pillar, index) => (
+                <AnimatedOnScroll 
+                  key={index} 
+                  animationClass="animate-slide-up" 
+                  delayClass={`delay-${(index + 1) * 200}`}
                 >
-                  <Rocket className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform duration-300" />
-                  Start Free Trial Now
-                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
+                  <div className="text-center p-8 bg-gray-50 rounded-xl hover:shadow-lg transition-all duration-300">
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${pillar.color}`}>
+                      <pillar.icon className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">{pillar.title}</h3>
+                    <p className="text-gray-600">{pillar.description}</p>
+                  </div>
+                </AnimatedOnScroll>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Enhanced Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-16 relative overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-indigo-900/20 to-purple-900/20"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-6 space-y-12">
-          {/* Footer Top */}
-          <div className="grid md:grid-cols-5 gap-12">
-            {/* Company Info */}
-            <div className="md:col-span-2">
-              <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mr-4">
-                  <Building className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                    Tiranga IDMS
-                  </div>
-                  <div className="text-sm text-gray-400">Enterprise Solutions</div>
-                </div>
+        {/* Early Access Program Section */}
+        <section className="py-20 bg-blue-600">
+          <div className="container mx-auto px-4 text-center">
+            <AnimatedOnScroll animationClass="animate-slide-up" threshold={0.3}>
+                <h2 className="text-3xl font-bold text-white mb-4">
+                    Join Our Early Access Program
+                </h2>
+            </AnimatedOnScroll>
+            <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-200" threshold={0.3}>
+                <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+                    Be among the first to experience smarter data management with IDMS.
+                </p>
+            </AnimatedOnScroll>
+             <AnimatedOnScroll animationClass="animate-slide-up" delayClass="delay-400" threshold={0.3}>
+                 <div className="flex flex-col sm:flex-row justify-center gap-4">
+                     <button className="px-8 py-4 bg-white text-blue-600 text-lg font-semibold rounded-lg shadow-xl hover:bg-gray-100 transition-all transform hover:scale-105">
+                         Join Beta
+                     </button>
+                     <button className="px-8 py-4 border-2 border-white text-white text-lg font-semibold rounded-lg hover:bg-white hover:text-blue-600 transition-all transform hover:scale-105">
+                         Get Early Access
+                     </button>
+                 </div>
+             </AnimatedOnScroll>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-12" id="contact">
+        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-5 gap-8">
+          {/* Brand and Social */}
+          <div>
+            <Link href="/">
+              <div className="relative w-48 h-16 mb-4 cursor-pointer">
+                <Image
+                  src="/hrlogo.png" 
+                  alt="IDMS Logo and Brand Statement"
+                  fill 
+                  style={{ objectFit: 'contain' }}
+                  className="w-full h-full"
+                />
               </div>
-              <p className="text-gray-400 mb-6 leading-relaxed">
-                Empowering organizations worldwide with cutting-edge HR technology and innovative
-                workplace management solutions for sustainable growth and success.
-              </p>
-              <div className="flex space-x-4">
-                {[
-                  { icon: Globe, link: 'https://tirangaaerospace.com', gradient: 'from-blue-500 to-indigo-600' },
-                  { icon: Mail, link: 'mailto:support@tirangaaerospace.com', gradient: 'from-green-500 to-teal-600' },
-                  { icon: Phone, link: 'tel:+918048905416', gradient: 'from-purple-500 to-pink-600' }
-                ].map((social, index) => (
-                  <a
-                    key={index}
-                    href={social.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`w-12 h-12 bg-gradient-to-r ${social.gradient} rounded-xl flex items-center justify-center hover:scale-110 transition-transform duration-300 shadow-lg hover:shadow-xl`}
-                  >
-                    <social.icon className="w-5 h-5 text-white" />
-                  </a>
-                ))}
-              </div>
-            </div>
-            
-            {/* Solutions */}
-            <div>
-              <h4 className="text-xl font-bold mb-6 text-white flex items-center">
-                <Zap className="w-5 h-5 mr-2 text-indigo-400" /> Solutions
-              </h4>
-              <ul className="space-y-4">
-                {['Employee Management', 'Data Analytics', 'Operations Hub', 'HR Excellence', 'Finance Control', 'Security Suite'].map((item, index) => (
-                  <li key={index} className="group cursor-pointer">
-                    <div className="flex items-center text-gray-400 group-hover:text-white transition-colors duration-200">
-                      <ChevronRight className="w-4 h-4 mr-2 opacity-0 group-hover:opacity-100 group-hover:text-indigo-400 transition-all duration-200" />
-                      <span>{item}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            {/* Company */}
-            <div>
-              <h4 className="text-xl font-bold mb-6 text-white flex items-center">
-                <Building className="w-5 h-5 mr-2 text-purple-400" /> Company
-              </h4>
-              <ul className="space-y-4">
-                {['About Us', 'Leadership Team', 'Careers', 'News & Events', 'Partner Program', 'Success Stories'].map((item, index) => (
-                  <li key={index} className="group cursor-pointer">
-                    <div className="flex items-center text-gray-400 group-hover:text-white transition-colors duration-200">
-                      <ChevronRight className="w-4 h-4 mr-2 opacity-0 group-hover:opacity-100 group-hover:text-purple-400 transition-all duration-200" />
-                      <span>{item}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            {/* Support */}
-            <div>
-              <h4 className="text-xl font-bold mb-6 text-white flex items-center">
-                <Shield className="w-5 h-5 mr-2 text-green-400" /> Support
-              </h4>
-              <ul className="space-y-4">
-                {['Help Center', 'Documentation', 'API Reference', 'System Status', 'Training Hub', 'Community Forum'].map((item, index) => (
-                  <li key={index} className="group cursor-pointer">
-                    <div className="flex items-center text-gray-400 group-hover:text-white transition-colors duration-200">
-                      <ChevronRight className="w-4 h-4 mr-2 opacity-0 group-hover:opacity-100 group-hover:text-green-400 transition-all duration-200" />
-                      <span>{item}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            </Link>
+          </div>
+
+          {/* Company Links */}
+          <div>
+            <h4 className="font-semibold text-lg mb-4">Company</h4>
+            <ul className="space-y-2 text-gray-400">
+              <li><a href="#about" className="hover:text-blue-400 transition-colors">About Us</a></li>
+              <li><a href="#careers" className="hover:text-blue-400 transition-colors">Careers</a></li>
+              <li><a href="#blog" className="hover:text-blue-400 transition-colors">Blog</a></li>
+              <li><a href="#contact" className="hover:text-blue-400 transition-colors">Contact</a></li>
+            </ul>
+          </div>
+
+          {/* Product Links */}
+          <div>
+            <h4 className="font-semibold text-lg mb-4">Products</h4>
+            <ul className="space-y-2 text-gray-400">
+              {/* Using a selection of the detailed products for the footer list */}
+              {detailedProducts.slice(0, 4).map(item => (
+                <li key={item.id}><a href={item.href} className="hover:text-blue-400 transition-colors">{item.title}</a></li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Support Links */}
+          <div>
+            <h4 className="font-semibold text-lg mb-4">Support</h4>
+            <ul className="space-y-2 text-gray-400">
+              <li><a href="#help" className="hover:text-blue-400 transition-colors">Help Center</a></li>
+              <li><a href="#status" className="hover:text-blue-400 transition-colors">Status</a></li>
+              <li><a href="#privacy" className="hover:text-blue-400 transition-colors">Privacy Policy</a></li>
+              <li><a href="#terms" className="hover:text-blue-400 transition-colors">Terms of Service</a></li>
+            </ul>
           </div>
           
-          {/* Footer Bottom */}
-          <div className="border-t border-gray-800 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="flex items-center space-x-8">
-                <p className="text-gray-400">© 2025 Tiranga IDMS. All rights reserved.</p>
-                <div className="hidden md:flex items-center space-x-2 text-gray-500">
-                  <Heart className="w-4 h-4 text-red-400" />
-                  <span className="text-sm">Made with passion in India</span>
-                </div>
+          {/* Contact Info */}
+          <div>
+            <h4 className="font-semibold text-lg mb-4">Get in Touch</h4>
+            <div className="space-y-2 text-gray-400">
+              <div className="flex items-center">
+                <Mail className="w-4 h-4 mr-2 text-blue-400" />
+                <a href="mailto:info@idms.com" className="hover:text-blue-400 transition-colors">info@idms.com</a>
               </div>
-              
-              <div className="flex flex-wrap justify-center md:justify-end space-x-8 text-sm text-gray-400">
-                {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'GDPR Compliance'].map((item, index) => (
-                  <a key={index} href="#" className="hover:text-white transition-colors duration-200 hover:underline">
-                    {item}
-                  </a>
-                ))}
+              <div className="flex items-center">
+                <Phone className="w-4 h-4 mr-2 text-blue-400" />
+                <span>080-48905416</span>
               </div>
-            </div>
-            
-            {/* Trust Indicators */}
-            <div className="mt-8 pt-8 border-t border-gray-800/50">
-              <div className="flex flex-wrap justify-center items-center space-x-12 text-gray-500">
-                <div className="flex items-center space-x-2 hover:scale-105 transition-transform duration-300">
-                  <Shield className="w-5 h-5 text-green-400" />
-                  <span className="text-sm font-medium">ISO 27001 Certified</span>
-                </div>
-                <div className="flex items-center space-x-2 hover:scale-105 transition-transform duration-300">
-                  <CheckCircle className="w-5 h-5 text-blue-400" />
-                  <span className="text-sm font-medium">GDPR Compliant</span>
-                </div>
-                <div className="flex items-center space-x-2 hover:scale-105 transition-transform duration-300">
-                  <Award className="w-5 h-5 text-yellow-400" />
-                  <span className="text-sm font-medium">SOC 2 Type II</span>
-                </div>
-                <div className="flex items-center space-x-2 hover:scale-105 transition-transform duration-300">
-                  <Globe className="w-5 h-5 text-indigo-400" />
-                  <span className="text-sm font-medium">Global Infrastructure</span>
-                </div>
+              <div className="flex items-start">
+                <MapPin className="w-4 h-4 mt-1 mr-2 text-blue-400 flex-shrink-0" />
+                <span>2nd floor Hillside Meadows Layout, Adityanagar, Vidyaranyapura,
+Bengaluru - 560097</span>
               </div>
             </div>
           </div>
+
+        </div>
+        <div className="border-t border-gray-700 mt-8 pt-6 container mx-auto px-4 text-center text-sm text-gray-400">
+          &copy; {new Date().getFullYear()}  Tiranga Aerospace, All Rights Reserved.
         </div>
       </footer>
- 
-      {/* Toast Notifications */}
-      <Toaster position="top-right" />
 
-      {/* Custom CSS for animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes fade-in-right {
-          from { opacity: 0; transform: translateX(30px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(40px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out forwards;
-        }
-        
-        .animate-fade-in-right {
-          animation: fade-in-right 1s ease-out 0.3s forwards;
-          opacity: 0;
-        }
-        
-        .animate-slide-up {
-          animation: slide-up 0.8s ease-out forwards;
-        }
-        
-        .animate-slide-up.delay-200 {
-          animation: slide-up 0.8s ease-out 0.2s forwards;
-          opacity: 0;
-        }
-        
-        .animate-slide-up.delay-400 {
-          animation: slide-up 0.8s ease-out 0.4s forwards;
-          opacity: 0;
-        }
-        
-        .animate-slide-up.delay-600 {
-          animation: slide-up 0.8s ease-out 0.6s forwards;
-          opacity: 0;
-        }
-        
-        .animate-slide-up.delay-800 {
-          animation: slide-up 0.8s ease-out 0.8s forwards;
-          opacity: 0;
-        }
-        
-        .animate-slide-up.delay-1000 {
-          animation: slide-up 0.8s ease-out 1s forwards;
-          opacity: 0;
-        }
-        
+      {/* 4. UPDATED: Custom CSS to use .is-visible class for animation trigger */}
+      <style jsx global>{`
         /* Smooth scroll behavior */
         html {
           scroll-behavior: smooth;
         }
-        
-        /* Custom gradient text animation */
-        @keyframes gradient-shift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+
+        /* Keyframes for animations */
+        @keyframes fade-in-down {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient-shift 3s ease-in-out infinite;
+
+        @keyframes fade-in-left {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes fade-in-right {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* ---------------------------------------------------- */
+        /* Animation Classes: Start with opacity 0 initially    */
+        /* The '.is-visible' class is added via JS/Hook to run  */
+        /* ---------------------------------------------------- */
+        .animate-fade-in-down,
+        .animate-fade-in-left,
+        .animate-fade-in-up,
+        .animate-fade-in-right,
+        .animate-slide-up {
+            opacity: 0;
+        }
+
+        /* Applying animations only when in view */
+        .animate-fade-in-down.is-visible {
+          animation: fade-in-down 0.8s ease-out forwards;
+        }
+
+        .animate-fade-in-left.is-visible {
+          animation: fade-in-left 0.8s ease-out 0.2s forwards;
+        }
+
+        .animate-fade-in-up.is-visible {
+          animation: fade-in-up 0.8s ease-out 0.4s forwards;
+        }
+
+        .animate-fade-in-right.is-visible {
+          animation: fade-in-right 1s ease-out 0.3s forwards;
+        }
+
+        .animate-slide-up.is-visible {
+          animation: slide-up 0.8s ease-out forwards;
+        }
+
+        /* Staggered delays now applied to the animation trigger */
+        .animate-slide-up.is-visible.delay-200 {
+          animation: slide-up 0.8s ease-out 0.2s forwards;
+        }
+        .animate-slide-up.is-visible.delay-400 {
+          animation: slide-up 0.8s ease-out 0.4s forwards;
+        }
+        .animate-slide-up.is-visible.delay-600 {
+          animation: slide-up 0.8s ease-out 0.6s forwards;
+        }
+        .animate-slide-up.is-visible.delay-800 {
+          animation: slide-up 0.8s ease-out 0.8s forwards;
+        }
+        .animate-slide-up.is-visible.delay-1000 {
+          animation: slide-up 0.8s ease-out 1s forwards;
         }
       `}</style>
     </div>

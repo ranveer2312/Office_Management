@@ -1,26 +1,30 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; 
 import axios from 'axios';
 import * as numberToWords from 'number-to-words';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, Download, Loader2, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 
+// 🚀 REQUIRED IMPORTS FOR CLIENT-SIDE PDF GENERATION
+import html2canvas from 'html2canvas'; 
+import { jsPDF } from 'jspdf'; 
+
 // ====================================================================
-// 1. INTERFACES (FIXED for Backend JSON Mapping)
+// 1. INTERFACES (UNCHANGED)
 // ====================================================================
 
 interface CompanyData {
     name: string;
-    address: string; // <-- CRITICAL FIX: Reverting to single 'address' field
-    email?: string; // Included based on the Java DTO model, though unused here
-    phone?: string; // Included based on the Java DTO model, though unused here
+    address: string; 
+    email?: string; 
+    phone?: string; 
 }
 
 interface EmployeeData {
     name: string;
-    id: string; // Changed back to 'id' to reflect the Java DTO and the URL logic
+    id: string; 
     designation: string;
     department: string;
     location: string;
@@ -29,17 +33,16 @@ interface EmployeeData {
     pan: string;
     uan: string; 
     
-    bank: string; // Changed to 'bank' to match the Java DTO
-    accountNo: string; // Changed to 'accountNo' to match the Java DTO
+    bank: string; 
+    accountNo: string; 
     
-    workDays: number; // Changed to 'workDays' to match the Java DTO
+    workDays: number; 
     lop: number;
 }
 
 interface EarningsDeduction {
     label: string;
     amount: number;
-    // Removed fullAmount as it's not present in the Java DTO and causes confusion
 }
 
 export interface PayslipData {
@@ -50,7 +53,6 @@ export interface PayslipData {
     deductions: EarningsDeduction[];
     printDate: string;
 
-    // Added the totals which are returned by the Spring DTO
     totalEarnings: number;
     totalDeductions: number;
     netPay: number;
@@ -61,14 +63,14 @@ interface PayslipMetadata {
     year: number;
     monthName: string;
     netPay: number;
-    payslipUrl: string; // Added for download link
+    payslipUrl: string; 
 }
 
 // ====================================================================
-// 2. CONFIGURATION & HELPERS
+// 2. CONFIGURATION & HELPERS (UNCHANGED)
 // ====================================================================
 
-const API_BASE_URL = 'http://localhost:8080'; // Ensure this matches your Spring Boot server port
+const API_BASE_URL = 'http://localhost:8080'; 
 
 const formatCurrency = (amount: number): string => {
     return amount.toLocaleString('en-IN', {
@@ -77,10 +79,8 @@ const formatCurrency = (amount: number): string => {
     });
 };
 
-// Helper to replace commas with <br> for clean display
 const formatAddress = (address: string): React.ReactNode => {
     if (!address) return null;
-    // Replace comma + space with <br/> for the address lines
     return address.split(', ').map((line, index) => (
         <React.Fragment key={index}>
             {line}
@@ -89,55 +89,64 @@ const formatAddress = (address: string): React.ReactNode => {
     ));
 };
 
-// --- PayslipContent Component (UPDATED MAPPING) ---
+// --- PayslipContent Component (Rendering the Payslip HTML) ---
 const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
-    // Note: Using the netPay, totalEarnings, totalDeductions from the DTO directly
     const totalEarnings = data.totalEarnings; 
     const totalDeductions = data.totalDeductions;
     const netPay = data.netPay;
     
     const netPayWords = numberToWords.toWords(Math.round(netPay || 0)).toUpperCase();
-    const maxRows = Math.max(data.earnings.length, data.deductions.length);
-
+    
     // --- STYLE DEFINITIONS ---
-    const TD_STYLE = { padding: '4px 6px', fontSize: '12px', verticalAlign: 'top', lineHeight: '1.2' };
+    const TOTAL_WIDTH = '790px'; 
+    const COL_WIDTH = '197.5px'; 
+    
+    // Cell Padding and alignment styles
+    const TD_STYLE = { padding: '8px 6px', fontSize: '12px', verticalAlign: 'middle' as 'middle', lineHeight: '1.2' }; 
     const FONT_NORMAL_STYLE = { fontWeight: 'normal' };
     const FONT_MEDIUM_STYLE = { fontWeight: '500' };
-    const TABLE_BORDER_STYLE = { borderCollapse: 'collapse', border: '1px solid black', width: '100%' };
+    const TABLE_BORDER_STYLE = { borderCollapse: 'collapse' as 'collapse', border: '1px solid black', width: '100%', tableLayout: 'fixed' as 'fixed' }; 
     const HEADER_TITLE_STYLE = { fontWeight: 'bold', fontSize: '14px', borderTop: '1px solid black', borderBottom: '1px solid black', padding: '5px 0', marginTop: '5px', backgroundColor: '#f3f4f6' };
+    const TH_E_D_STYLE = { padding: '8px 6px', fontSize: '12px', verticalAlign: 'middle' as 'middle', lineHeight: '1.2' };
+    
+    // ⭐ NEW LOGO DIMENSIONS
+    const LOGO_WIDTH = 140; 
+    const LOGO_HEIGHT = 70;
+    const LOGO_CONTAINER_WIDTH = `${LOGO_WIDTH}px`;
+    const LOGO_CONTAINER_HEIGHT = `${LOGO_HEIGHT}px`;
     // -------------------------
 
     return (
-        <div style={{ width: '8.5in', margin: '20px auto', backgroundColor: 'white' }}>
+        // Set the payslip container to a rigid pixel width
+        <div style={{ width: TOTAL_WIDTH, margin: '20px auto', backgroundColor: 'white' }}>
             
             {/* 1. Header and Company Info */}
-            <table style={{ ...TABLE_BORDER_STYLE }}>
+            <table style={{ ...TABLE_BORDER_STYLE, tableLayout: 'auto' as 'auto' }}>
                 <tbody>
                     <tr>
                         <td style={{ padding: '10px 15px', textAlign: 'center' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <div style={{ width: '100px', height: '50px', display: 'flex', alignItems: 'center' }}>
+                                
+                                {/* ⭐ UPDATED LOGO CONTAINER: Increased size */}
+                                <div style={{ width: LOGO_CONTAINER_WIDTH, height: LOGO_CONTAINER_HEIGHT, display: 'flex', alignItems: 'center', minWidth: LOGO_CONTAINER_WIDTH }}>
                                     <Image 
                                         src="/originaltirangalogo.png" 
-                                        alt="Company Logo" 
-                                        width={150}
-                                        height={50}
+                                        alt="Tiranga Aerospace Logo" 
+                                        width={LOGO_WIDTH} // Updated width
+                                        height={LOGO_HEIGHT} // Updated height
+                                        style={{ width: LOGO_CONTAINER_WIDTH, height: 'auto' }}
                                         priority
-                                        style={{ width: '100px', height: 'auto' }}
                                     />
                                 </div>
                                 
                                 <div style={{ fontSize: '12px', flexGrow: 1, textAlign: 'center' }}>
                                     <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{data.company.name}</div>
-                                    
-                                    {/* CRITICAL FIX: Use the single 'address' field and format it */}
                                     <div style={{ marginTop: '2px', lineHeight: '1.4' }}>
                                         {formatAddress(data.company.address)}
                                     </div>
-
                                 </div>
 
-                                <div style={{ width: '100px' }}></div>
+                                <div style={{ width: LOGO_CONTAINER_WIDTH, minWidth: LOGO_CONTAINER_WIDTH }}></div>
                             </div>
                             
                             <div style={HEADER_TITLE_STYLE}>
@@ -149,40 +158,33 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
             </table>
 
             {/* 2. Employee Details Table (Nested Structure) */}
-            <table style={{ ...TABLE_BORDER_STYLE, borderTop: 'none' }}>
+            <table style={{ ...TABLE_BORDER_STYLE, borderTop: 'none', tableLayout: 'fixed' as 'fixed' }}>
                 <tbody>
                     <tr>
                         {/* Left Side */}
                         <td style={{ width: '50%', borderRight: '1px solid black' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' as 'collapse' }}>
                                 <tbody>
-                                    {/* FIX: Use employee.name */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.name}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Joining Date:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.joiningDate}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Designation:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.designation}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Department:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.department}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Location:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.location}</td></tr>
-                                    {/* FIX: Use employee.workDays */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Effective Work Days:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.workDays}</td></tr>
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>LOP:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.lop}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.name}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Joining Date:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.joiningDate}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Designation:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.designation}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Department:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.department}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Location:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.location}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Effective Work Days:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.workDays}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>LOP:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.lop}</td></tr>
                                 </tbody>
                             </table>
                         </td>
                         
                         {/* Right Side */}
                         <td style={{ width: '50%' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' as 'collapse' }}>
                                 <tbody>
-                                    {/* FIX: Use employee.id */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Employee No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.id}</td></tr>
-                                    {/* FIX: Use employee.bank */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Bank Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.bank}</td></tr>
-                                    {/* FIX: Use employee.accountNo */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>Bank Account No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.accountNo}</td></tr>
-                                    {/* FIX: Use employee.pan */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>PAN Number:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.pan}</td></tr>
-                                    {/* Use employee.uan */}
-                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE }}>UAN:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE }}>{data.employee.uan}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Employee No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.id}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Bank Name:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.bank}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>Bank Account No:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.accountNo}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>PAN Number:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.pan}</td></tr>
+                                    <tr><td style={{ ...TD_STYLE, ...FONT_NORMAL_STYLE, width: '40%' }}>UAN:</td><td style={{ ...TD_STYLE, ...FONT_MEDIUM_STYLE, width: '60%' }}>{data.employee.uan}</td></tr>
                                     <tr><td style={TD_STYLE}></td><td style={TD_STYLE}></td></tr>
                                     <tr><td style={TD_STYLE}></td><td style={TD_STYLE}></td></tr>
                                 </tbody>
@@ -193,39 +195,43 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
             </table>
 
             {/* 3. Earnings and Deductions Main Table */}
-            <table style={{ ...TABLE_BORDER_STYLE, borderTop: 'none' }}>
+            <table style={{ ...TABLE_BORDER_STYLE, borderTop: 'none', tableLayout: 'fixed' as 'fixed' }}>
                 <thead>
                     <tr style={{ fontWeight: 'bold', backgroundColor: '#f3f4f6' }}>
-                        <th style={{ ...TD_STYLE, width: '25%', textAlign: 'left', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Earnings</th>
-                        {/* Removed 'Full' column as it is not used/set by the backend DTO in the service logic */}
-                        <th style={{ ...TD_STYLE, width: '25%', textAlign: 'right', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Actual</th>
-                        <th style={{ ...TD_STYLE, width: '25%', textAlign: 'left', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Deductions</th>
-                        <th style={{ ...TD_STYLE, width: '25%', textAlign: 'right', borderBottom: '1px solid black' }}>Actual</th>
+                        <th style={{ ...TH_E_D_STYLE, width: COL_WIDTH, textAlign: 'left', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Earnings</th>
+                        <th style={{ ...TH_E_D_STYLE, width: COL_WIDTH, textAlign: 'right', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Actual</th>
+                        <th style={{ ...TH_E_D_STYLE, width: COL_WIDTH, textAlign: 'left', borderLeft: '1px solid black', borderBottom: '1px solid black', borderRight: '1px solid black' }}>Deductions</th>
+                        <th style={{ ...TH_E_D_STYLE, width: COL_WIDTH, textAlign: 'right', borderBottom: '1px solid black' }}>Actual</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {/* Max Rows changed to 3 to simplify the layout and match the standard 3 earnings/2 deductions */}
                     {Array.from({ length: 3 }).map((_, i) => (
                         <tr key={i}>
-                            <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>{data.earnings[i]?.label || ''}</td>
-                            {/* Removed 'Full' column cell */}
-                            <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }}>{data.earnings[i]?.amount ? formatCurrency(data.earnings[i].amount) : ''}</td>
-                            <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>{data.deductions[i]?.label || ''}</td>
-                            <td style={{ ...TD_STYLE, textAlign: 'right' }}>{data.deductions[i]?.amount ? formatCurrency(data.deductions[i].amount) : (data.deductions[i] ? '0' : '')}</td>
+                            <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black', width: COL_WIDTH }}>{data.earnings[i]?.label || ''}</td>
+                            <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black', width: COL_WIDTH }}>{data.earnings[i]?.amount ? formatCurrency(data.earnings[i].amount) : ''}</td>
+                            <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black', width: COL_WIDTH }}>{data.deductions[i]?.label || ''}</td>
+                            <td style={{ ...TD_STYLE, textAlign: 'right', width: COL_WIDTH }}>{data.deductions[i]?.amount ? formatCurrency(data.deductions[i].amount) : (data.deductions[i] ? '0' : '')}</td>
                         </tr>
                     ))}
                     <tr style={{ fontWeight: 'bold', borderTop: '1px solid black', backgroundColor: '#f3f4f6' }}>
-                        <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>Total Earnings:</td>
-                        {/* Merging the Full/Actual columns for Total Earnings */}
-                        <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black' }} colSpan={1}>{formatCurrency(totalEarnings)}</td> 
-                        <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black' }}>Total Deductions:</td>
-                        <td style={{ ...TD_STYLE, textAlign: 'right' }}>{formatCurrency(totalDeductions)}</td>
+                        <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black', width: COL_WIDTH }}>Total Earnings:</td>
+                        <td style={{ ...TD_STYLE, textAlign: 'right', borderRight: '1px solid black', width: COL_WIDTH }}>{formatCurrency(totalEarnings)}</td> 
+                        <td style={{ ...TD_STYLE, textAlign: 'left', borderRight: '1px solid black', width: COL_WIDTH }}>Total Deductions:</td>
+                        <td style={{ ...TD_STYLE, textAlign: 'right', width: COL_WIDTH }}>{formatCurrency(totalDeductions)}</td>
                     </tr>
                 </tbody>
             </table>
 
             {/* 4. Net Pay Summary */}
-            <div style={{ ...TABLE_BORDER_STYLE, borderTop: 'none', padding: '10px 15px', fontWeight: 'bold', fontSize: '14px', backgroundColor: 'white' }}>
+            <div style={{ 
+                ...TABLE_BORDER_STYLE, 
+                borderTop: 'none', 
+                padding: '10px 15px', 
+                fontWeight: 'bold', 
+                fontSize: '14px', 
+                backgroundColor: 'white',
+                lineHeight: '1.4' 
+            }}>
                 Net Pay for the month (Total Earnings - Total Deductions): {formatCurrency(netPay)}/-
                 <div style={{ fontWeight: 'normal', fontSize: '12px', marginTop: '5px' }}>
                     ({netPayWords} Only)
@@ -233,9 +239,9 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
             </div>
             
             {/* 5. Footer (System-generated text) */}
-            <div style={{ padding: '5px 15px', fontSize: '10px', color: '#666', borderLeft: '1px solid black', borderRight: '1px solid black', borderBottom: '1px solid black' }}>
-                This is a system-generated payslip and does not require signature.
-                <span style={{ float: 'right' }}>Print Date: {data.printDate}</span>
+            <div style={{ padding: '5px 15px', fontSize: '10px', color: '#666', borderLeft: '1px solid black', borderRight: '1px solid black', borderBottom: '1px solid black', display: 'flex', justifyContent: 'space-between' }}>
+                <span>This is a system-generated payslip and does not require signature.</span>
+                <span>Print Date: {data.printDate}</span>
             </div>
         </div>
     );
@@ -243,7 +249,7 @@ const PayslipContent: React.FC<{ data: PayslipData }> = ({ data }) => {
 
 
 // -------------------------------------------------------------------
-// DYNAMIC HOOK: Retrieves the ID from Session/Local Storage (Unchanged)
+// DYNAMIC HOOK: Retrieves the ID from Session/Local Storage (UNCHANGED)
 // -------------------------------------------------------------------
 function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
     const [id, setId] = useState<string | null>(null);
@@ -252,7 +258,6 @@ function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
     const router = useRouter(); 
 
     useEffect(() => {
-        // 1. Check URL query first (highest priority)
         const urlId = searchParams.get('employeeId');
         if (urlId) {
              setId(urlId);
@@ -260,7 +265,6 @@ function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
              return;
         }
 
-        // 2. Check Session Storage (synchronize with Attendance page)
         const sessionId = sessionStorage.getItem('employeeId'); 
         if (sessionId) {
             setId(sessionId);
@@ -268,7 +272,6 @@ function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
             return;
         }
         
-        // 3. Check Local Storage (fallback)
         const localId = localStorage.getItem('employeeId'); 
         if (localId) {
             setId(localId);
@@ -276,7 +279,6 @@ function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
             return;
         }
         
-        // Final failure: No ID found
         setIsAuthLoading(false);
         
     }, [searchParams, router]);
@@ -287,7 +289,7 @@ function useAuthId(): { employeeId: string | null, isAuthLoading: boolean } {
 
 
 // ====================================================================
-// 3. MAIN PAGE COMPONENT (Using dynamic ID)
+// 3. MAIN PAGE COMPONENT (Using dynamic ID) (UNCHANGED LOGIC)
 // ====================================================================
 
 export default function PayslipPage() {
@@ -299,9 +301,12 @@ export default function PayslipPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPayslipData, setCurrentPayslipData] = useState<PayslipData | null>(null);
     const [viewLoading, setViewLoading] = useState(false);
+    
+    const payslipRef = useRef<HTMLDivElement>(null); 
+    
     const router = useRouter();
     
-    // Implementation of API fetch for the metadata list
+    // Fetching metadata list (Unchanged)
     const fetchPayslipList = useCallback(async (id: string) => {
         setLoading(true);
         setError(null);
@@ -334,7 +339,6 @@ export default function PayslipPage() {
         }
     }, []);
 
-    // Effect to fetch data using the resolved ID
     useEffect(() => {
         if (!isAuthLoading) {
             if (employeeId) {
@@ -346,11 +350,12 @@ export default function PayslipPage() {
         }
     }, [employeeId, isAuthLoading, fetchPayslipList]); 
 
-    // handleCloseModal, handleDownloadPayslip, handleViewPayslip functions (rest of the logic)
     const handleCloseModal = () => {
         setIsModalOpen(false);
+        setCurrentPayslipData(null); 
     };
 
+    // View Payslip: Fetches data and sets modal state
     const handleViewPayslip = async (payslip: PayslipMetadata) => {
         if (!employeeId) return;
 
@@ -359,7 +364,6 @@ export default function PayslipPage() {
         
         try {
             const url = `${API_BASE_URL}/api/payroll/payslip?month=${payslip.month}&year=${payslip.year}&employeeId=${employeeId}`;
-            // Use PayslipData interface here
             const response = await axios.get<PayslipData>(url);
 
             if (response.status === 200) {
@@ -377,16 +381,64 @@ export default function PayslipPage() {
         }
     };
     
+    // Download Payslip: Triggers client-side PDF generation (UNCHANGED LOGIC)
     const handleDownloadPayslip = async (payslip: PayslipMetadata) => {
-        if (payslip.payslipUrl) {
-            window.open(payslip.payslipUrl, '_blank');
-        } else {
-            alert("Payslip PDF not found on the server. Please ask HR to generate it.");
+        if (!employeeId) return;
+
+        setViewLoading(true);
+        setError(null);
+
+        try {
+            const url = `${API_BASE_URL}/api/payroll/payslip?month=${payslip.month}&year=${payslip.year}&employeeId=${employeeId}`;
+            const response = await axios.get<PayslipData>(url);
+
+            if (response.status === 200) {
+                const payslipData = response.data;
+
+                setCurrentPayslipData(payslipData);
+                setIsModalOpen(true); 
+
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                if (payslipRef.current) {
+                    
+                    const canvas = await html2canvas(payslipRef.current, { 
+                        scale: 2, 
+                        logging: false,
+                        useCORS: true 
+                    });
+
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0); 
+                    
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    
+                    const imgProps = pdf.getImageProperties(imgData);
+                    const pdfWidth = pdf.internal.pageSize.getWidth(); 
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width; 
+
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight); 
+                    
+                    pdf.save(`${payslip.monthName}_${payslip.year}_Payslip_${employeeId}.pdf`);
+
+                    setIsModalOpen(false); 
+                    setCurrentPayslipData(null);
+                } else {
+                    throw new Error("Payslip rendering failed for PDF generation. Try again.");
+                }
+                
+            } else {
+                setError(`Failed to fetch payslip data for download. Status: ${response.status}`);
+            }
+            
+        } catch (err: any) {
+             const errorMessage = err.response?.data || err.message;
+             setError(`Failed to process download: ${errorMessage}`);
+        } finally {
+            setViewLoading(false);
         }
     };
     
 
-    // UPDATED LOADING STATE: Check for both auth and data loading
     if (isAuthLoading || loading) {
         return <div className="text-center p-8 text-xl font-semibold text-blue-600">
             <Loader2 className="w-6 h-6 animate-spin inline-block mr-2" /> {isAuthLoading ? 'Resolving Employee ID...' : 'Loading payslips...'}
@@ -427,8 +479,8 @@ export default function PayslipPage() {
                                         {viewLoading ? 'Loading...' : <> <Eye className="w-4 h-4 mr-1" /> View </>}
                                     </button>
                                     <button
-                                        onClick={() => handleDownloadPayslip(payslip)}
-                                        disabled={!payslip.payslipUrl} 
+                                        onClick={() => handleDownloadPayslip(payslip)} 
+                                        disabled={viewLoading} 
                                         className="inline-flex items-center px-3 py-1 border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 rounded-md shadow-sm text-xs font-medium transition-colors disabled:opacity-50"
                                     >
                                         <Download className="w-4 h-4 mr-1" /> Download PDF
@@ -462,8 +514,8 @@ export default function PayslipPage() {
                             </div>
                         </div>
                         
-                        {/* Payslip Content Area */}
-                        <div className="p-0"> 
+                        {/* Payslip Content Area - APPLIED REF FOR PDF CAPTURE */}
+                        <div className="p-0" ref={payslipRef}> 
                             <PayslipContent data={currentPayslipData} />
                         </div>
                     </div>
